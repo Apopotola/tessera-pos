@@ -1,0 +1,30 @@
+{
+    "name": "tessera/audittrail",
+    "description": "",
+    "authors": [
+        {
+            "name": "SoftClans",
+            "email": "dev@softclans.co.ke"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\AuditTrail\\": "app/",
+            "Modules\\AuditTrail\\Database\\Factories\\": "database/factories/",
+            "Modules\\AuditTrail\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\AuditTrail\\Tests\\": "tests/"
+        }
+    }
+}

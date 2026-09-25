@@ -1,0 +1,30 @@
+{
+    "name": "tessera/compliance",
+    "description": "",
+    "authors": [
+        {
+            "name": "SoftClans",
+            "email": "dev@softclans.co.ke"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Compliance\\": "app/",
+            "Modules\\Compliance\\Database\\Factories\\": "database/factories/",
+            "Modules\\Compliance\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Compliance\\Tests\\": "tests/"
+        }
+    }
+}

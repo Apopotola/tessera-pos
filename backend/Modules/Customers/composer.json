@@ -1,0 +1,30 @@
+{
+    "name": "tessera/customers",
+    "description": "",
+    "authors": [
+        {
+            "name": "SoftClans",
+            "email": "dev@softclans.co.ke"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Customers\\": "app/",
+            "Modules\\Customers\\Database\\Factories\\": "database/factories/",
+            "Modules\\Customers\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Customers\\Tests\\": "tests/"
+        }
+    }
+}

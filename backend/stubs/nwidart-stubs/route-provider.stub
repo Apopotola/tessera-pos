@@ -1,0 +1,23 @@
+<?php
+
+namespace $NAMESPACE$;
+
+use Illuminate\Foundation\Support\Providers\RouteServiceProvider as ServiceProvider;
+use Illuminate\Support\Facades\Route;
+
+class $CLASS$ extends ServiceProvider
+{
+    protected string $name = '$MODULE$';
+
+    /**
+     * Tessera modules are API-only: every module mounts its routes under
+     * /api/v1 with the `api` middleware group (Sanctum stateful SPA auth).
+     */
+    public function map(): void
+    {
+        Route::middleware('api')
+            ->prefix('api/v1')
+            ->name('api.v1.')
+            ->group(module_path($this->name, '$API_ROUTES_PATH$'));
+    }
+}

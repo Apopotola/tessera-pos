@@ -1,0 +1,30 @@
+{
+    "name": "tessera/organisation",
+    "description": "",
+    "authors": [
+        {
+            "name": "SoftClans",
+            "email": "dev@softclans.co.ke"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Organisation\\": "app/",
+            "Modules\\Organisation\\Database\\Factories\\": "database/factories/",
+            "Modules\\Organisation\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Organisation\\Tests\\": "tests/"
+        }
+    }
+}

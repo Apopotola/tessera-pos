@@ -1,0 +1,9 @@
+/* Global resets only — component styling lives in Mantine props, the theme, or CSS modules. */
+html,
+body {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+}

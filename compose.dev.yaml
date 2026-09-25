@@ -1,0 +1,29 @@
+# Local infrastructure only. Run the apps with `php artisan serve` and `pnpm dev`.
+# Ports are offset (5433, 6380) so they do not clash with a locally installed PostgreSQL/Redis.
+# If you use this, set DB_PORT=5433 and DB_PASSWORD=tessera in backend/.env.
+name: tessera-pos
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: tessera
+      POSTGRES_DB: tessera_pos
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/development/postgres-init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6380:6379"
+
+volumes:
+  pgdata:

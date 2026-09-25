@@ -1,0 +1,30 @@
+{
+    "name": "tessera/purchasing",
+    "description": "",
+    "authors": [
+        {
+            "name": "SoftClans",
+            "email": "dev@softclans.co.ke"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Purchasing\\": "app/",
+            "Modules\\Purchasing\\Database\\Factories\\": "database/factories/",
+            "Modules\\Purchasing\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Purchasing\\Tests\\": "tests/"
+        }
+    }
+}

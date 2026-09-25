@@ -1,0 +1,15 @@
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/*
+!.vscode/extensions.json
+
+# Local tooling (machine-specific paths)
+.claude/launch.json
+.claude/settings.local.json
+
+# Env files (each app also has its own .gitignore)
+.env
+.env.*
+!.env.example

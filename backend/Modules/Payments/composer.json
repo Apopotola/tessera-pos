@@ -1,0 +1,30 @@
+{
+    "name": "tessera/payments",
+    "description": "",
+    "authors": [
+        {
+            "name": "SoftClans",
+            "email": "dev@softclans.co.ke"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Payments\\": "app/",
+            "Modules\\Payments\\Database\\Factories\\": "database/factories/",
+            "Modules\\Payments\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Payments\\Tests\\": "tests/"
+        }
+    }
+}

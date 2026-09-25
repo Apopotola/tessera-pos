@@ -1,0 +1,15 @@
+{
+    "Auth": true,
+    "Authorization": true,
+    "Organisation": true,
+    "AuditTrail": true,
+    "Catalogue": true,
+    "Inventory": true,
+    "Purchasing": true,
+    "Sales": true,
+    "Payments": true,
+    "Customers": true,
+    "Compliance": true,
+    "Reports": true,
+    "Dashboard": true
+}
