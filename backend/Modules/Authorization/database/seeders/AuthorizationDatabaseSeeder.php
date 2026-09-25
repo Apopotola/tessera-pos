@@ -51,10 +51,20 @@ class AuthorizationDatabaseSeeder extends Seeder
             ]],
             ['key' => 'inventory', 'title' => 'Inventory', 'icon' => 'IconBuildingWarehouse', 'children' => [
                 ['key' => 'inventory.stock', 'title' => 'Stock on hand', 'view_type' => 'stockOnHand', 'path' => '/inventory/stock', 'permission' => P::INVENTORY_VIEW],
+                ['key' => 'inventory.adjustments', 'title' => 'Breakages & adjustments', 'view_type' => 'stockAdjustments', 'path' => '/inventory/adjustments', 'permission' => P::INVENTORY_VIEW],
+                ['key' => 'inventory.transfers', 'title' => 'Transfers', 'view_type' => 'stockTransfers', 'path' => '/inventory/transfers', 'permission' => P::INVENTORY_VIEW],
+                ['key' => 'inventory.counts', 'title' => 'Stock counts', 'view_type' => 'stockCounts', 'path' => '/inventory/counts', 'permission' => P::INVENTORY_VIEW],
+                ['key' => 'inventory.open-bottles', 'title' => 'Open bottles (tots)', 'view_type' => 'openBottles', 'path' => '/inventory/open-bottles', 'permission' => P::INVENTORY_VIEW],
                 ['key' => 'inventory.movements', 'title' => 'Stock ledger', 'view_type' => 'stockLedger', 'path' => '/inventory/ledger', 'permission' => P::INVENTORY_VIEW],
             ]],
             ['key' => 'purchasing', 'title' => 'Purchasing', 'icon' => 'IconTruckDelivery', 'children' => [
+                ['key' => 'purchasing.orders', 'title' => 'Purchase orders', 'view_type' => 'purchaseOrders', 'path' => '/purchasing/orders', 'permission' => P::PURCHASING_VIEW],
+                ['key' => 'purchasing.invoices', 'title' => 'Supplier invoices', 'view_type' => 'supplierInvoices', 'path' => '/purchasing/invoices', 'permission' => P::PURCHASING_VIEW],
+                ['key' => 'purchasing.returns', 'title' => 'Returns to supplier', 'view_type' => 'supplierReturns', 'path' => '/purchasing/returns', 'permission' => P::PURCHASING_VIEW],
                 ['key' => 'purchasing.suppliers', 'title' => 'Suppliers', 'view_type' => 'suppliersList', 'path' => '/purchasing/suppliers', 'permission' => P::PURCHASING_VIEW],
+            ]],
+            ['key' => 'payments', 'title' => 'Payments', 'icon' => 'IconDeviceMobile', 'children' => [
+                ['key' => 'payments.mpesa', 'title' => 'M-PESA reconciliation', 'view_type' => 'mpesaReconciliation', 'path' => '/payments/mpesa', 'permission' => P::PAYMENTS_VIEW],
             ]],
             ['key' => 'customers', 'title' => 'Customers', 'icon' => 'IconUsers', 'view_type' => 'customersList', 'path' => '/customers', 'permission' => P::CUSTOMERS_VIEW],
             ['key' => 'compliance', 'title' => 'Compliance', 'icon' => 'IconShieldCheck', 'children' => [

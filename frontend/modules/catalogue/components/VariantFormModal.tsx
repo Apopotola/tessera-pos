@@ -12,6 +12,7 @@ import { optionalKesToCents } from "@/utils/money";
 
 interface VariantFormValues {
   volumeMl: number | string;
+  totMl: number | string;
   container: Container;
   sku: string;
   taxRateId: string | null;
@@ -38,6 +39,7 @@ export default function VariantFormModal({ opened, onClose, productId, variant, 
   const form = useForm<VariantFormValues>({
     initialValues: {
       volumeMl: variant?.volumeMl ?? 750,
+      totMl: variant?.totMl ?? "",
       container: variant?.container ?? "bottle",
       sku: variant?.sku ?? "",
       taxRateId: variant?.taxRate ? String(variant.taxRate.id) : null,
@@ -49,6 +51,7 @@ export default function VariantFormModal({ opened, onClose, productId, variant, 
     },
     validate: {
       volumeMl: (v) => (Number(v) > 0 ? null : "Enter the size in ml"),
+      totMl: (v, values) => (v === "" || (Number(v) >= 5 && Number(v) < Number(values.volumeMl)) ? null : "A tot must be at least 5ml and smaller than the bottle"),
       sku: (v) => (v.trim() ? null : "Enter a SKU"),
       taxRateId: (v) => (v ? null : "Choose a tax rate"),
     },
@@ -58,6 +61,7 @@ export default function VariantFormModal({ opened, onClose, productId, variant, 
     async (values: VariantFormValues) => {
       const payload: VariantPayload = {
         volumeMl: Number(values.volumeMl),
+        totMl: values.totMl === "" ? null : Number(values.totMl),
         container: values.container,
         sku: values.sku.trim(),
         taxRateId: Number(values.taxRateId),
@@ -99,6 +103,14 @@ export default function VariantFormModal({ opened, onClose, productId, variant, 
           <SimpleGrid cols={{ base: 1, sm: 2 }}>
             <NumberInput label="Size (ml)" min={1} required {...form.getInputProps("volumeMl")} />
             <Select label="Container" data={CONTAINER_OPTIONS} allowDeselect={false} {...form.getInputProps("container")} />
+            <NumberInput
+              label="Sell by tot (ml)"
+              description="Leave empty if this is not poured at the bar. Set the tot price under Change price."
+              placeholder="e.g. 30"
+              min={5}
+              allowDecimal={false}
+              {...form.getInputProps("totMl")}
+            />
             <TextInput label="SKU" required {...form.getInputProps("sku")} />
             <Select label="Tax" data={taxRateOptions} required {...form.getInputProps("taxRateId")} />
             <TextInput label="eTIMS item class code" description="From the KRA code list" {...form.getInputProps("etimsItemClassCode")} />

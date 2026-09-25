@@ -120,6 +120,7 @@ export default function ProductDetailView({ tabId, title, section, props }: Work
                     <Table.Th>Packs</Table.Th>
                     <Table.Th ta="right">Retail</Table.Th>
                     <Table.Th ta="right">Wholesale</Table.Th>
+                    <Table.Th ta="right">Tot</Table.Th>
                     <Table.Th>Tax</Table.Th>
                     <Table.Th />
                   </Table.Tr>
@@ -176,6 +177,18 @@ export default function ProductDetailView({ tabId, title, section, props }: Work
                       </Table.Td>
                       <Table.Td ta="right">{formatKes(variant.currentPrices?.retail?.priceCents)}</Table.Td>
                       <Table.Td ta="right">{formatKes(variant.currentPrices?.wholesale?.priceCents)}</Table.Td>
+                      <Table.Td ta="right">
+                        {variant.totMl ? (
+                          <>
+                            <Text size="sm">{formatKes(variant.currentPrices?.tot?.priceCents)}</Text>
+                            <Text size="xs" c="dimmed">
+                              {variant.totMl}ml
+                            </Text>
+                          </>
+                        ) : (
+                          "—"
+                        )}
+                      </Table.Td>
                       <Table.Td>
                         <Text size="sm">{variant.taxRate?.code ?? "—"}</Text>
                       </Table.Td>

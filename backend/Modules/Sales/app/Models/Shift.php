@@ -4,6 +4,7 @@ namespace Modules\Sales\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Modules\Auth\Models\User;
 use Modules\Organisation\Models\Branch;
 use Modules\Organisation\Models\Till;
@@ -27,6 +28,18 @@ class Shift extends Model
     public function isOpen(): bool
     {
         return $this->closed_at === null;
+    }
+
+    /** @return HasMany<Sale, $this> */
+    public function sales(): HasMany
+    {
+        return $this->hasMany(Sale::class);
+    }
+
+    /** @return HasMany<SaleTender, $this> */
+    public function tenders(): HasMany
+    {
+        return $this->hasMany(SaleTender::class);
     }
 
     /** @return BelongsTo<User, $this> */

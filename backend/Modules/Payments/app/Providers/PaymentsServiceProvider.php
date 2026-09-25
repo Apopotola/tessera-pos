@@ -3,6 +3,10 @@
 namespace Modules\Payments\Providers;
 
 use Illuminate\Console\Scheduling\Schedule;
+use Modules\Payments\Console\RegisterC2bUrls;
+use Modules\Payments\Contracts\MpesaGateway;
+use Modules\Payments\Gateways\DarajaGateway;
+use Modules\Payments\Gateways\FakeGateway;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 class PaymentsServiceProvider extends ModuleServiceProvider
@@ -22,7 +26,9 @@ class PaymentsServiceProvider extends ModuleServiceProvider
      *
      * @var string[]
      */
-    // protected array $commands = [];
+    protected array $commands = [
+        RegisterC2bUrls::class,
+    ];
 
     /**
      * Provider classes to register.
@@ -33,6 +39,17 @@ class PaymentsServiceProvider extends ModuleServiceProvider
         EventServiceProvider::class,
         RouteServiceProvider::class,
     ];
+
+    public function register(): void
+    {
+        parent::register();
+
+        // "manual" has no gateway calls; the fake stands in so the binding always resolves.
+        $this->app->bind(MpesaGateway::class, fn ($app) => match (config('payments.mpesa.driver')) {
+            'daraja' => new DarajaGateway((array) config('payments.mpesa')),
+            default => new FakeGateway((int) config('payments.mpesa.fake_delay_seconds', 5)),
+        });
+    }
 
     /**
      * Define module schedules.

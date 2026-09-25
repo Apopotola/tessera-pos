@@ -2,24 +2,37 @@
 
 namespace Modules\Dashboard\Services;
 
+use Illuminate\Support\Facades\DB;
 use Modules\Auth\Models\User;
 use Modules\Authorization\Support\Permissions;
 use Modules\Catalogue\Enums\PriceStatus;
 use Modules\Catalogue\Models\Product;
 use Modules\Catalogue\Models\ProductVariant;
 use Modules\Catalogue\Models\VariantPrice;
+use Modules\Compliance\Models\EtimsSubmission;
+use Modules\Inventory\Services\StockQueryService;
 use Modules\Organisation\Models\Till;
 use Modules\Organisation\Services\BranchAccessService;
+use Modules\Purchasing\Enums\PurchaseOrderStatus;
+use Modules\Purchasing\Models\PurchaseOrder;
+use Modules\Purchasing\Models\SupplierInvoice;
+use Modules\Sales\Models\Sale;
+use Modules\Sales\Models\SaleReturn;
+use Modules\Sales\Models\SaleReturnLine;
+use Modules\Sales\Models\SaleTender;
 use Modules\Sales\Models\Shift;
 
 /**
  * Today's operational snapshot, built only from data that exists.
  * Each section is null when the user lacks the permission to see it.
- * Sales, stock and eTIMS KPIs are added here as those modules land.
+ * eTIMS figures are added here when the Compliance module lands.
  */
 class DashboardService
 {
-    public function __construct(private readonly BranchAccessService $branchAccess) {}
+    public function __construct(
+        private readonly BranchAccessService $branchAccess,
+        private readonly StockQueryService $stock,
+    ) {}
 
     /** @return array<string, mixed> */
     public function summaryFor(User $user): array
@@ -61,10 +74,78 @@ class DashboardService
                     ])->values()
                 : null,
 
+            'salesToday' => $user->can(Permissions::SALES_VIEW) ? $this->salesToday($user, $branchIds) : null,
+
+            'inventory' => $user->can(Permissions::INVENTORY_VIEW) ? [
+                ...$this->stock->dashboard($user),
+                'lossesThisMonthCents' => $user->can(Permissions::REPORTS_PROFIT_VIEW) ? $this->stock->lossesThisMonth($user) : null,
+            ] : null,
+
+            // Requirements: alert on invoices pending over an hour and on any rejection.
+            'compliance' => $user->can(Permissions::COMPLIANCE_VIEW) ? [
+                'etimsDriver' => config('compliance.etims.driver'),
+                'waitingOverThreshold' => EtimsSubmission::query()->whereIn('branch_id', $branchIds)
+                    ->whereIn('status', [EtimsSubmission::PENDING, EtimsSubmission::FAILED])
+                    ->where('created_at', '<', now()->subMinutes((int) config('compliance.etims.pending_alert_minutes', 60)))->count(),
+                'rejected' => EtimsSubmission::query()->whereIn('branch_id', $branchIds)->where('status', EtimsSubmission::REJECTED)->count(),
+            ] : null,
+
+            'purchasing' => $user->can(Permissions::PURCHASING_VIEW) ? [
+                'ordersAwaitingApproval' => PurchaseOrder::query()->whereIn('branch_id', $branchIds)->where('status', PurchaseOrderStatus::Draft)->count(),
+                'ordersAwaitingDelivery' => PurchaseOrder::query()->whereIn('branch_id', $branchIds)
+                    ->whereIn('status', [PurchaseOrderStatus::Approved, PurchaseOrderStatus::Sent, PurchaseOrderStatus::PartiallyReceived])->count(),
+                'invoicesWithVariance' => SupplierInvoice::query()->where('match_status', SupplierInvoice::VARIANCE)->count(),
+            ] : null,
+
             'staff' => $user->can(Permissions::USERS_MANAGE) ? [
                 'active' => User::query()->where('is_active', true)->count(),
                 'cashiersWithoutPin' => User::permission(Permissions::SALES_SELL)->where('is_active', true)->whereNull('pin_hash')->count(),
             ] : null,
+        ];
+    }
+
+    /**
+     * Today's takings from real sales. Net = sales − refunds (VAT-inclusive);
+     * gross profit = net excl. VAT − cost of goods, only with reports.profit.view.
+     *
+     * @param  list<int>  $branchIds
+     * @return array<string, int|null>
+     */
+    private function salesToday(User $user, array $branchIds): array
+    {
+        $start = now()->startOfDay();
+        $sales = Sale::query()->whereIn('branch_id', $branchIds)->where('completed_at', '>=', $start);
+        $returns = SaleReturn::query()->whereIn('branch_id', $branchIds)->where('created_at', '>=', $start);
+
+        $tenders = SaleTender::query()
+            ->whereIn('shift_id', Shift::query()->select('id')->whereIn('branch_id', $branchIds))
+            ->where('created_at', '>=', $start)
+            ->selectRaw('method, SUM(amount_cents) AS total')
+            ->groupBy('method')
+            ->pluck('total', 'method');
+
+        $gross = (int) (clone $sales)->sum('total_cents');
+        $refunds = (int) (clone $returns)->sum('total_cents');
+        $showProfit = $user->can(Permissions::REPORTS_PROFIT_VIEW);
+
+        // Refunded goods came back at their original cost, so remove that cost too.
+        $returnedCost = $showProfit ? (int) SaleReturnLine::query()
+            ->join('sale_lines', 'sale_lines.id', '=', 'sale_return_lines.sale_line_id')
+            ->whereIn('sale_return_lines.sale_return_id', (clone $returns)->select('id'))
+            ->sum(DB::raw('sale_return_lines.quantity * sale_lines.unit_cost_cents')) : 0;
+
+        return [
+            'transactions' => (clone $sales)->count(),
+            'grossCents' => $gross,
+            'refundsCents' => $refunds,
+            'netCents' => $gross - $refunds,
+            'cashCents' => (int) ($tenders[SaleTender::CASH] ?? 0),
+            'mpesaCents' => (int) ($tenders[SaleTender::MPESA] ?? 0),
+            'cardCents' => (int) ($tenders[SaleTender::CARD] ?? 0),
+            'grossProfitCents' => $showProfit
+                ? ($gross - $refunds) - ((int) (clone $sales)->sum('vat_cents') - (int) (clone $returns)->sum('vat_cents'))
+                    - ((int) (clone $sales)->sum('cost_cents') - $returnedCost)
+                : null,
         ];
     }
 }

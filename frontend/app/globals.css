@@ -19,3 +19,48 @@ body {
   letter-spacing: -0.035em;
   line-height: 1.02;
 }
+
+/* Receipt printing: only the <ReceiptPrint> portal reaches the paper (80 mm thermal roll). */
+.tessera-print {
+  display: none;
+}
+
+@media print {
+  /* Receipts print on the 80 mm roll; reports use the normal page. */
+  @page receipt {
+    size: 80mm auto;
+    margin: 0;
+  }
+
+  @page {
+    margin: 12mm;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .tessera-print,
+  .tessera-print *,
+  .tessera-printable,
+  .tessera-printable * {
+    visibility: visible;
+  }
+
+  /* A report (or other on-screen block) printed on its own, e.g. "Print / PDF". */
+  .tessera-printable {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+  }
+
+  .tessera-print {
+    page: receipt;
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 80mm;
+  }
+}

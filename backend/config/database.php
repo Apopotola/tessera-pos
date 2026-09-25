@@ -95,6 +95,9 @@ return [
             'prefix_indexes' => true,
             'search_path' => 'public',
             'sslmode' => 'prefer',
+            // Laravel writes timestamps without an offset; the session must share the app's
+            // timezone or every timestamptz is shifted by the server's default zone.
+            'timezone' => env('APP_TIMEZONE', 'Africa/Nairobi'),
         ],
 
         'sqlsrv' => [

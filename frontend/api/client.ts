@@ -101,6 +101,32 @@ export async function ensureCsrfCookie(): Promise<void> {
   }
 }
 
+/**
+ * Downloads a file (e.g. a CSV export) with the session cookie and saves it in the browser.
+ * Errors come back as JSON envelopes, so a failed download still raises an ApiError.
+ */
+export async function downloadFile(url: string, params: object, fallbackName: string): Promise<void> {
+  try {
+    const response = await http.get<Blob>(url, { params, responseType: "blob", headers: { Accept: "text/csv, application/json" } });
+    const disposition = String(response.headers["content-disposition"] ?? "");
+    const name = /filename="?([^";]+)"?/.exec(disposition)?.[1] ?? fallbackName;
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(response.data);
+    link.download = name;
+    link.click();
+    URL.revokeObjectURL(link.href);
+  } catch (error) {
+    if (error instanceof AxiosError && error.response?.data instanceof Blob) {
+      try {
+        error.response.data = JSON.parse(await error.response.data.text());
+      } catch {
+        // not JSON; fall through with the generic message
+      }
+    }
+    throw toApiError(error);
+  }
+}
+
 export const api = {
   get: <T>(url: string, params?: object) => apiRequest<T>({ method: "GET", url, params }),
   post: <T>(url: string, data?: unknown) => apiRequest<T>({ method: "POST", url, data }),

@@ -1,4 +1,8 @@
 import { productDetailTab } from "@/modules/catalogue/routes";
+import { countSheetTab } from "@/modules/inventory/routes";
+import { purchaseOrderTab } from "@/modules/purchasing/routes";
+import { reportTab } from "@/modules/reports/routes";
+import { customerTab } from "@/modules/customers/routes";
 import type { OpenTabConfig } from "@/store/slices/tabsSlice";
 
 /**
@@ -9,6 +13,22 @@ const DYNAMIC_ROUTES: { pattern: RegExp; toTab: (match: RegExpMatchArray) => Ope
   {
     pattern: /^\/catalogue\/products\/(\d+)$/,
     toTab: (m) => productDetailTab({ id: Number(m[1]), name: `Product #${m[1]}` }),
+  },
+  {
+    pattern: /^\/inventory\/counts\/(\d+)$/,
+    toTab: (m) => countSheetTab({ id: Number(m[1]) }),
+  },
+  {
+    pattern: /^\/customers\/(\d+)$/,
+    toTab: (m) => customerTab({ id: Number(m[1]) }),
+  },
+  {
+    pattern: /^\/reports\/([a-z0-9-]+)$/,
+    toTab: (m) => reportTab({ key: m[1] }),
+  },
+  {
+    pattern: /^\/purchasing\/orders\/(\d+)$/,
+    toTab: (m) => purchaseOrderTab({ id: Number(m[1]) }),
   },
 ];
 

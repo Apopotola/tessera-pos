@@ -70,10 +70,21 @@ final class Permissions
 
     public const PURCHASING_MANAGE = 'purchasing.manage';
 
+    public const PURCHASING_APPROVE = 'purchasing.approve';
+
     // Customers
+    /** M-PESA reconciliation screen. */
+    public const PAYMENTS_VIEW = 'payments.view';
+
+    /** Match a customer-initiated M-PESA payment to a sale after the fact. */
+    public const PAYMENTS_RECONCILE = 'payments.reconcile';
+
     public const CUSTOMERS_VIEW = 'customers.view';
 
     public const CUSTOMERS_MANAGE = 'customers.manage';
+
+    /** Export or anonymise one customer's personal data (data subject requests). */
+    public const CUSTOMERS_PRIVACY = 'customers.privacy';
 
     // Reports
     public const REPORTS_VIEW = 'reports.view';
@@ -81,6 +92,9 @@ final class Permissions
     public const REPORTS_PROFIT_VIEW = 'reports.profit.view';
 
     public const REPORTS_FINANCIAL_VIEW = 'reports.financial.view';
+
+    /** Download reports as CSV (every export is logged). */
+    public const REPORTS_EXPORT = 'reports.export';
 
     // Compliance (eTIMS)
     public const COMPLIANCE_VIEW = 'compliance.view';

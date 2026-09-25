@@ -203,6 +203,7 @@ class CatalogueService
     {
         return [
             'volume_ml' => $data['volumeMl'],
+            'tot_ml' => $data['totMl'] ?? null,
             'container' => $data['container'],
             'sku' => Str::upper(trim($data['sku'])),
             'tax_rate_id' => $data['taxRateId'],

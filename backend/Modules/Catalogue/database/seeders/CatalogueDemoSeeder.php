@@ -54,6 +54,8 @@ class CatalogueDemoSeeder extends Seeder
                         'container' => 'bottle',
                         'sku' => $sku,
                         'taxRateId' => $vat,
+                        // Placeholder so the mock eTIMS signs demo sales; real KRA item class codes replace it.
+                        'etimsItemClassCode' => 'DEMO0001',
                         'barcodes' => [sprintf('2000000%06d', $n++)],
                         'retailPriceCents' => $kes * 100,
                     ];

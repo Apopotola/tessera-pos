@@ -39,6 +39,10 @@ class PriceService
         $effectiveFrom = isset($data['effectiveFrom']) ? CarbonImmutable::parse($data['effectiveFrom']) : $now;
         $autoApprove = $user->can(Permissions::PRICES_APPROVE);
 
+        if ($tier === PriceTier::Tot && ! $variant->tot_ml) {
+            throw ValidationException::withMessages(['tier' => 'Set a tot size on this item before giving it a tot price.']);
+        }
+
         $warnings = $this->ladderWarnings($variant, $tier, $branchId, $priceCents);
 
         $price = DB::transaction(function () use ($variant, $data, $tier, $branchId, $priceCents, $effectiveFrom, $autoApprove, $user, $now) {
@@ -122,6 +126,10 @@ class PriceService
      */
     public function ladderWarnings(ProductVariant $variant, PriceTier $tier, ?int $branchId, int $priceCents): array
     {
+        if ($tier === PriceTier::Tot) {
+            return $this->totWarnings($variant, $branchId, $priceCents);
+        }
+
         $siblings = ProductVariant::query()
             ->where('product_id', $variant->product_id)
             ->where('container', $variant->container)
@@ -148,6 +156,26 @@ class PriceService
         }
 
         return $warnings;
+    }
+
+    /**
+     * A bottle poured as tots should bring in at least what it sells for whole.
+     *
+     * @return list<string>
+     */
+    private function totWarnings(ProductVariant $variant, ?int $branchId, int $totPriceCents): array
+    {
+        $bottle = $this->resolver->current($variant->id, $branchId, PriceTier::Retail);
+        if (! $bottle || ! $variant->tot_ml) {
+            return [];
+        }
+
+        $tots = intdiv($variant->volume_ml, $variant->tot_ml);
+        if ($tots * $totPriceCents < $bottle->price_cents) {
+            return ["{$tots} tots at this price bring in less than the bottle's retail price."];
+        }
+
+        return [];
     }
 
     private function assertReviewable(VariantPrice $price, User $approver): void

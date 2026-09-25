@@ -1,6 +1,8 @@
-import { Group, Stack, Text } from "@mantine/core";
+import { Box, Group, Paper, Stack, Text } from "@mantine/core";
 import type { ReactNode } from "react";
 import { brand } from "@/app/theme";
+import BottleSkyline from "@/components/brand/BottleSkyline";
+import classes from "./PageHeader.module.css";
 
 interface PageHeaderProps {
   title: string;
@@ -10,26 +12,38 @@ interface PageHeaderProps {
   actions?: ReactNode;
 }
 
-/** Standard title row for workspace views, in the brand display type. */
+/**
+ * Standard header for every workspace view: the navy brand banner with the bottle
+ * skyline, so all modules share the look of the till and dashboard.
+ */
 export default function PageHeader({ title, description, eyebrow, actions }: PageHeaderProps) {
   return (
-    <Group justify="space-between" align="flex-end" wrap="wrap" gap="md">
-      <Stack gap={4}>
-        {eyebrow && (
-          <Text size="xs" fw={700} c="tessera.7" tt="uppercase" style={{ letterSpacing: "0.12em" }}>
-            {eyebrow}
-          </Text>
-        )}
-        <h2 className="tessera-display" style={{ margin: 0, fontSize: 30, color: brand.navy }}>
-          {title}
-        </h2>
-        {description && (
-          <Text size="sm" c="dimmed" maw={640}>
-            {description}
-          </Text>
-        )}
-      </Stack>
-      {actions}
-    </Group>
+    <Paper radius="xl" style={{ background: brand.navyRaised, overflow: "hidden" }}>
+      <Group justify="space-between" align="flex-end" wrap="nowrap" gap="xl">
+        <Stack gap="sm" px={{ base: "lg", md: "xl" }} py="lg" style={{ minWidth: 0, flex: 1 }}>
+          {eyebrow && (
+            <Text size="xs" fw={700} c={brand.lilac} tt="uppercase" style={{ letterSpacing: "0.12em" }}>
+              {eyebrow}
+            </Text>
+          )}
+          <h2 className="tessera-display" style={{ margin: 0, fontSize: 30, color: "white" }}>
+            {title}
+          </h2>
+          {description && (
+            <Text size="sm" c="gray.4" maw={640}>
+              {description}
+            </Text>
+          )}
+          {actions && (
+            <Group gap="sm" mt={4} className={classes.actions}>
+              {actions}
+            </Group>
+          )}
+        </Stack>
+        <Box visibleFrom="md" w={300} pr="xl" style={{ flexShrink: 0 }}>
+          <BottleSkyline height={110} withShelf={false} />
+        </Box>
+      </Group>
+    </Paper>
   );
 }

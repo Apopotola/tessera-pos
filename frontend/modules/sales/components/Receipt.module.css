@@ -1,0 +1,59 @@
+/* Thermal receipt: 80 mm paper, ~72 mm printable. Monospace keeps the columns aligned. */
+.receipt {
+  width: 72mm;
+  max-width: 100%;
+  margin: 0 auto;
+  padding: 12px 10px;
+  background: #fff;
+  color: #000;
+  font-family: var(--font-mono), "JetBrains Mono", monospace;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.center {
+  text-align: center;
+}
+
+.shop {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.copy {
+  margin-top: 4px;
+  font-weight: 700;
+}
+
+.rule {
+  margin: 6px 0;
+  border-top: 1px dashed #000;
+}
+
+.row {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.line {
+  margin-bottom: 3px;
+}
+
+.total {
+  margin: 4px 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.etims {
+  margin-bottom: 6px;
+  text-align: left;
+  word-break: break-all;
+}
+
+.qr {
+  display: flex;
+  justify-content: center;
+  margin: 6px 0;
+}

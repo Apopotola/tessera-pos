@@ -24,6 +24,15 @@ export interface TillContext {
   business: { name: string };
   branch: { id: number; code: string; name: string };
   till: Till;
+  policy: {
+    discountLimitPercent: number;
+    voidApprovalThresholdCents: number;
+    returnWindowDays: number;
+    /** "stk": prompt the phone or pick the customer's payment; "manual": type the code (unverified). */
+    mpesaMode: "stk" | "manual";
+    /** Demo M-PESA (fake driver): nothing reaches Safaricom. */
+    mpesaDemo: boolean;
+  };
   cashiers: TillCashier[];
 }
 

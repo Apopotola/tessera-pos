@@ -3,6 +3,9 @@
 namespace Modules\Compliance\Providers;
 
 use Illuminate\Console\Scheduling\Schedule;
+use Modules\Compliance\Console\ProcessEtimsOutbox;
+use Modules\Compliance\Contracts\EtimsGateway;
+use Modules\Compliance\Gateways\FakeEtimsGateway;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 class ComplianceServiceProvider extends ModuleServiceProvider
@@ -22,7 +25,9 @@ class ComplianceServiceProvider extends ModuleServiceProvider
      *
      * @var string[]
      */
-    // protected array $commands = [];
+    protected array $commands = [
+        ProcessEtimsOutbox::class,
+    ];
 
     /**
      * Provider classes to register.
@@ -34,13 +39,23 @@ class ComplianceServiceProvider extends ModuleServiceProvider
         RouteServiceProvider::class,
     ];
 
+    public function register(): void
+    {
+        parent::register();
+
+        // Only the mock exists until the KRA VSCU/OSCU spec is in hand; "disabled" never calls it.
+        $this->app->bind(EtimsGateway::class, fn () => new FakeEtimsGateway(
+            (string) config('compliance.etims.scu_id'),
+            (bool) config('compliance.etims.fake_offline'),
+        ));
+    }
+
     /**
      * Define module schedules.
-     *
-     * @param  $schedule
      */
-    // protected function configureSchedules(Schedule $schedule): void
-    // {
-    //     $schedule->command('inspire')->hourly();
-    // }
+    protected function configureSchedules(Schedule $schedule): void
+    {
+        // Retries and anything the post-sale attempt missed. Run `php artisan schedule:work` in development.
+        $schedule->command('etims:process')->everyMinute()->withoutOverlapping();
+    }
 }

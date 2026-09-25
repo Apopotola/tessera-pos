@@ -6,11 +6,11 @@ use Illuminate\Database\Seeder;
 
 class InventoryDatabaseSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
+    /** Inventory has no reference data; demo stock is seeded in local development only. */
     public function run(): void
     {
-        // $this->call([]);
+        if (app()->environment('local')) {
+            $this->call(InventoryDemoSeeder::class);
+        }
     }
 }

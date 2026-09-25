@@ -9,6 +9,8 @@ use Modules\AuditTrail\Services\AuditLogger;
 use Modules\Auth\Models\User;
 use Modules\Authorization\Support\Permissions;
 use Modules\Organisation\Models\Till;
+use Modules\Sales\Models\ParkedSale;
+use Modules\Sales\Models\SaleTender;
 use Modules\Sales\Models\Shift;
 
 /**
@@ -74,8 +76,8 @@ class ShiftService
     }
 
     /**
-     * Blind close: expected cash is only computed after the count is submitted.
-     * Until the Sales module records cash sales, expected = opening float.
+     * Blind close: expected cash (float + cash sales − cash refunds) is only
+     * computed after the count is submitted.
      */
     public function close(Shift $shift, User $user, int $countedCashCents, ?string $note): Shift
     {
@@ -87,8 +89,15 @@ class ShiftService
             throw ValidationException::withMessages(['shift' => 'This shift is already closed.']);
         }
 
+        $parked = ParkedSale::query()->where('till_id', $shift->till_id)->count();
+        if ($parked > 0) {
+            throw ValidationException::withMessages(['shift' => "{$parked} parked sale(s) on this till. Recall and finish or clear them before ending the shift."]);
+        }
+
         return DB::transaction(function () use ($shift, $user, $countedCashCents, $note) {
-            $expected = $shift->opening_float_cents; // + cash sales − cash refunds − cash drops (Sales module)
+            // Float + cash taken − cash refunded (refund tenders are negative). Cash drops come later.
+            $cashMovement = (int) SaleTender::query()->where('shift_id', $shift->id)->where('method', SaleTender::CASH)->sum('amount_cents');
+            $expected = $shift->opening_float_cents + $cashMovement;
 
             $shift->forceFill([
                 'closed_at' => now(),

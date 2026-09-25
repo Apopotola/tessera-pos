@@ -1,0 +1,30 @@
+<?php
+
+namespace Modules\Inventory\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Modules\Catalogue\Models\ProductVariant;
+
+class StockTransferLine extends Model
+{
+    public $timestamps = false;
+
+    protected $fillable = ['variant_id', 'quantity_requested', 'quantity_dispatched', 'quantity_received', 'unit_cost_cents'];
+
+    protected function casts(): array
+    {
+        return [
+            'quantity_requested' => 'integer',
+            'quantity_dispatched' => 'integer',
+            'quantity_received' => 'integer',
+            'unit_cost_cents' => 'integer',
+        ];
+    }
+
+    /** @return BelongsTo<ProductVariant, $this> */
+    public function variant(): BelongsTo
+    {
+        return $this->belongsTo(ProductVariant::class, 'variant_id');
+    }
+}

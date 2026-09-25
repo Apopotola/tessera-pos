@@ -12,6 +12,7 @@ export const CONTAINER_OPTIONS: { value: Container; label: string }[] = [
 export const TIER_LABELS: Record<PriceTier, string> = {
   retail: "Retail",
   wholesale: "Wholesale",
+  tot: "Tot",
 };
 
 export const PRICE_STATUS_COLORS: Record<PriceStatus, string> = {

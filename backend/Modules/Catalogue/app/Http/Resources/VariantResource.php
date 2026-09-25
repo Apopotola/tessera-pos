@@ -24,6 +24,7 @@ class VariantResource extends JsonResource
             'displayName' => $this->display_name,
             'volumeMl' => $this->volume_ml,
             'volumeLabel' => $this->volume_label,
+            'totMl' => $this->tot_ml,
             'container' => $this->container->value,
             'sku' => $this->sku,
             'taxRate' => new TaxRateResource($this->whenLoaded('taxRate')),
@@ -45,6 +46,7 @@ class VariantResource extends JsonResource
             'currentPrices' => $this->whenLoaded('currentPrices', fn () => [
                 'retail' => $this->priceSummary($this->currentPrices['retail'] ?? null),
                 'wholesale' => $this->priceSummary($this->currentPrices['wholesale'] ?? null),
+                'tot' => $this->priceSummary($this->currentPrices['tot'] ?? null),
             ]),
         ];
     }

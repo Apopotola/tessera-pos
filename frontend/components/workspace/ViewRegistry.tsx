@@ -22,8 +22,8 @@ const ViewRegistry: Record<string, ComponentType<WorkspaceViewProps>> = {
 
   // POS / Sales (sales list and shifts screens come with the Sales module)
   posTill: lazyView(() => import("@/modules/sales/views/PosTillView")),
-  salesList: PlaceholderView,
-  shiftsList: PlaceholderView,
+  salesList: lazyView(() => import("@/modules/sales/views/SalesListView")),
+  shiftsList: lazyView(() => import("@/modules/sales/views/ShiftsListView")),
 
   // Catalogue
   productsList: lazyView(() => import("@/modules/catalogue/views/ProductsView")),
@@ -31,21 +31,33 @@ const ViewRegistry: Record<string, ComponentType<WorkspaceViewProps>> = {
   priceChanges: lazyView(() => import("@/modules/catalogue/views/PriceChangesView")),
   catalogueSetup: lazyView(() => import("@/modules/catalogue/views/CatalogueSetupView")),
 
-  // Inventory (not built yet)
-  stockOnHand: PlaceholderView,
-  stockLedger: PlaceholderView,
+  // Inventory
+  stockOnHand: lazyView(() => import("@/modules/inventory/views/StockOnHandView")),
+  stockAdjustments: lazyView(() => import("@/modules/inventory/views/AdjustmentsView")),
+  stockTransfers: lazyView(() => import("@/modules/inventory/views/TransfersView")),
+  stockCounts: lazyView(() => import("@/modules/inventory/views/StockCountsView")),
+  stockCountSheet: lazyView(() => import("@/modules/inventory/views/StockCountSheetView")), // record tab, not a menu item
+  stockLedger: lazyView(() => import("@/modules/inventory/views/StockLedgerView")),
+  openBottles: lazyView(() => import("@/modules/sales/views/OpenBottlesView")),
 
-  // Purchasing (not built yet)
-  suppliersList: PlaceholderView,
+  // Purchasing
+  purchaseOrders: lazyView(() => import("@/modules/purchasing/views/PurchaseOrdersView")),
+  purchaseOrderDetail: lazyView(() => import("@/modules/purchasing/views/PurchaseOrderDetailView")), // record tab, not a menu item
+  supplierInvoices: lazyView(() => import("@/modules/purchasing/views/SupplierInvoicesView")),
+  supplierReturns: lazyView(() => import("@/modules/purchasing/views/SupplierReturnsView")),
+  suppliersList: lazyView(() => import("@/modules/purchasing/views/SuppliersView")),
 
   // Customers (not built yet)
-  customersList: PlaceholderView,
+  mpesaReconciliation: lazyView(() => import("@/modules/payments/views/MpesaReconciliationView")),
+  customersList: lazyView(() => import("@/modules/customers/views/CustomersView")),
+  customerDetail: lazyView(() => import("@/modules/customers/views/CustomerDetailView")), // record tab, not a menu item
 
   // Compliance / eTIMS (not built yet)
-  etimsMonitor: PlaceholderView,
+  etimsMonitor: lazyView(() => import("@/modules/compliance/views/EtimsMonitorView")),
 
   // Reports (not built yet)
-  reportsHome: PlaceholderView,
+  reportsHome: lazyView(() => import("@/modules/reports/views/ReportsHomeView")),
+  reportView: lazyView(() => import("@/modules/reports/views/ReportView")), // record tab, not a menu item
 
   // Administration
   branchesList: lazyView(() => import("@/modules/organisation/views/BranchesView")),

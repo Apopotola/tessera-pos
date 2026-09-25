@@ -22,6 +22,12 @@ import { formatKes } from "@/utils/money";
 const PRICE_CHANGES_TAB: OpenTabConfig = { title: "Price changes", path: "/catalogue/prices", view: "priceChanges" };
 const USERS_TAB: OpenTabConfig = { title: "Users & roles", path: "/admin/users", view: "usersList" };
 const BRANCHES_TAB: OpenTabConfig = { title: "Branches", path: "/admin/branches", view: "branchesList" };
+const STOCK_TAB: OpenTabConfig = { title: "Stock on hand", path: "/inventory/stock", view: "stockOnHand" };
+const SALES_TAB: OpenTabConfig = { title: "Sales", path: "/sales", view: "salesList" };
+const ETIMS_TAB: OpenTabConfig = { title: "eTIMS monitor", path: "/compliance/etims", view: "etimsMonitor" };
+const ORDERS_TAB: OpenTabConfig = { title: "Purchase orders", path: "/purchasing/orders", view: "purchaseOrders" };
+const INVOICES_TAB: OpenTabConfig = { title: "Supplier invoices", path: "/purchasing/invoices", view: "supplierInvoices" };
+const ADJUSTMENTS_TAB: OpenTabConfig = { title: "Breakages & adjustments", path: "/inventory/adjustments", view: "stockAdjustments" };
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -61,11 +67,40 @@ export default function DashboardView() {
                   </Button>
                 )}
               </Group>
+              {data.salesToday && (
+                <SimpleGrid cols={{ base: 2, md: 4 }} mb="md">
+                  <StatTile
+                    tone="dark"
+                    label="Sales today"
+                    value={formatKes(data.salesToday.netCents)}
+                    hint={`${data.salesToday.transactions} ${data.salesToday.transactions === 1 ? "sale" : "sales"}${data.salesToday.refundsCents ? ` · ${formatKes(data.salesToday.refundsCents)} refunded` : ""}`}
+                    onClick={() => dispatch(openTab(SALES_TAB))}
+                  />
+                  <StatTile tone="dark" label="Cash" value={formatKes(data.salesToday.cashCents)} />
+                  <StatTile tone="dark" label="M-PESA · card" value={formatKes(data.salesToday.mpesaCents + data.salesToday.cardCents)} hint={`Card ${formatKes(data.salesToday.cardCents)}`} />
+                  {data.salesToday.grossProfitCents !== null && (
+                    <StatTile tone="dark" label="Gross profit today" value={formatKes(data.salesToday.grossProfitCents)} hint="After VAT and cost of goods" />
+                  )}
+                </SimpleGrid>
+              )}
               <SimpleGrid cols={{ base: 2, md: 4 }}>
                 {data.openShifts && <StatTile tone="dark" label="Shifts open now" value={data.openShifts.length} />}
                 {data.tills && <StatTile tone="dark" label="Tills connected" value={`${data.tills.connected} / ${data.tills.total}`} />}
                 {data.catalogue && (
                   <StatTile tone="dark" label="Items on sale" value={data.catalogue.activeVariants} hint={`${data.catalogue.activeProducts} products`} />
+                )}
+                {data.inventory && (
+                  <StatTile
+                    tone="dark"
+                    highlight={data.inventory.lowStock > 0}
+                    label="Items low on stock"
+                    value={data.inventory.lowStock}
+                    onClick={() => dispatch(openTab(STOCK_TAB))}
+                  />
+                )}
+                {data.inventory?.stockValueCents != null && <StatTile tone="dark" label="Stock value (at cost)" value={formatKes(data.inventory.stockValueCents)} />}
+                {data.inventory?.lossesThisMonthCents != null && (
+                  <StatTile tone="dark" label="Breakage & losses this month" value={formatKes(data.inventory.lossesThisMonthCents)} />
                 )}
                 {data.pendingPriceChanges !== null && (
                   <StatTile
@@ -90,9 +125,9 @@ export default function DashboardView() {
                   <IconChartBar size={22} />
                 </ThemeIcon>
                 <div>
-                  <Text fw={700}>Sales, bottles sold and stock gaps</Text>
+                  <Text fw={700}>Sales and bottles sold</Text>
                   <Text size="sm" c="dimmed">
-                    These figures appear here as soon as the till starts recording sales and the stock ledger is live.
+                    These figures appear here as soon as the till starts recording sales.
                   </Text>
                 </div>
               </Group>
@@ -142,6 +177,24 @@ function AttentionCard({ data, onOpen }: { data: DashboardSummary; onOpen: (tab:
 
   if (data.pendingPriceChanges) {
     items.push({ text: `${data.pendingPriceChanges} price change${data.pendingPriceChanges === 1 ? "" : "s"} waiting for approval`, tab: PRICE_CHANGES_TAB });
+  }
+  if (data.inventory?.pendingApprovals) {
+    items.push({ text: `${data.inventory.pendingApprovals} stock document(s) waiting for approval`, tab: ADJUSTMENTS_TAB });
+  }
+  if (data.inventory?.lowStock) {
+    items.push({ text: `${data.inventory.lowStock} item(s) at or below their reorder level`, tab: STOCK_TAB });
+  }
+  if (data.purchasing?.ordersAwaitingApproval) {
+    items.push({ text: `${data.purchasing.ordersAwaitingApproval} purchase order(s) waiting for approval`, tab: ORDERS_TAB });
+  }
+  if (data.purchasing?.invoicesWithVariance) {
+    items.push({ text: `${data.purchasing.invoicesWithVariance} supplier invoice(s) don't match the goods received`, tab: INVOICES_TAB });
+  }
+  if (data.compliance?.rejected) {
+    items.push({ text: `${data.compliance.rejected} eTIMS invoice(s) refused by KRA — fix the item data and retry`, tab: ETIMS_TAB });
+  }
+  if (data.compliance?.waitingOverThreshold) {
+    items.push({ text: `${data.compliance.waitingOverThreshold} eTIMS invoice(s) waiting over an hour to be signed`, tab: ETIMS_TAB });
   }
   if (data.staff?.cashiersWithoutPin) {
     items.push({ text: `${data.staff.cashiersWithoutPin} staff who can sell have no till PIN`, tab: USERS_TAB });

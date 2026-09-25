@@ -3,7 +3,7 @@
  * Fields marked optional are only present when the backend loaded that relation.
  */
 export type Container = "bottle" | "can" | "keg" | "box" | "pouch" | "other";
-export type PriceTier = "retail" | "wholesale";
+export type PriceTier = "retail" | "wholesale" | "tot";
 export type PriceStatus = "pending" | "approved" | "rejected";
 
 export interface EntityRef {
@@ -62,6 +62,8 @@ export interface Variant {
   displayName: string;
   volumeMl: number;
   volumeLabel: string;
+  /** Sell by tot: tot size in ml, or null when the item is not poured. */
+  totMl: number | null;
   container: Container;
   sku: string;
   taxRate?: TaxRate;
@@ -71,7 +73,7 @@ export interface Variant {
   isActive: boolean;
   barcodes?: Barcode[];
   packs?: Pack[];
-  currentPrices?: { retail: PriceSummary | null; wholesale: PriceSummary | null };
+  currentPrices?: { retail: PriceSummary | null; wholesale: PriceSummary | null; tot: PriceSummary | null };
 }
 
 export interface Product {
@@ -122,6 +124,7 @@ export interface ProductFilters {
 
 export interface VariantPayload {
   volumeMl: number;
+  totMl?: number | null;
   container: Container;
   sku: string;
   taxRateId: number;

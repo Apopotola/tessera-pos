@@ -104,8 +104,44 @@ cd frontend && pnpm lint && pnpm typecheck && pnpm build
 | Auth | Sign-in by email or phone, "keep me signed in", till PIN sign-in, staff accounts and PINs, throttling, audit | Login page, Users & roles |
 | Authorization | Permissions, 6 default roles, permission-filtered menus | Sidebar |
 | Organisation | Business, branches, locations, branch access, till devices (pair / disconnect) | Branches & tills, till setup |
-| Sales | Shifts: open / resume / blind close (selling comes next) | Till: PIN screen and open-shift screen |
+| Sales | Till selling priced from the approved price list (idempotent on the till's sale id), cash / M-PESA code / card / split tenders, manager-PIN approvals (price override, discount above limit, high-value void, refund), returns by receipt (sealed → shop floor, opened → quarantine), void log, shift cash-up with expected cash, sales immutable in the database; sell by tot (open-bottle tracking with append-only pours and manager write-off); park / recall sales | Till: PIN screen, selling screen with tot buttons, park/recall, 80 mm receipt printing, returns/reprint; back office: Sales list with receipt detail, Shifts & cash-ups, Open bottles (tots) |
 | AuditTrail | Append-only log (DB trigger), logger service, list API | Audit log |
 | Catalogue | Brands, categories, products, size variants, packs, barcodes, barcode lookup, dated retail/wholesale prices with owner approval (append-only, DB trigger) | Products, product detail, price changes, brands & categories |
-| Dashboard | — | Dashboard (context only; KPIs come with Sales/Inventory) |
-| Inventory, Purchasing, Payments, Customers, Compliance, Reports | Module skeleton | Placeholder views |
+| Dashboard | Today's sales, takings by method and gross profit; stock and purchasing alerts | Dashboard |
+| Inventory | Append-only stock ledger (DB trigger), balances, weighted average cost per branch, adjustments (breakage, losses, found, opening) with maker–checker, transfers via in-transit with shortfall → transit breakage, blind counts, reorder levels | Stock on hand, breakages & adjustments, transfers, stock counts + count sheet, stock ledger |
+| Purchasing | Suppliers (last cost per item), purchase orders with VAT and maker–checker approval, goods received into stock at PO cost (damaged-on-arrival kept out), supplier invoices with three-way match, returns to supplier with credit note | Purchase orders + PO detail, supplier invoices, returns to supplier, suppliers |
+| Payments | M-PESA Express (STK Push) with Daraja callback + status query, customer-initiated Till/Paybill (C2B) payments pooled until matched, M-PESA tender confirmed only by a Safaricom confirmation, back-office matching of typed codes; drivers `daraja`, `fake` (demo), `manual` | Till: send payment request / pick customer's payment; M-PESA reconciliation screen |
+| Compliance | eTIMS transactional outbox (every sale and return queued in its own transaction), credit notes referencing the signed invoice, retry back-off 1→30 min, refused data held as "needs fixing", daily POS vs KRA-signed reconciliation, dashboard alerts; drivers `fake` (mock KRA) and `disabled` — VSCU/OSCU driver pending the KRA v2.0 spec | eTIMS monitor (invoices & credit notes, daily check); receipts print KRA invoice no., signature and QR |
+| Reports | 14 reports off the immutable ledgers (sales summary, by item/product/category/brand, by cashier/branch/tender, voids-discounts-overrides, returns; stock on hand, valuation as at a date, losses by reason, count variance, transfers, low stock; gross profit, cash-ups, purchases by supplier) with branch/date/category/brand/staff filters, cost columns hidden without `reports.profit.view`, CSV export gated by `reports.export` and audit-logged | Report centre (grouped catalogue incl. links to existing screens) + one report tab per report with totals, Print / PDF and CSV |
+| Customers | Registered wholesale / B2B customers (business name, KRA PIN, wholesale flag); wholesale price tier and buyer PIN on the eTIMS invoice when picked at the till; purchase history; contact details for managers only, record views logged; Owner/Admin data export and anonymisation (sales kept); retention job anonymises customers inactive 24 months | Customers list + customer tab (history, export, anonymise); till customer picker |
+
+## M-PESA (Payments module)
+
+`MPESA_DRIVER` in `backend/.env` picks how M-PESA works:
+
+| Driver | Use | Behaviour |
+| --- | --- | --- |
+| `fake` | Demo / local development | Payment requests are "approved" after 5 seconds (`MPESA_FAKE_DELAY`); a phone ending in `000` declines. The till shows a **Demo: simulate customer paying** button. No money moves. |
+| `daraja` | Sandbox or live Safaricom | Needs the `MPESA_*` credentials in `.env.example`, a public HTTPS `MPESA_CALLBACK_BASE_URL` (ngrok in development) and a long random `MPESA_CALLBACK_TOKEN`. Run `php artisan mpesa:register-c2b` once per till/paybill. |
+| `manual` | No integration yet | Cashier types the M-PESA code; the payment stays *unverified* until matched on the reconciliation screen. |
+
+Tests always run with `manual` (set in `phpunit.xml`); the Payments tests switch drivers themselves.
+
+## eTIMS (Compliance module)
+
+`ETIMS_DRIVER` in `backend/.env`:
+
+| Driver | Behaviour |
+| --- | --- |
+| `fake` | Mock KRA for demos: signs invoices (CU invoice number, signature, QR), refuses items with no KRA item class code, and `ETIMS_FAKE_OFFLINE=true` simulates KRA being unreachable. Receipts say **DEMO eTIMS — NOT A KRA INVOICE**. |
+| `disabled` | Invoices are queued but never sent; they stay *pending* (never shown as compliant). |
+
+Each sale is sent right after it commits. Retries and anything missed run from the scheduler — in development keep this running next to the server:
+
+```bash
+php artisan schedule:work
+```
+
+`php artisan etims:process` sends everything due immediately. The real VSCU/OSCU driver implements `Modules\Compliance\Contracts\EtimsGateway` once the KRA v2.0 spec and sandbox access (etims-sbx.kra.go.ke) are available; KRA field names in `EtimsPayloadBuilder` are marked REQUIRES VALIDATION.
+
+The PostgreSQL session timezone is set to `APP_TIMEZONE` (config/database.php) so timestamps written by Laravel and by Postgres agree.

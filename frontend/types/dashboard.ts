@@ -14,5 +14,23 @@ export interface DashboardSummary {
         openingFloatCents: number;
       }[]
     | null;
+  salesToday: {
+    transactions: number;
+    grossCents: number;
+    refundsCents: number;
+    netCents: number;
+    cashCents: number;
+    mpesaCents: number;
+    cardCents: number;
+    grossProfitCents: number | null;
+  } | null;
+  inventory: {
+    lowStock: number;
+    pendingApprovals: number;
+    stockValueCents: number | null;
+    lossesThisMonthCents: number | null;
+  } | null;
+  compliance: { etimsDriver: string; waitingOverThreshold: number; rejected: number } | null;
+  purchasing: { ordersAwaitingApproval: number; ordersAwaitingDelivery: number; invoicesWithVariance: number } | null;
   staff: { active: number; cashiersWithoutPin: number } | null;
 }

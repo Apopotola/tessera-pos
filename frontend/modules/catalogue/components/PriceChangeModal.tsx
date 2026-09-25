@@ -87,6 +87,7 @@ export default function PriceChangeModal({ opened, onClose, variant, onSaved }: 
             data={[
               { value: "retail", label: "Retail" },
               { value: "wholesale", label: "Wholesale" },
+              ...(variant.totMl ? [{ value: "tot", label: `Tot (${variant.totMl}ml)` }] : []),
             ]}
             {...form.getInputProps("tier")}
           />

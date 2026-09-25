@@ -61,6 +61,20 @@ export const SALES_URLS = {
   currentShift: "/sales/shifts/current",
   shifts: "/sales/shifts",
   closeShift: (id: number) => `/sales/shifts/${id}/close`,
+  tillItems: "/sales/till/items",
+  tillScan: (code: string) => `/sales/till/scan/${encodeURIComponent(code)}`,
+  tillApprovers: "/sales/till/approvers",
+  tillApprovals: "/sales/till/approvals",
+  tillSales: "/sales/till/sales",
+  tillSale: (number: string) => `/sales/till/sales/${encodeURIComponent(number)}`,
+  tillReturns: "/sales/till/returns",
+  tillVoids: "/sales/till/voids",
+  tillParked: "/sales/till/parked",
+  tillRecall: (id: number) => `/sales/till/parked/${id}/recall`,
+  openBottles: "/sales/open-bottles",
+  writeOffBottle: (id: number) => `/sales/open-bottles/${id}/write-off`,
+  sales: "/sales/sales",
+  shiftHistory: "/sales/shifts",
 } as const;
 
 export const AUTHORIZATION_URLS = {
@@ -96,10 +110,70 @@ export const CATALOGUE_URLS = {
   lookup: (code: string) => `/catalogue/lookup/${encodeURIComponent(code)}`,
 } as const;
 
+export const INVENTORY_URLS = {
+  stock: "/inventory/stock",
+  movements: "/inventory/movements",
+  locations: "/inventory/locations",
+  reorderLevels: "/inventory/reorder-levels",
+  adjustments: "/inventory/adjustments",
+  approveAdjustment: (id: number) => `/inventory/adjustments/${id}/approve`,
+  rejectAdjustment: (id: number) => `/inventory/adjustments/${id}/reject`,
+  transfers: "/inventory/transfers",
+  transferAction: (id: number, action: "approve" | "dispatch" | "receive" | "cancel") => `/inventory/transfers/${id}/${action}`,
+  counts: "/inventory/counts",
+  count: (id: number) => `/inventory/counts/${id}`,
+  countLines: (id: number) => `/inventory/counts/${id}/lines`,
+  countAction: (id: number, action: "submit" | "approve" | "reject") => `/inventory/counts/${id}/${action}`,
+} as const;
+
+export const PURCHASING_URLS = {
+  suppliers: "/purchasing/suppliers",
+  supplier: (id: number) => `/purchasing/suppliers/${id}`,
+  supplierItems: (id: number) => `/purchasing/suppliers/${id}/items`,
+  orders: "/purchasing/orders",
+  order: (id: number) => `/purchasing/orders/${id}`,
+  orderAction: (id: number, action: "approve" | "send" | "cancel" | "receive") => `/purchasing/orders/${id}/${action}`,
+  receipts: "/purchasing/receipts",
+  invoices: "/purchasing/invoices",
+  returns: "/purchasing/returns",
+  returnAction: (id: number, action: "approve" | "reject" | "credit-note") => `/purchasing/returns/${id}/${action}`,
+} as const;
+
 export const DASHBOARD_URLS = {
   summary: "/dashboard/summary",
 } as const;
 
 export const AUDIT_TRAIL_URLS = {
   logs: "/audit-trail/logs",
+} as const;
+
+export const PAYMENTS_URLS = {
+  stk: "/payments/mpesa/stk",
+  stkStatus: (id: number) => `/payments/mpesa/stk/${id}`,
+  unallocated: "/payments/mpesa/unallocated",
+  demoTillPayment: "/payments/mpesa/demo/till-payment",
+  confirmations: "/payments/mpesa/confirmations",
+  unverified: "/payments/mpesa/unverified",
+  match: (id: number) => `/payments/mpesa/confirmations/${id}/match`,
+} as const;
+
+export const COMPLIANCE_URLS = {
+  submissions: "/compliance/etims/submissions",
+  retry: (id: number) => `/compliance/etims/submissions/${id}/retry`,
+  reconciliation: "/compliance/etims/reconciliation",
+} as const;
+
+export const REPORTS_URLS = {
+  catalogue: "/reports",
+  report: (key: string) => `/reports/${encodeURIComponent(key)}`,
+  export: (key: string) => `/reports/${encodeURIComponent(key)}/export`,
+} as const;
+
+export const CUSTOMERS_URLS = {
+  customers: "/customers",
+  customer: (id: number) => `/customers/${id}`,
+  sales: (id: number) => `/customers/${id}/sales`,
+  export: (id: number) => `/customers/${id}/export`,
+  anonymise: (id: number) => `/customers/${id}/anonymise`,
+  tillSearch: "/customers/till/search",
 } as const;

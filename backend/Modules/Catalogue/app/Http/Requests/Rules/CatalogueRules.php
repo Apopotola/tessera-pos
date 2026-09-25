@@ -35,6 +35,8 @@ final class CatalogueRules
             "{$prefix}taxRateId" => ['required', 'integer', Rule::exists('tax_rates', 'id')->where('is_active', true)],
             "{$prefix}etimsItemClassCode" => ['nullable', 'string', 'max:20'],
             "{$prefix}trackBatches" => ['sometimes', 'boolean'],
+            // Sell by tot: tot size in ml (e.g. 25, 30, 50), smaller than the bottle.
+            "{$prefix}totMl" => ['nullable', 'integer', 'min:5', 'max:500', "lt:{$prefix}volumeMl"],
         ];
     }
 

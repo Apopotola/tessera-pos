@@ -61,6 +61,15 @@ class TillController extends Controller
             'business' => ['name' => $till->branch->business->name],
             'branch' => ['id' => $till->branch->id, 'code' => $till->branch->code, 'name' => $till->branch->name],
             'till' => new TillResource($till),
+            // Limits the till enforces up front (the API re-checks them on every sale).
+            'policy' => [
+                'discountLimitPercent' => (int) config('sales.discount_limit_percent', 5),
+                'voidApprovalThresholdCents' => (int) config('sales.void_approval_threshold_cents', 500000),
+                'returnWindowDays' => (int) config('sales.return_window_days', 7),
+                // "stk": prompt the customer's phone / pick their payment; "manual": type the code (unverified).
+                'mpesaMode' => config('payments.mpesa.driver') === 'manual' ? 'manual' : 'stk',
+                'mpesaDemo' => config('payments.mpesa.driver') === 'fake',
+            ],
             // Display names only — no emails or phone numbers on a shared screen.
             'cashiers' => $this->tills->cashiersFor($till)->map(fn (User $user) => [
                 'id' => $user->id,

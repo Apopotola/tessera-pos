@@ -17,7 +17,7 @@ use Modules\Catalogue\Enums\Container;
 class ProductVariant extends Model
 {
     protected $fillable = [
-        'product_id', 'volume_ml', 'container', 'sku', 'tax_rate_id',
+        'product_id', 'volume_ml', 'tot_ml', 'container', 'sku', 'tax_rate_id',
         'etims_item_class_code', 'etims_item_code', 'track_batches', 'is_active',
     ];
 
@@ -25,6 +25,7 @@ class ProductVariant extends Model
     {
         return [
             'volume_ml' => 'integer',
+            'tot_ml' => 'integer',
             'container' => Container::class,
             'track_batches' => 'boolean',
             'is_active' => 'boolean',

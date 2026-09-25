@@ -6,7 +6,7 @@ import { ApiError, organisationApi, salesApi } from "@/api";
 import { brand } from "@/app/theme";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import PinScreen from "@/modules/till/components/PinScreen";
-import ShiftScreen from "@/modules/till/components/ShiftScreen";
+import SellScreen from "@/modules/till/components/SellScreen";
 import TillSetup from "@/modules/till/components/TillSetup";
 import { useAppSelector } from "@/store/hooks";
 import type { Shift } from "@/types/till";
@@ -14,7 +14,7 @@ import { clearTillToken, getTillToken } from "@/utils/tillDevice";
 
 /**
  * Till flow: unpaired device → manager setup; paired → "Who's on the till?" PIN screen;
- * signed in with an open shift → shift screen.
+ * signed in with an open shift → selling screen.
  */
 export default function TillApp() {
   // Read once on mount; pairing bumps `deviceVersion` to re-read.
@@ -83,7 +83,7 @@ export default function TillApp() {
   }
 
   if (shift && auth.status === "authenticated") {
-    return <ShiftScreen context={context.data} shift={shift} onEnded={() => setShift(null)} />;
+    return <SellScreen context={context.data} shift={shift} onEnded={() => setShift(null)} />;
   }
 
   return <PinScreen context={context.data} onShiftStarted={setShift} />;
