@@ -17,9 +17,9 @@ export default function WorkspaceTabs() {
   };
 
   return (
-    <ScrollArea type="never" offsetScrollbars={false}>
-      <Tabs value={activeTabId} onChange={(value) => value && dispatch(setActiveTab(value))} variant="outline">
-        <Tabs.List style={{ flexWrap: "nowrap" }}>
+    <ScrollArea type="never" offsetScrollbars={false} bg="white" style={{ borderBottom: "1px solid var(--mantine-color-gray-3)" }}>
+      <Tabs value={activeTabId} onChange={(value) => value && dispatch(setActiveTab(value))} variant="pills" radius="md" px="sm" py={8}>
+        <Tabs.List style={{ flexWrap: "nowrap", gap: 4 }}>
           {tabs.map((tab) => (
             <Menu
               key={tab.id}
@@ -45,8 +45,9 @@ export default function WorkspaceTabs() {
                       <ActionIcon
                         component="span"
                         size="xs"
-                        variant="subtle"
-                        color="gray"
+                        variant="transparent"
+                        // Inherit the tab's text colour so the × stays visible on the active (filled) pill.
+                        style={{ color: "inherit", opacity: 0.75 }}
                         aria-label={`Close ${tab.title}`}
                         onClick={(event: MouseEvent) => {
                           event.stopPropagation();

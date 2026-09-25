@@ -49,8 +49,18 @@ export const CSRF_COOKIE_URL = `${BACKEND_ORIGIN}/sanctum/csrf-cookie`;
 /** Paths below are relative to API_BASE_URL. */
 export const AUTH_URLS = {
   login: "/auth/login",
+  pinLogin: "/auth/pin-login",
   logout: "/auth/logout",
   me: "/auth/me",
+  users: "/auth/users",
+  user: (id: number) => `/auth/users/${id}`,
+  userPin: (id: number) => `/auth/users/${id}/pin`,
+} as const;
+
+export const SALES_URLS = {
+  currentShift: "/sales/shifts/current",
+  shifts: "/sales/shifts",
+  closeShift: (id: number) => `/sales/shifts/${id}/close`,
 } as const;
 
 export const AUTHORIZATION_URLS = {
@@ -59,6 +69,35 @@ export const AUTHORIZATION_URLS = {
 
 export const ORGANISATION_URLS = {
   branches: "/organisation/branches",
+  tills: "/organisation/tills",
+  pairTill: "/organisation/tills/pair",
+  unpairTill: (id: number) => `/organisation/tills/${id}/unpair`,
+  tillContext: "/organisation/till-context",
+} as const;
+
+export const CATALOGUE_URLS = {
+  taxRates: "/catalogue/tax-rates",
+  brands: "/catalogue/brands",
+  brand: (id: number) => `/catalogue/brands/${id}`,
+  categories: "/catalogue/categories",
+  category: (id: number) => `/catalogue/categories/${id}`,
+  products: "/catalogue/products",
+  product: (id: number) => `/catalogue/products/${id}`,
+  productVariants: (productId: number) => `/catalogue/products/${productId}/variants`,
+  variant: (id: number) => `/catalogue/variants/${id}`,
+  variantBarcodes: (variantId: number) => `/catalogue/variants/${variantId}/barcodes`,
+  variantBarcode: (variantId: number, barcodeId: number) => `/catalogue/variants/${variantId}/barcodes/${barcodeId}`,
+  variantPacks: (variantId: number) => `/catalogue/variants/${variantId}/packs`,
+  pack: (id: number) => `/catalogue/packs/${id}`,
+  variantPrices: (variantId: number) => `/catalogue/variants/${variantId}/prices`,
+  prices: "/catalogue/prices",
+  approvePrice: (id: number) => `/catalogue/prices/${id}/approve`,
+  rejectPrice: (id: number) => `/catalogue/prices/${id}/reject`,
+  lookup: (code: string) => `/catalogue/lookup/${encodeURIComponent(code)}`,
+} as const;
+
+export const DASHBOARD_URLS = {
+  summary: "/dashboard/summary",
 } as const;
 
 export const AUDIT_TRAIL_URLS = {

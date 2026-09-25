@@ -5,19 +5,21 @@ import "./globals.css";
 
 import { ColorSchemeScript, mantineHtmlProps } from "@mantine/core";
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Bricolage_Grotesque, Figtree, JetBrains_Mono } from "next/font/google";
 import AppProviders from "@/app/providers/AppProviders";
 
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const body = Figtree({ subsets: ["latin"], variable: "--font-body" });
+const display = Bricolage_Grotesque({ subsets: ["latin"], weight: ["700", "800"], variable: "--font-display" });
+const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "Tessera POS",
+  title: "Tessera",
   description: "Point of sale for Kenyan wines & spirits retail",
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" {...mantineHtmlProps} className={inter.variable}>
+    <html lang="en" {...mantineHtmlProps} className={`${body.variable} ${display.variable} ${mono.variable}`}>
       <head>
         <ColorSchemeScript defaultColorScheme="light" />
       </head>

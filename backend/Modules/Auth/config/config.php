@@ -11,4 +11,7 @@ return [
 
     // Login attempts per minute per email + IP.
     'login_rate_limit' => (int) env('TESSERA_LOGIN_RATE_LIMIT', 5),
+
+    // Wrong-PIN attempts per minute per cashier per till.
+    'pin_rate_limit' => (int) env('TESSERA_PIN_RATE_LIMIT', 5),
 ];

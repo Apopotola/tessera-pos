@@ -27,7 +27,7 @@ class LoginTest extends TestCase
         $user->assignRole(Roles::CASHIER);
 
         $response = $this->fromFrontend()->postJson('/api/v1/auth/login', [
-            'email' => 'Cashier@Tessera.test',
+            'login' => 'Cashier@Tessera.test',
             'password' => 'password',
         ]);
 
@@ -47,7 +47,7 @@ class LoginTest extends TestCase
         $user = User::factory()->create();
 
         $this->fromFrontend()->postJson('/api/v1/auth/login', [
-            'email' => $user->email,
+            'login' => $user->email,
             'password' => 'wrong-password',
         ])->assertStatus(401)
             ->assertJsonPath('success', false)
@@ -57,12 +57,38 @@ class LoginTest extends TestCase
         $this->assertDatabaseHas('audit_logs', ['action' => 'auth.login.failed', 'user_id' => $user->id]);
     }
 
+    public function test_user_can_log_in_with_phone_number_in_any_common_format(): void
+    {
+        $user = User::factory()->create(['phone' => '0712 345 678']);
+        $this->assertSame('+254712345678', $user->phone);
+
+        foreach (['0712345678', '712 345 678', '+254 712 345678'] as $typed) {
+            $this->fromFrontend()->postJson('/api/v1/auth/login', ['login' => $typed, 'password' => 'password'])
+                ->assertOk()
+                ->assertJsonPath('data.id', $user->id);
+        }
+    }
+
+    public function test_keep_me_signed_in_sets_a_remember_cookie(): void
+    {
+        $user = User::factory()->create();
+
+        $response = $this->fromFrontend()->postJson('/api/v1/auth/login', [
+            'login' => $user->email,
+            'password' => 'password',
+            'remember' => true,
+        ])->assertOk();
+
+        $this->assertNotNull($user->fresh()->remember_token);
+        $this->assertTrue(collect($response->headers->getCookies())->contains(fn ($c) => str_starts_with($c->getName(), 'remember_web_')));
+    }
+
     public function test_inactive_user_cannot_log_in(): void
     {
         $user = User::factory()->inactive()->create();
 
         $this->fromFrontend()->postJson('/api/v1/auth/login', [
-            'email' => $user->email,
+            'login' => $user->email,
             'password' => 'password',
         ])->assertStatus(401);
 
@@ -71,15 +97,15 @@ class LoginTest extends TestCase
 
     public function test_login_validation_errors_use_the_api_envelope(): void
     {
-        $this->fromFrontend()->postJson('/api/v1/auth/login', ['email' => 'not-an-email'])
+        $this->fromFrontend()->postJson('/api/v1/auth/login', ['password' => ''])
             ->assertStatus(422)
             ->assertJsonPath('success', false)
-            ->assertJsonStructure(['errors' => ['email', 'password']]);
+            ->assertJsonStructure(['errors' => ['login', 'password']]);
     }
 
     public function test_login_is_throttled_after_repeated_attempts(): void
     {
-        $payload = ['email' => 'nobody@tessera.test', 'password' => 'x'];
+        $payload = ['login' => 'nobody@tessera.test', 'password' => 'x'];
 
         for ($i = 0; $i < 5; $i++) {
             $this->fromFrontend()->postJson('/api/v1/auth/login', $payload)->assertStatus(401);

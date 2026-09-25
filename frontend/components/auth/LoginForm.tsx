@@ -1,28 +1,36 @@
 "use client";
 
-import { Alert, Button, Center, Paper, PasswordInput, Stack, Text, TextInput, ThemeIcon, Title } from "@mantine/core";
-import { isEmail, isNotEmpty, useForm } from "@mantine/form";
-import { IconAlertCircle, IconBottle } from "@tabler/icons-react";
+import { Alert, Anchor, Box, Button, Checkbox, Divider, Group, Modal, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
+import { isNotEmpty, useForm } from "@mantine/form";
+import { useDisclosure } from "@mantine/hooks";
+import { IconAlertCircle, IconCalculator } from "@tabler/icons-react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState } from "react";
+import { brand } from "@/app/theme";
+import BottleSkyline from "@/components/brand/BottleSkyline";
+import Logo from "@/components/brand/Logo";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { login } from "@/store/slices/authSlice";
 import type { LoginPayload } from "@/types/auth";
 import { safeRedirectPath } from "@/utils/menu";
+import classes from "./LoginForm.module.css";
 
+/** Back-office sign-in: brand panel (left / top on phones) and the form. */
 export default function LoginForm() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const searchParams = useSearchParams();
   const { status, loginError, loginFieldErrors } = useAppSelector((state) => state.auth);
   const [submitting, setSubmitting] = useState(false);
+  const [forgotOpened, forgot] = useDisclosure(false);
   const next = safeRedirectPath(searchParams.get("next"));
 
-  const form = useForm<LoginPayload>({
+  const form = useForm<Required<LoginPayload>>({
     mode: "uncontrolled",
-    initialValues: { email: "", password: "" },
+    initialValues: { login: "", password: "", remember: false },
     validate: {
-      email: isEmail("Enter a valid email address"),
+      login: isNotEmpty("Enter your email or phone number"),
       password: isNotEmpty("Enter your password"),
     },
   });
@@ -31,10 +39,10 @@ export default function LoginForm() {
     if (status === "authenticated") router.replace(next);
   }, [status, next, router]);
 
-  const handleSubmit = async (values: LoginPayload) => {
+  const handleSubmit = async (values: Required<LoginPayload>) => {
     if (submitting) return;
     setSubmitting(true);
-    const result = await dispatch(login(values));
+    const result = await dispatch(login({ ...values, login: values.login.trim() }));
     if (login.rejected.match(result)) {
       form.setErrors(result.payload?.fieldErrors ?? {});
       setSubmitting(false);
@@ -42,19 +50,33 @@ export default function LoginForm() {
   };
 
   return (
-    <Center mih="100vh" bg="var(--mantine-color-gray-0)" p="md">
-      <Paper withBorder shadow="sm" p="xl" w="100%" maw={400}>
-        <form onSubmit={form.onSubmit(handleSubmit)} noValidate>
-          <Stack gap="md">
-            <Stack gap={4} align="center">
-              <ThemeIcon size={48} radius="xl">
-                <IconBottle size={26} />
-              </ThemeIcon>
-              <Title order={2}>Tessera POS</Title>
-              <Text c="dimmed" size="sm">
-                Sign in to continue
+    <div className={classes.page}>
+      <section className={classes.brandPanel} style={{ background: brand.navy }}>
+        <Logo size={30} />
+        <Box className={classes.headline}>
+          <h1 className={`tessera-display ${classes.title}`}>
+            Every bottle,
+            <br />
+            counted.
+          </h1>
+          <Text className={classes.tagline}>Sales, stock and shifts for your wine & spirits shop, in one place.</Text>
+        </Box>
+        <div className={classes.skyline}>
+          <BottleSkyline height={230} />
+        </div>
+      </section>
+
+      <section className={classes.formPanel} style={{ background: brand.cream }}>
+        <form onSubmit={form.onSubmit(handleSubmit)} noValidate className={classes.form}>
+          <Stack gap="lg">
+            <div>
+              <Text size="xs" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: "0.12em" }}>
+                Back office
               </Text>
-            </Stack>
+              <Title order={1} fz={32} c={brand.navy}>
+                Sign in
+              </Title>
+            </div>
 
             {loginError && Object.keys(loginFieldErrors).length === 0 && (
               <Alert color="red" variant="light" icon={<IconAlertCircle size={18} />}>
@@ -63,26 +85,59 @@ export default function LoginForm() {
             )}
 
             <TextInput
-              label="Email"
-              type="email"
+              label="Email or phone number"
+              placeholder="you@shop.co.ke or 0712 345 678"
               autoComplete="username"
+              size="md"
               required
-              key={form.key("email")}
-              {...form.getInputProps("email")}
+              withAsterisk={false}
+              key={form.key("login")}
+              {...form.getInputProps("login")}
             />
+
             <PasswordInput
-              label="Password"
+              label={
+                <Group justify="space-between" w="100%" component="span">
+                  <span>Password</span>
+                  <Anchor component="button" type="button" size="sm" fw={600} onClick={forgot.open}>
+                    Forgot password?
+                  </Anchor>
+                </Group>
+              }
+              labelProps={{ style: { width: "100%" } }}
               autoComplete="current-password"
+              size="md"
               required
+              withAsterisk={false}
               key={form.key("password")}
               {...form.getInputProps("password")}
             />
-            <Button type="submit" fullWidth loading={submitting}>
+
+            <Checkbox label="Keep me signed in on this computer" key={form.key("remember")} {...form.getInputProps("remember", { type: "checkbox" })} />
+
+            <Button type="submit" size="md" fullWidth loading={submitting}>
               Sign in
             </Button>
+
+            <Divider label="or" labelPosition="center" />
+
+            <Button component={Link} href="/till" variant="default" size="md" fullWidth leftSection={<IconCalculator size={18} />}>
+              Cashier? Sign in with your PIN
+            </Button>
+
+            <Text size="xs" c="dimmed" ta="center">
+              Powered by Tessera · Need help? Contact your shop administrator.
+            </Text>
           </Stack>
         </form>
-      </Paper>
-    </Center>
+      </section>
+
+      <Modal opened={forgotOpened} onClose={forgot.close} title="Forgot your password?" centered>
+        <Stack>
+          <Text size="sm">For security, passwords are reset by your shop owner or administrator. Ask them to set a new one for you.</Text>
+          <Button onClick={forgot.close}>OK</Button>
+        </Stack>
+      </Modal>
+    </div>
   );
 }

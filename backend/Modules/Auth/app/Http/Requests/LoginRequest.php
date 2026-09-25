@@ -15,8 +15,16 @@ class LoginRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'email' => ['required', 'string', 'email', 'max:255'],
+            // Email address or Kenyan phone number (0712…, 712…, +254712…).
+            'login' => ['required', 'string', 'max:255'],
             'password' => ['required', 'string', 'max:255'],
+            'remember' => ['sometimes', 'boolean'],
         ];
+    }
+
+    /** @return array<string, string> */
+    public function attributes(): array
+    {
+        return ['login' => 'email or phone number'];
     }
 }

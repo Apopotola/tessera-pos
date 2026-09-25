@@ -1,0 +1,88 @@
+/* Desktop: brand panel left, form right (≈ 52/48). Phones: brand panel on top, form below. */
+.page {
+  display: grid;
+  grid-template-columns: 1fr;
+  min-height: 100vh;
+}
+
+.brandPanel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  padding: 28px 24px 0;
+  overflow: hidden;
+  color: #fff;
+}
+
+.headline {
+  margin-top: 28px;
+}
+
+.title {
+  margin: 0;
+  font-size: 40px;
+  color: #fff;
+}
+
+.tagline {
+  display: none;
+  margin-top: 20px;
+  font-size: 18px;
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.skyline {
+  margin-top: 24px;
+  max-width: 560px;
+}
+
+.skyline svg {
+  height: 110px;
+}
+
+.formPanel {
+  display: flex;
+  justify-content: center;
+  padding: 32px 24px 40px;
+}
+
+.form {
+  width: 100%;
+  max-width: 420px;
+}
+
+@media (min-width: $mantine-breakpoint-md) {
+  .page {
+    grid-template-columns: 52fr 48fr;
+  }
+
+  .brandPanel {
+    padding: 56px 72px 0;
+  }
+
+  .headline {
+    margin-top: auto;
+    margin-bottom: auto;
+  }
+
+  .title {
+    font-size: 64px;
+  }
+
+  .tagline {
+    display: block;
+  }
+
+  .skyline {
+    margin-top: 0;
+  }
+
+  .skyline svg {
+    height: 230px;
+  }
+
+  .formPanel {
+    align-items: center;
+    padding: 48px;
+  }
+}

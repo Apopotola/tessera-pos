@@ -47,6 +47,14 @@ Tessera POS is a point of sale for Kenyan wines & spirits retail: a modular Lara
 - Screens are workspace views: register each `viewType` in `components/workspace/ViewRegistry.tsx`, and keep it identical to the `view_type` seeded in `AuthorizationDatabaseSeeder`. Tabs stay mounted; do not reset state on tab switch.
 - Type every API payload and response in `types/`, mirroring the Laravel Resource. No `any` or unsafe casts.
 - Use `useApiQuery` + `QueryState` for loading, error, forbidden and empty states; use `useAppDispatch`/`useAppSelector` for the store.
+
+### Uniform look (every module)
+
+- Brand tokens live in `app/theme` (`brand.navy`, `brand.purple`, `brand.amber`, `brand.cream`…); never hard-code other colours or fonts.
+- Every workspace view renders inside `components/shared/WorkspacePage` and passes the `section` prop it receives (the uppercase label comes from the menu automatically).
+- Tables, lists and panels go in `components/shared/DataCard`; KPIs use `StatTile`; on/off states use `StatusBadge`.
+- Full-screen surfaces (login, till) use the navy brand panel, `Logo` and `BottleSkyline` from `components/brand/`.
+- `pnpm lint` runs `scripts/check-ui-conventions.mjs`, which fails if a view skips `WorkspacePage` or a menu `view_type` has no registered screen.
 - Submit buttons show `loading` and ignore repeat clicks; map 422 errors with `form.setErrors(error.formErrors)`; confirm success with `notifications.show`.
 
 ## Testing and Validation

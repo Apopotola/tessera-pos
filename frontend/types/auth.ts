@@ -13,8 +13,11 @@ export interface AuthUser {
 }
 
 export interface LoginPayload {
-  email: string;
+  /** Email address or Kenyan phone number. */
+  login: string;
   password: string;
+  /** "Keep me signed in on this computer". */
+  remember?: boolean;
 }
 
 /** Mirrors Modules\Authorization\Services\MenuService::treeFor(). */

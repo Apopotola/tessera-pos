@@ -72,6 +72,24 @@ pnpm dev
 
 Open **http://localhost:3010** (use `localhost`, not `127.0.0.1`, so the Sanctum cookie is shared with the API).
 
+### Local demo accounts (created by `migrate --seed` when `APP_ENV=local`)
+
+| Person | Sign in | Till PIN |
+| --- | --- | --- |
+| Business Owner | `owner@tessera.test` / `password` | 1470 |
+| Wanjiru Mwangi (Branch Manager) | `manager@tessera.test` / `password` | 4826 |
+| Otieno Kamau (Cashier) | till only | 2580 |
+| Amina Hassan (Cashier) | till only | 3691 |
+| Njeri Wambui (Storekeeper) | `njeri@tessera.test` / `password` | — |
+
+### Setting up a till
+
+1. On the till device, open **http://localhost:3010/till** and choose **Manager sign in**.
+2. Sign in as the owner or a manager with branch-management rights, then name the till (e.g. *Till 1 · Main counter*) and its opening float.
+3. The manager is signed out and the device shows **Who's on the till?**. Cashiers tap their name, enter their PIN and start their shift.
+
+Lost or replaced device: **Administration → Branches → Tills → Disconnect**. Staff and PINs: **Administration → Users & roles**.
+
 ## Checks
 
 ```bash
@@ -83,9 +101,11 @@ cd frontend && pnpm lint && pnpm typecheck && pnpm build
 
 | Module | Backend | Frontend view(s) |
 | --- | --- | --- |
-| Auth | Login / logout / me, throttling, audit | Login page, session bootstrap |
+| Auth | Sign-in by email or phone, "keep me signed in", till PIN sign-in, staff accounts and PINs, throttling, audit | Login page, Users & roles |
 | Authorization | Permissions, 6 default roles, permission-filtered menus | Sidebar |
-| Organisation | Business, branches, locations, branch access | Branches |
+| Organisation | Business, branches, locations, branch access, till devices (pair / disconnect) | Branches & tills, till setup |
+| Sales | Shifts: open / resume / blind close (selling comes next) | Till: PIN screen and open-shift screen |
 | AuditTrail | Append-only log (DB trigger), logger service, list API | Audit log |
+| Catalogue | Brands, categories, products, size variants, packs, barcodes, barcode lookup, dated retail/wholesale prices with owner approval (append-only, DB trigger) | Products, product detail, price changes, brands & categories |
 | Dashboard | — | Dashboard (context only; KPIs come with Sales/Inventory) |
-| Catalogue, Inventory, Purchasing, Sales, Payments, Customers, Compliance, Reports | Module skeleton | Placeholder views |
+| Inventory, Purchasing, Payments, Customers, Compliance, Reports | Module skeleton | Placeholder views |

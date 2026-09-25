@@ -21,9 +21,16 @@ class AppServiceProvider extends ServiceProvider
         Model::shouldBeStrict(! $this->app->isProduction());
 
         RateLimiter::for('login', function (Request $request) {
-            $key = mb_strtolower((string) $request->input('email')).'|'.$request->ip();
+            $key = mb_strtolower(trim((string) $request->input('login'))).'|'.$request->ip();
 
             return Limit::perMinute((int) config('tessera-auth.login_rate_limit', 5))->by($key);
+        });
+
+        // 4-digit PINs are only safe with tight throttling: per cashier per till device.
+        RateLimiter::for('pin-login', function (Request $request) {
+            $device = hash('sha256', (string) $request->header('X-Till-Token'));
+
+            return Limit::perMinute((int) config('tessera-auth.pin_rate_limit', 5))->by($device.'|'.$request->input('userId'));
         });
     }
 }

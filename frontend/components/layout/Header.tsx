@@ -1,8 +1,11 @@
 "use client";
 
-import { Avatar, Burger, Group, Menu, Text, ThemeIcon, UnstyledButton } from "@mantine/core";
-import { IconBottle, IconChevronDown, IconLogout } from "@tabler/icons-react";
+import { Avatar, Burger, Group, Menu, Text, UnstyledButton } from "@mantine/core";
+import { IconCalculator, IconChevronDown, IconLogout } from "@tabler/icons-react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { brand } from "@/app/theme";
+import Logo from "@/components/brand/Logo";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logout } from "@/store/slices/authSlice";
 import { resetTabs } from "@/store/slices/tabsSlice";
@@ -12,6 +15,7 @@ interface HeaderProps {
   onToggleNav: () => void;
 }
 
+/** Navy brand bar: logo, and the account menu. */
 export default function Header({ navOpened, onToggleNav }: HeaderProps) {
   const dispatch = useAppDispatch();
   const router = useRouter();
@@ -31,15 +35,10 @@ export default function Header({ navOpened, onToggleNav }: HeaderProps) {
     .toUpperCase();
 
   return (
-    <Group h="100%" px="md" justify="space-between" wrap="nowrap">
+    <Group h="100%" px="md" justify="space-between" wrap="nowrap" style={{ background: brand.navy }}>
       <Group gap="sm" wrap="nowrap">
-        <Burger opened={navOpened} onClick={onToggleNav} hiddenFrom="sm" size="sm" aria-label="Toggle navigation" />
-        <ThemeIcon size="lg" radius="md" variant="filled">
-          <IconBottle size={20} />
-        </ThemeIcon>
-        <Text fw={700} size="lg">
-          Tessera POS
-        </Text>
+        <Burger opened={navOpened} onClick={onToggleNav} hiddenFrom="sm" size="sm" color="white" aria-label="Toggle navigation" />
+        <Logo size={24} />
       </Group>
 
       {user && (
@@ -47,23 +46,26 @@ export default function Header({ navOpened, onToggleNav }: HeaderProps) {
           <Menu.Target>
             <UnstyledButton aria-label="Account menu">
               <Group gap="xs" wrap="nowrap">
-                <Avatar size="sm" radius="xl" color="wine">
+                <Avatar size="sm" radius="xl" styles={{ placeholder: { background: brand.amber, color: brand.navy, fontWeight: 700 } }}>
                   {initials}
                 </Avatar>
                 <div>
-                  <Text size="sm" fw={500} lh={1.2}>
+                  <Text size="sm" fw={600} lh={1.2} c="white">
                     {user.name}
                   </Text>
-                  <Text size="xs" c="dimmed" lh={1.2}>
+                  <Text size="xs" lh={1.2} c="gray.5">
                     {user.roles.join(", ") || "No role"}
                   </Text>
                 </div>
-                <IconChevronDown size={14} />
+                <IconChevronDown size={14} color="white" />
               </Group>
             </UnstyledButton>
           </Menu.Target>
           <Menu.Dropdown>
             <Menu.Label>{user.email}</Menu.Label>
+            <Menu.Item component={Link} href="/till" leftSection={<IconCalculator size={16} />}>
+              Open till screen
+            </Menu.Item>
             <Menu.Item leftSection={<IconLogout size={16} />} onClick={handleLogout}>
               Sign out
             </Menu.Item>

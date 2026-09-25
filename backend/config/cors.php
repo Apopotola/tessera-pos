@@ -16,7 +16,7 @@ return [
 
     'allowed_origins_patterns' => [],
 
-    'allowed_headers' => ['Content-Type', 'X-Requested-With', 'Accept', 'Authorization', 'X-XSRF-TOKEN', 'Idempotency-Key'],
+    'allowed_headers' => ['Content-Type', 'X-Requested-With', 'Accept', 'Authorization', 'X-XSRF-TOKEN', 'Idempotency-Key', 'X-Till-Token'],
 
     'exposed_headers' => [],
 

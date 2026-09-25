@@ -58,6 +58,20 @@ export const login = createAsyncThunk<SessionPayload, LoginPayload, { rejectValu
   },
 );
 
+/** Till sign-in. Rejects with the server message (e.g. "Wrong PIN. Try again."). */
+export const pinLogin = createAsyncThunk<SessionPayload, { userId: number; pin: string }, { rejectValue: string }>(
+  "auth/pinLogin",
+  async ({ userId, pin }, { rejectWithValue }) => {
+    try {
+      const user = await authApi.pinLogin(userId, pin);
+      const menus = await authorizationApi.menus();
+      return { user, menus };
+    } catch (error) {
+      return rejectWithValue(error instanceof ApiError ? error.message : "Unable to sign in. Try again.");
+    }
+  },
+);
+
 export const logout = createAsyncThunk("auth/logout", async () => {
   try {
     await authApi.logout();
@@ -101,6 +115,11 @@ const authSlice = createSlice({
       .addCase(login.rejected, (state, { payload }) => {
         state.loginError = payload?.message ?? "Unable to sign in. Try again.";
         state.loginFieldErrors = payload?.fieldErrors ?? {};
+      })
+      .addCase(pinLogin.fulfilled, (state, { payload }) => {
+        state.status = "authenticated";
+        state.user = payload.user;
+        state.menus = payload.menus;
       })
       .addCase(logout.fulfilled, (state) => {
         state.status = "unauthenticated";

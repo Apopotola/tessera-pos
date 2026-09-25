@@ -8,8 +8,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Modules\Auth\Http\Requests\LoginRequest;
+use Modules\Auth\Http\Requests\PinLoginRequest;
 use Modules\Auth\Http\Resources\AuthUserResource;
+use Modules\Auth\Models\User;
 use Modules\Auth\Services\AuthService;
+use Modules\Organisation\Models\Till;
 use OpenApi\Attributes as OA;
 
 class AuthController extends Controller
@@ -18,39 +21,64 @@ class AuthController extends Controller
 
     #[OA\Post(
         path: '/api/v1/auth/login',
-        summary: 'Start a Sanctum SPA session (call GET /sanctum/csrf-cookie first)',
+        summary: 'Back-office sign-in with email or phone (call GET /sanctum/csrf-cookie first)',
         tags: ['Auth'],
         requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(
-            required: ['email', 'password'],
+            required: ['login', 'password'],
             properties: [
-                new OA\Property(property: 'email', type: 'string', format: 'email'),
+                new OA\Property(property: 'login', type: 'string', example: 'owner@tessera.test or 0712345678'),
                 new OA\Property(property: 'password', type: 'string', format: 'password'),
+                new OA\Property(property: 'remember', type: 'boolean', description: 'Keep me signed in on this computer'),
             ],
         )),
         responses: [
             new OA\Response(response: 200, description: 'Logged in; data = AuthUser'),
             new OA\Response(response: 401, description: 'Invalid credentials or disabled account'),
-            new OA\Response(response: 422, description: 'Validation error'),
             new OA\Response(response: 429, description: 'Too many attempts'),
         ],
     )]
     public function login(LoginRequest $request): JsonResponse
     {
-        // Sanctum only starts a session for origins listed in SANCTUM_STATEFUL_DOMAINS.
         if (! $request->hasSession()) {
             return $this->error('Login must come from an allowed frontend origin.', 400);
         }
 
         try {
-            $user = $this->auth->attempt($request->validated('email'), $request->validated('password'));
+            $user = $this->auth->attempt($request->validated('login'), $request->validated('password'));
         } catch (AuthenticationException $e) {
             return $this->error($e->getMessage(), 401);
         }
 
-        Auth::guard('web')->login($user);
-        $request->session()->regenerate();
+        return $this->startSession($request, $user, $request->boolean('remember'));
+    }
 
-        return $this->success('Login successful.', new AuthUserResource($user));
+    #[OA\Post(
+        path: '/api/v1/auth/pin-login',
+        summary: 'Cashier sign-in at a paired till (X-Till-Token header) with a 4–6 digit PIN',
+        tags: ['Auth'],
+        responses: [
+            new OA\Response(response: 200, description: 'Logged in; data = AuthUser'),
+            new OA\Response(response: 401, description: 'Wrong PIN or not allowed at this till'),
+            new OA\Response(response: 403, description: 'Device is not a paired till'),
+            new OA\Response(response: 429, description: 'Too many attempts'),
+        ],
+    )]
+    public function pinLogin(PinLoginRequest $request): JsonResponse
+    {
+        if (! $request->hasSession()) {
+            return $this->error('Login must come from an allowed frontend origin.', 400);
+        }
+
+        /** @var Till $till */
+        $till = $request->attributes->get('till');
+
+        try {
+            $user = $this->auth->attemptPin($till, $request->integer('userId'), $request->validated('pin'));
+        } catch (AuthenticationException $e) {
+            return $this->error($e->getMessage(), 401);
+        }
+
+        return $this->startSession($request, $user, false);
     }
 
     #[OA\Post(path: '/api/v1/auth/logout', summary: 'End the current session', tags: ['Auth'], responses: [
@@ -76,5 +104,13 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         return $this->success('Authenticated user.', new AuthUserResource($request->user()));
+    }
+
+    private function startSession(Request $request, User $user, bool $remember): JsonResponse
+    {
+        Auth::guard('web')->login($user, $remember);
+        $request->session()->regenerate();
+
+        return $this->success('Login successful.', new AuthUserResource($user));
     }
 }

@@ -1,4 +1,4 @@
-/* Global resets only — component styling lives in Mantine props, the theme, or CSS modules. */
+/* Global resets and brand surface only — component styling lives in Mantine props, the theme, or CSS modules. */
 html,
 body {
   height: 100%;
@@ -6,4 +6,16 @@ body {
 
 body {
   margin: 0;
+  background: #f4f2ec; /* brand cream */
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Display type (Bricolage Grotesque): tight, heavy headlines as in the brand designs. Keep in sync with fonts.display in app/theme. */
+.tessera-display {
+  font-family: var(--font-display), var(--font-body), system-ui, sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.035em;
+  line-height: 1.02;
 }

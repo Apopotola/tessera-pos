@@ -15,6 +15,18 @@ Browser (localhost:3010)
 2. `POST /api/v1/auth/login` starts a session (only for origins in `SANCTUM_STATEFUL_DOMAINS`).
 3. `GET /api/v1/auth/me` and `GET /api/v1/authorization/menus` bootstrap the shell.
 
+### Till devices
+
+The till (`/till`) is a full-screen app outside the back-office workspace.
+
+1. A manager (permission `organisation.manage`) pairs the device: `POST /api/v1/organisation/tills/pair` returns a random 64-character device token **once**. The API stores only its SHA-256 hash; the browser keeps it in `localStorage` (`utils/tillDevice.ts`).
+2. The API client sends it on every request as `X-Till-Token`. Routes that must come from a till use the `till.device` middleware (`Modules\Organisation\Http\Middleware\EnsureTillDevice`), which exposes the till as `$request->attributes->get('till')`.
+3. `GET /organisation/till-context` (device only, no login) lists staff who can sell at that branch — display names only.
+4. `POST /auth/pin-login` (device + PIN) starts the same Sanctum cookie session as a back-office login. PIN attempts are throttled per cashier per device.
+5. Shifts (`/sales/shifts…`) need both the session and the device. One open shift per till and per cashier (partial unique indexes); closing is a blind count.
+
+Re-pairing a till, or **Disconnect** in Branches → Tills, invalidates the old token immediately.
+
 ## Response envelope
 
 Every endpoint returns `App\Traits\ApiResponse`:

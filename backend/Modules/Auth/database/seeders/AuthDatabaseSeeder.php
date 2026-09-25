@@ -37,5 +37,9 @@ class AuthDatabaseSeeder extends Seeder
         );
 
         $owner->syncRoles([Roles::OWNER]);
+
+        if (app()->environment('local')) {
+            $this->call(AuthDemoSeeder::class);
+        }
     }
 }

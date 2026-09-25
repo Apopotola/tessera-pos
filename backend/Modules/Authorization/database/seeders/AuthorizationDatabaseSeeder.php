@@ -46,6 +46,8 @@ class AuthorizationDatabaseSeeder extends Seeder
             ]],
             ['key' => 'catalogue', 'title' => 'Catalogue', 'icon' => 'IconBottle', 'children' => [
                 ['key' => 'catalogue.products', 'title' => 'Products', 'view_type' => 'productsList', 'path' => '/catalogue/products', 'permission' => P::CATALOGUE_VIEW],
+                ['key' => 'catalogue.prices', 'title' => 'Price changes', 'view_type' => 'priceChanges', 'path' => '/catalogue/prices', 'permission' => P::PRICES_MANAGE],
+                ['key' => 'catalogue.setup', 'title' => 'Brands & categories', 'view_type' => 'catalogueSetup', 'path' => '/catalogue/setup', 'permission' => P::CATALOGUE_MANAGE],
             ]],
             ['key' => 'inventory', 'title' => 'Inventory', 'icon' => 'IconBuildingWarehouse', 'children' => [
                 ['key' => 'inventory.stock', 'title' => 'Stock on hand', 'view_type' => 'stockOnHand', 'path' => '/inventory/stock', 'permission' => P::INVENTORY_VIEW],

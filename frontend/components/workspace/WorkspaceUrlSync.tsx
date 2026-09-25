@@ -5,6 +5,7 @@ import { useEffect, useRef } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { DASHBOARD_PATH, openTab, setActiveTab } from "@/store/slices/tabsSlice";
 import { findMenuByPath } from "@/utils/menu";
+import { matchDynamicRoute } from "@/components/workspace/dynamicRoutes";
 
 /**
  * Keeps the browser URL and the active workspace tab in step:
@@ -33,6 +34,12 @@ export default function WorkspaceUrlSync() {
     const menu = findMenuByPath(menus, pathname);
     if (menu) {
       dispatch(openTab({ title: menu.title, path: menu.path, view: menu.viewType }));
+      return;
+    }
+
+    const recordTab = matchDynamicRoute(pathname);
+    if (recordTab) {
+      dispatch(openTab(recordTab));
       return;
     }
 

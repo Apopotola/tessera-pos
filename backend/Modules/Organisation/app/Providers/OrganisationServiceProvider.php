@@ -3,6 +3,7 @@
 namespace Modules\Organisation\Providers;
 
 use Illuminate\Console\Scheduling\Schedule;
+use Modules\Organisation\Http\Middleware\EnsureTillDevice;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 class OrganisationServiceProvider extends ModuleServiceProvider
@@ -33,6 +34,14 @@ class OrganisationServiceProvider extends ModuleServiceProvider
         EventServiceProvider::class,
         RouteServiceProvider::class,
     ];
+
+    public function boot(): void
+    {
+        parent::boot();
+
+        // Used by any module's routes that must come from a paired till device.
+        $this->app['router']->aliasMiddleware('till.device', EnsureTillDevice::class);
+    }
 
     /**
      * Define module schedules.

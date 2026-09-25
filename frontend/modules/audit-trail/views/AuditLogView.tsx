@@ -1,19 +1,20 @@
 "use client";
 
-import { Code, Group, Pagination, Paper, Stack, Table, Text, TextInput } from "@mantine/core";
+import { Code, Group, Pagination, Table, Text, TextInput } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
 import { IconSearch } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { useCallback, useState } from "react";
 import { auditTrailApi } from "@/api";
 import type { WorkspaceViewProps } from "@/components/workspace/types";
-import PageHeader from "@/components/shared/PageHeader";
+import DataCard from "@/components/shared/DataCard";
+import WorkspacePage from "@/components/shared/WorkspacePage";
 import QueryState from "@/components/shared/QueryState";
 import { useApiQuery } from "@/hooks/useApiQuery";
 
 const PER_PAGE = 25;
 
-export default function AuditLogView({ title }: WorkspaceViewProps) {
+export default function AuditLogView({ title, section }: WorkspaceViewProps) {
   const [page, setPage] = useState(1);
   const [action, setAction] = useState("");
   const [debouncedAction] = useDebouncedValue(action.trim(), 400);
@@ -25,8 +26,7 @@ export default function AuditLogView({ title }: WorkspaceViewProps) {
   const { data, loading, error, reload } = useApiQuery(fetchLogs);
 
   return (
-    <Stack p="md" gap="md">
-      <PageHeader title={title} description="Read-only record of sign-ins and sensitive actions. Entries cannot be edited or deleted." />
+    <WorkspacePage section={section} title={title} description="Read-only record of sign-ins and sensitive actions. Entries cannot be edited or deleted.">
 
       <TextInput
         placeholder="Filter by exact action, e.g. auth.login.failed"
@@ -39,7 +39,7 @@ export default function AuditLogView({ title }: WorkspaceViewProps) {
         maw={420}
       />
 
-      <Paper withBorder>
+      <DataCard>
         <QueryState loading={loading} error={error} isEmpty={!data?.items.length} emptyMessage="No audit entries match." onRetry={reload}>
           <Table striped verticalSpacing="xs">
             <Table.Thead>
@@ -74,13 +74,13 @@ export default function AuditLogView({ title }: WorkspaceViewProps) {
             </Table.Tbody>
           </Table>
         </QueryState>
-      </Paper>
+      </DataCard>
 
       {data && data.meta.lastPage > 1 && (
         <Group justify="flex-end">
           <Pagination value={page} onChange={setPage} total={data.meta.lastPage} size="sm" />
         </Group>
       )}
-    </Stack>
+    </WorkspacePage>
   );
 }

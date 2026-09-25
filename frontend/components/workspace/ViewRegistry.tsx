@@ -20,13 +20,16 @@ const ViewRegistry: Record<string, ComponentType<WorkspaceViewProps>> = {
   // Dashboard
   dashboard: lazyView(() => import("@/modules/dashboard/views/DashboardView")),
 
-  // POS / Sales (Sales module — not built yet)
-  posTill: PlaceholderView,
+  // POS / Sales (sales list and shifts screens come with the Sales module)
+  posTill: lazyView(() => import("@/modules/sales/views/PosTillView")),
   salesList: PlaceholderView,
   shiftsList: PlaceholderView,
 
-  // Catalogue (not built yet)
-  productsList: PlaceholderView,
+  // Catalogue
+  productsList: lazyView(() => import("@/modules/catalogue/views/ProductsView")),
+  productDetail: lazyView(() => import("@/modules/catalogue/views/ProductDetailView")), // record tab, not a menu item
+  priceChanges: lazyView(() => import("@/modules/catalogue/views/PriceChangesView")),
+  catalogueSetup: lazyView(() => import("@/modules/catalogue/views/CatalogueSetupView")),
 
   // Inventory (not built yet)
   stockOnHand: PlaceholderView,
@@ -46,7 +49,7 @@ const ViewRegistry: Record<string, ComponentType<WorkspaceViewProps>> = {
 
   // Administration
   branchesList: lazyView(() => import("@/modules/organisation/views/BranchesView")),
-  usersList: PlaceholderView,
+  usersList: lazyView(() => import("@/modules/users/views/UsersView")),
   auditLog: lazyView(() => import("@/modules/audit-trail/views/AuditLogView")),
 };
 
