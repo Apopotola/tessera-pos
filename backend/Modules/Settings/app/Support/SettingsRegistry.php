@@ -42,6 +42,8 @@ final class SettingsRegistry
         'sales_today' => 'Sales today', 'takings' => 'Cash and M-PESA', 'gross_profit' => 'Gross profit',
         'shifts' => 'Open shifts', 'tills' => 'Tills connected', 'catalogue' => 'Items on sale',
         'low_stock' => 'Low stock', 'stock_value' => 'Stock value', 'losses' => 'Breakage and losses', 'price_changes' => 'Price changes waiting',
+        'exceptions' => 'Discounts, voids and refunds', 'cash_variance' => 'Cash variance by cashier', 'movers' => 'Best sellers and slow movers',
+        'etims' => 'eTIMS status', 'branches' => 'Branch comparison',
     ];
 
     /** @return array<string, array<string, mixed>> */

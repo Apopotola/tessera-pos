@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge, Button, Group, Paper, SimpleGrid, Stack, Text, ThemeIcon, Title } from "@mantine/core";
-import { IconAlertTriangle, IconCalculator, IconChartBar, IconCircleCheck, IconClock } from "@tabler/icons-react";
+import { IconAlertTriangle, IconCalculator, IconCircleCheck, IconClock } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import Link from "next/link";
 import { useCallback } from "react";
@@ -12,8 +12,10 @@ import QueryState from "@/components/shared/QueryState";
 import StatTile from "@/components/shared/StatTile";
 import WorkspacePage from "@/components/shared/WorkspacePage";
 import { useApiQuery } from "@/hooks/useApiQuery";
+import { BranchesCard, CashVarianceCard, ExceptionsCard, LowStockCard, MoversCard } from "@/modules/dashboard/components/KpiCards";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { reportTab } from "@/modules/reports/routes";
 import { openTab, type OpenTabConfig } from "@/store/slices/tabsSlice";
 import type { DashboardSummary } from "@/types/dashboard";
 import { PERMISSIONS } from "@/types/permissions";
@@ -29,6 +31,21 @@ const ETIMS_TAB: OpenTabConfig = { title: "eTIMS monitor", path: "/compliance/et
 const ORDERS_TAB: OpenTabConfig = { title: "Purchase orders", path: "/purchasing/orders", view: "purchaseOrders" };
 const INVOICES_TAB: OpenTabConfig = { title: "Supplier invoices", path: "/purchasing/invoices", view: "supplierInvoices" };
 const ADJUSTMENTS_TAB: OpenTabConfig = { title: "Breakages & adjustments", path: "/inventory/adjustments", view: "stockAdjustments" };
+
+/** "▲ 12% vs last Saturday" — same weekday, same time of day. */
+function versusLastWeek(net: number, lastWeek: number): string {
+  const day = dayjs().subtract(7, "day").format("dddd");
+  if (lastWeek <= 0) return net > 0 ? `Nothing sold by now last ${day}` : `Same as last ${day}`;
+  const change = Math.round(((net - lastWeek) * 100) / lastWeek);
+  return `${change >= 0 ? "▲" : "▼"} ${Math.abs(change)}% vs last ${day} (${formatKes(lastWeek)})`;
+}
+
+/** "12 min", "3 h 5 min", "2 days" */
+function waited(minutes: number): string {
+  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 60 * 48) return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
+  return `${Math.floor(minutes / 1440)} days`;
+}
 
 function greeting(): string {
   const hour = new Date().getHours();
@@ -78,7 +95,7 @@ export default function DashboardView() {
                       tone="dark"
                       label="Sales today"
                       value={formatKes(data.salesToday.netCents)}
-                      hint={`${data.salesToday.transactions} ${data.salesToday.transactions === 1 ? "sale" : "sales"}${data.salesToday.refundsCents ? ` · ${formatKes(data.salesToday.refundsCents)} refunded` : ""}`}
+                      hint={`${data.salesToday.transactions} ${data.salesToday.transactions === 1 ? "sale" : "sales"} · ${versusLastWeek(data.salesToday.netCents, data.salesToday.lastWeekNetCents)}`}
                       onClick={() => dispatch(openTab(SALES_TAB))}
                     />
                   )}
@@ -87,7 +104,12 @@ export default function DashboardView() {
                     <StatTile tone="dark" label="M-PESA · card" value={formatKes(data.salesToday.mpesaCents + data.salesToday.cardCents)} hint={`Card ${formatKes(data.salesToday.cardCents)}`} />
                   )}
                   {tile("gross_profit") && data.salesToday.grossProfitCents !== null && (
-                    <StatTile tone="dark" label="Gross profit today" value={formatKes(data.salesToday.grossProfitCents)} hint="After VAT and cost of goods" />
+                    <StatTile
+                      tone="dark"
+                      label="Gross profit today"
+                      value={formatKes(data.salesToday.grossProfitCents)}
+                      hint={data.salesToday.marginPercent !== null ? `${data.salesToday.marginPercent}% margin, after VAT and cost of goods` : "After VAT and cost of goods"}
+                    />
                   )}
                 </SimpleGrid>
               )}
@@ -108,7 +130,29 @@ export default function DashboardView() {
                 )}
                 {tile("stock_value") && data.inventory?.stockValueCents != null && <StatTile tone="dark" label="Stock value (at cost)" value={formatKes(data.inventory.stockValueCents)} />}
                 {tile("losses") && data.inventory?.lossesThisMonthCents != null && (
-                  <StatTile tone="dark" label="Breakage & losses this month" value={formatKes(data.inventory.lossesThisMonthCents)} />
+                  <StatTile
+                    tone="dark"
+                    label="Shrinkage this month"
+                    value={formatKes(data.inventory.lossesThisMonthCents)}
+                    hint={data.shrinkage?.percentOfCogs != null ? `${data.shrinkage.percentOfCogs}% of cost of goods sold · breakage and missing` : "Breakage and missing stock at cost"}
+                    onClick={() => dispatch(openTab(reportTab({ key: "losses-by-reason", title: "Losses by reason" })))}
+                  />
+                )}
+                {tile("etims") && data.compliance && (
+                  <StatTile
+                    tone="dark"
+                    highlight={data.compliance.waitingOverThreshold > 0 || data.compliance.rejected > 0}
+                    label="eTIMS invoices not yet signed"
+                    value={data.compliance.pending + data.compliance.failed + data.compliance.rejected}
+                    hint={
+                      data.compliance.rejected > 0
+                        ? `${data.compliance.rejected} refused by KRA — fix and retry`
+                        : data.compliance.oldestPendingMinutes !== null
+                          ? `Oldest waiting ${waited(data.compliance.oldestPendingMinutes)}${data.compliance.failed ? ` · ${data.compliance.failed} retrying` : ""}`
+                          : "All signed by KRA"
+                    }
+                    onClick={() => dispatch(openTab(ETIMS_TAB))}
+                  />
                 )}
                 {tile("price_changes") && data.pendingPriceChanges !== null && (
                   <StatTile
@@ -127,19 +171,16 @@ export default function DashboardView() {
               <AttentionCard data={data} onOpen={(tab) => dispatch(openTab(tab))} />
             </SimpleGrid>
 
-            <DataCard padding="lg">
-              <Group gap="md" wrap="nowrap">
-                <ThemeIcon size={44} radius="md" variant="light">
-                  <IconChartBar size={22} />
-                </ThemeIcon>
-                <div>
-                  <Text fw={700}>Sales and bottles sold</Text>
-                  <Text size="sm" c="dimmed">
-                    These figures appear here as soon as the till starts recording sales.
-                  </Text>
-                </div>
-              </Group>
-            </DataCard>
+            {/* The owner's KPIs (requirements → Dashboard); each card opens the report that acts on it. */}
+            <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
+              {tile("exceptions") && data.exceptions && <ExceptionsCard data={data.exceptions} onOpen={(tab) => dispatch(openTab(tab))} />}
+              {tile("cash_variance") && data.cashVariance && <CashVarianceCard data={data.cashVariance} onOpen={(tab) => dispatch(openTab(tab))} />}
+              {tile("low_stock") && data.inventory && (
+                <LowStockCard items={data.inventory.lowStockTop} total={data.inventory.lowStock} onOpen={(tab) => dispatch(openTab(tab))} />
+              )}
+              {tile("branches") && data.branchComparison && <BranchesCard rows={data.branchComparison} onOpen={(tab) => dispatch(openTab(tab))} />}
+            </SimpleGrid>
+            {tile("movers") && data.movers && <MoversCard data={data.movers} onOpen={(tab) => dispatch(openTab(tab))} />}
           </>
         )}
       </QueryState>

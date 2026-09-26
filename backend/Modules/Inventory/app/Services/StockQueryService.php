@@ -2,6 +2,7 @@
 
 namespace Modules\Inventory\Services;
 
+use Illuminate\Database\Query\Builder;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Modules\Auth\Models\User;
@@ -133,13 +134,7 @@ class StockQueryService
     public function dashboard(User $user): array
     {
         $branchIds = $this->branchIds($user, null);
-
-        $available = DB::table('stock_balances as sb')
-            ->join('locations as l', 'l.id', '=', 'sb.location_id')
-            ->whereIn('sb.branch_id', $branchIds)
-            ->whereRaw('l.type IN '.self::AVAILABLE)
-            ->groupBy('sb.branch_id', 'sb.variant_id')
-            ->select('sb.branch_id', 'sb.variant_id', DB::raw('SUM(sb.quantity) AS qty'));
+        $available = $this->availableQuery($branchIds);
 
         $lowStock = DB::table('product_variants as v')
             ->crossJoin('branches as b')
@@ -166,13 +161,83 @@ class StockQueryService
     /** Value of approved losses (breakage, expired, damaged, missing) this calendar month. */
     public function lossesThisMonth(User $user): int
     {
+        return (int) array_sum($this->lossesByBranch($this->branchIds($user, null), now()->startOfMonth()));
+    }
+
+    /**
+     * Breakage, expiry, damage and missing stock at cost since a date, per branch.
+     *
+     * @param  list<int>  $branchIds
+     * @return array<int, int> branch id => cents
+     */
+    public function lossesByBranch(array $branchIds, \DateTimeInterface $since): array
+    {
         $losses = array_map(fn (AdjustmentType $t) => $t->value, [AdjustmentType::Breakage, AdjustmentType::Expired, AdjustmentType::Damaged, AdjustmentType::Missing]);
 
-        return (int) DB::table('stock_movements')
-            ->whereIn('branch_id', $this->branchIds($user, null))
+        return DB::table('stock_movements')
+            ->whereIn('branch_id', $branchIds)
             ->whereIn('movement_type', $losses)
-            ->where('occurred_at', '>=', now()->startOfMonth())
-            ->sum(DB::raw('-quantity * unit_cost_cents'));
+            ->where('occurred_at', '>=', $since)
+            ->groupBy('branch_id')
+            ->selectRaw('branch_id, SUM(-quantity * unit_cost_cents) AS cents')
+            ->pluck('cents', 'branch_id')->map(fn ($c) => (int) $c)->all();
+    }
+
+    /**
+     * Items at or below their level, fast movers first (units sold in the last 30 days):
+     * the stock-outs that cost the most sales.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function lowStockList(User $user, int $limit = 10): array
+    {
+        $branchIds = $this->branchIds($user, null);
+        if ($branchIds === []) {
+            return [];
+        }
+        $level = $this->levelSql($branchIds);
+        $sold = DB::table('sale_lines as sl')
+            ->join('sales as s', 's.id', '=', 'sl.sale_id')
+            ->where('s.completed_at', '>=', now()->subDays(30))
+            ->where('sl.unit', 'bottle')
+            ->whereIn('s.branch_id', $branchIds)
+            ->groupBy('s.branch_id', 'sl.variant_id')
+            ->select('s.branch_id', 'sl.variant_id', DB::raw('SUM(sl.quantity) AS qty'));
+
+        $rows = DB::table('product_variants as v')
+            ->crossJoin('branches as b')
+            ->leftJoinSub($this->availableQuery($branchIds), 'a', fn ($j) => $j->on('a.branch_id', '=', 'b.id')->on('a.variant_id', '=', 'v.id'))
+            ->leftJoin('reorder_levels as rl', fn ($j) => $j->on('rl.variant_id', '=', 'v.id')->on('rl.branch_id', '=', 'b.id'))
+            ->leftJoinSub($sold, 'sd', fn ($j) => $j->on('sd.branch_id', '=', 'b.id')->on('sd.variant_id', '=', 'v.id'))
+            ->where('v.is_active', true)
+            ->whereIn('b.id', $branchIds)
+            ->whereRaw('COALESCE(a.qty, 0) <= '.$level)
+            ->orderByRaw('COALESCE(sd.qty, 0) DESC')
+            ->orderByRaw('COALESCE(a.qty, 0)')
+            ->limit($limit)
+            ->get(['v.id as variant_id', 'b.code as branch_code', DB::raw('COALESCE(a.qty, 0) AS available'), DB::raw("{$level} AS level"), DB::raw('COALESCE(sd.qty, 0) AS sold')]);
+
+        $names = ProductVariant::query()->with('product')->findMany($rows->pluck('variant_id'))->keyBy('id');
+
+        return $rows->map(fn ($r) => [
+            'variantId' => (int) $r->variant_id,
+            'displayName' => $names[$r->variant_id]->display_name,
+            'branchCode' => $r->branch_code,
+            'available' => (int) $r->available,
+            'level' => (int) $r->level,
+            'soldLast30Days' => (int) $r->sold,
+        ])->values()->all();
+    }
+
+    /** Available stock (shop floor, store, warehouse) per branch and variant. @param list<int> $branchIds */
+    public function availableQuery(array $branchIds): Builder
+    {
+        return DB::table('stock_balances as sb')
+            ->join('locations as l', 'l.id', '=', 'sb.location_id')
+            ->whereIn('sb.branch_id', $branchIds)
+            ->whereRaw('l.type IN '.self::AVAILABLE)
+            ->groupBy('sb.branch_id', 'sb.variant_id')
+            ->select('sb.branch_id', 'sb.variant_id', DB::raw('SUM(sb.quantity) AS qty'));
     }
 
     /** @return list<int> */

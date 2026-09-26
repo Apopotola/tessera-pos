@@ -24,9 +24,8 @@ use Modules\Sales\Models\Shift;
 use Modules\Settings\Services\SettingsService;
 
 /**
- * Today's operational snapshot, built only from data that exists.
+ * Today's operational snapshot and the owner's KPIs (KpiService), built only from posted records.
  * Each section is null when the user lacks the permission to see it.
- * eTIMS figures are added here when the Compliance module lands.
  */
 class DashboardService
 {
@@ -34,6 +33,7 @@ class DashboardService
         private readonly BranchAccessService $branchAccess,
         private readonly StockQueryService $stock,
         private readonly SettingsService $settings,
+        private readonly KpiService $kpis,
     ) {}
 
     /** @return array<string, mixed> */
@@ -41,6 +41,8 @@ class DashboardService
     {
         $branches = $this->branchAccess->branchesFor($user);
         $branchIds = $branches->modelKeys();
+        $showCost = $user->can(Permissions::REPORTS_PROFIT_VIEW);
+        $outlets = $branches->where('is_warehouse', false)->values();
 
         return [
             'branches' => $branches->map(fn ($b) => ['id' => $b->id, 'code' => $b->code, 'name' => $b->name])->values(),
@@ -88,8 +90,22 @@ class DashboardService
 
             'inventory' => $user->can(Permissions::INVENTORY_VIEW) ? [
                 ...$this->stock->dashboard($user),
-                'lossesThisMonthCents' => $user->can(Permissions::REPORTS_PROFIT_VIEW) ? $this->stock->lossesThisMonth($user) : null,
+                'lossesThisMonthCents' => $showCost ? $this->stock->lossesThisMonth($user) : null,
+                // Fast movers at or below their level first.
+                'lowStockTop' => $this->stock->lowStockList($user),
             ] : null,
+
+            // Main cashier-fraud signals, today, per cashier (owners and managers).
+            'exceptions' => $user->can(Permissions::SALES_VIEW) && $user->can(Permissions::SHIFTS_CASHUP_APPROVE) ? $this->kpis->exceptionsToday($branchIds) : null,
+
+            'shrinkage' => $showCost && $user->can(Permissions::INVENTORY_VIEW) ? $this->kpis->shrinkageThisMonth($branchIds) : null,
+
+            'cashVariance' => $user->can(Permissions::SHIFTS_CASHUP_APPROVE) ? $this->kpis->cashVariance($branchIds) : null,
+
+            'movers' => $user->can(Permissions::SALES_VIEW) && $user->can(Permissions::INVENTORY_VIEW) ? $this->kpis->movers($branchIds, $showCost) : null,
+
+            // Multi-branch businesses only.
+            'branchComparison' => $outlets->count() > 1 && $user->can(Permissions::REPORTS_VIEW) ? $this->kpis->branchComparison($outlets, $showCost) : null,
 
             // Requirements: alert on invoices pending over an hour and on any rejection.
             'compliance' => $user->can(Permissions::COMPLIANCE_VIEW) ? [
@@ -97,7 +113,7 @@ class DashboardService
                 'waitingOverThreshold' => EtimsSubmission::query()->whereIn('branch_id', $branchIds)
                     ->whereIn('status', [EtimsSubmission::PENDING, EtimsSubmission::FAILED])
                     ->where('created_at', '<', now()->subMinutes((int) config('compliance.etims.pending_alert_minutes', 60)))->count(),
-                'rejected' => EtimsSubmission::query()->whereIn('branch_id', $branchIds)->where('status', EtimsSubmission::REJECTED)->count(),
+                ...$this->kpis->etims($branchIds),
             ] : null,
 
             'purchasing' => $user->can(Permissions::PURCHASING_VIEW) ? [
@@ -144,7 +160,13 @@ class DashboardService
             ->whereIn('sale_return_lines.sale_return_id', (clone $returns)->select('id'))
             ->sum(DB::raw('sale_return_lines.quantity * sale_lines.unit_cost_cents')) : 0;
 
+        // Same weekday last week, up to the same time of day (removes weekday effects).
+        $lastWeek = $this->kpis->period($branchIds, now()->subWeek()->startOfDay(), now()->subWeek());
+        $today = $showProfit ? $this->kpis->period($branchIds, $start, now()->addSecond()) : null;
+
         return [
+            'lastWeekNetCents' => $lastWeek['netCents'],
+            'marginPercent' => $today ? KpiService::margin($today) : null,
             'transactions' => (clone $sales)->count(),
             'grossCents' => $gross,
             'refundsCents' => $refunds,
