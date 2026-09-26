@@ -11,5 +11,6 @@
     "Customers": true,
     "Compliance": true,
     "Reports": true,
-    "Dashboard": true
+    "Dashboard": true,
+    "Settings": true
 }

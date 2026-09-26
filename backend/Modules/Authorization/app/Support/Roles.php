@@ -10,6 +10,9 @@ use Modules\Authorization\Support\Permissions as P;
  */
 final class Roles
 {
+    /** Tessera support / onboarding (settings level T). Not a client role. */
+    public const TESSERA_ADMIN = 'Tessera Admin';
+
     public const OWNER = 'Owner';
 
     public const ADMIN = 'Admin';
@@ -26,9 +29,11 @@ final class Roles
     public static function defaults(): array
     {
         return [
-            self::OWNER => P::all(),
+            self::TESSERA_ADMIN => P::all(),
 
-            self::ADMIN => array_values(array_diff(P::all(), [P::PRICES_APPROVE])),
+            self::OWNER => array_values(array_diff(P::all(), [P::SETTINGS_PLATFORM])),
+
+            self::ADMIN => array_values(array_diff(P::all(), [P::PRICES_APPROVE, P::SETTINGS_PLATFORM])),
 
             self::BRANCH_MANAGER => [
                 P::DASHBOARD_VIEW, P::SALES_SELL, P::SALES_VIEW, P::SALES_DISCOUNT_WITHIN_LIMIT,
@@ -38,7 +43,7 @@ final class Roles
                 P::INVENTORY_ADJUST_APPROVE, P::INVENTORY_COUNT_APPROVE,
                 P::PURCHASING_VIEW, P::PURCHASING_APPROVE, P::CUSTOMERS_VIEW, P::CUSTOMERS_MANAGE,
                 P::REPORTS_VIEW, P::REPORTS_PROFIT_VIEW, P::REPORTS_FINANCIAL_VIEW, P::REPORTS_EXPORT,
-                P::COMPLIANCE_VIEW, P::AUDIT_VIEW, P::PAYMENTS_VIEW, P::PAYMENTS_RECONCILE,
+                P::COMPLIANCE_VIEW, P::AUDIT_VIEW, P::PAYMENTS_VIEW, P::PAYMENTS_RECONCILE, P::SETTINGS_BRANCH,
             ],
 
             self::CASHIER => [

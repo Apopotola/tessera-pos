@@ -1,0 +1,30 @@
+{
+    "name": "tessera/settings",
+    "description": "",
+    "authors": [
+        {
+            "name": "SoftClans",
+            "email": "dev@softclans.co.ke"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Settings\\": "app/",
+            "Modules\\Settings\\Database\\Factories\\": "database/factories/",
+            "Modules\\Settings\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Settings\\Tests\\": "tests/"
+        }
+    }
+}

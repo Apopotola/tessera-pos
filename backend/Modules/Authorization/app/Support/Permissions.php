@@ -110,6 +110,15 @@ final class Permissions
 
     public const AUDIT_VIEW = 'audit.view';
 
+    /** Settings level T: plan, modules, KRA PIN, eTIMS, locked items (Tessera support only). */
+    public const SETTINGS_PLATFORM = 'settings.platform';
+
+    /** Settings level O: branding, business details, receipts, payments, staff rules. */
+    public const SETTINGS_BUSINESS = 'settings.business';
+
+    /** Settings level B: own branch only (tills, printers, float, layout). */
+    public const SETTINGS_BRANCH = 'settings.branch';
+
     /** @return list<string> */
     public static function all(): array
     {

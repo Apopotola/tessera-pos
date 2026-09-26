@@ -74,6 +74,7 @@ class AuthorizationDatabaseSeeder extends Seeder
             ['key' => 'admin', 'title' => 'Administration', 'icon' => 'IconSettings', 'children' => [
                 ['key' => 'admin.branches', 'title' => 'Branches', 'view_type' => 'branchesList', 'path' => '/admin/branches', 'permission' => P::ORGANISATION_MANAGE],
                 ['key' => 'admin.users', 'title' => 'Users & roles', 'view_type' => 'usersList', 'path' => '/admin/users', 'permission' => P::USERS_MANAGE],
+                ['key' => 'admin.settings', 'title' => 'Settings', 'view_type' => 'settings', 'path' => '/admin/settings', 'permission' => P::SETTINGS_BRANCH],
                 ['key' => 'admin.audit', 'title' => 'Audit log', 'view_type' => 'auditLog', 'path' => '/admin/audit-log', 'permission' => P::AUDIT_VIEW],
             ]],
         ];

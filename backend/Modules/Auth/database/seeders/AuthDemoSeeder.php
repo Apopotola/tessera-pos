@@ -26,6 +26,8 @@ class AuthDemoSeeder extends Seeder
             ['Otieno Kamau', 'otieno@tessera.test', Roles::CASHIER, '2580', null],
             ['Amina Hassan', 'amina@tessera.test', Roles::CASHIER, '3691', null],
             ['Njeri Wambui', 'njeri@tessera.test', Roles::STOREKEEPER, null, 'password'],
+            // Tessera support (settings level T): KRA PIN, eTIMS, M-PESA verification, locked items.
+            ['Tessera Support', 'support@tessera.test', Roles::TESSERA_ADMIN, null, 'password'],
         ];
 
         foreach ($staff as [$name, $email, $role, $pin, $password]) {
