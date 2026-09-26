@@ -205,6 +205,13 @@ export const CUSTOMERS_URLS = {
   reversePayment: (paymentId: number) => `/customers/payments/${paymentId}/reverse`,
 } as const;
 
+export const NOTIFICATIONS_URLS = {
+  inbox: "/notifications",
+  read: (id: number) => `/notifications/${id}/read`,
+  readAll: "/notifications/read-all",
+  messages: "/notifications/messages",
+} as const;
+
 /** Connectivity check for the offline till (public, never cached). */
 export const PING_URL = "/ping";
 

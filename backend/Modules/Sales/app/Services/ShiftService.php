@@ -9,6 +9,7 @@ use Modules\AuditTrail\Services\AuditLogger;
 use Modules\Auth\Models\User;
 use Modules\Authorization\Support\Permissions;
 use Modules\Organisation\Models\Till;
+use Modules\Sales\Events\ShiftClosed;
 use Modules\Sales\Models\CashDrop;
 use Modules\Sales\Models\ParkedSale;
 use Modules\Sales\Models\SaleTender;
@@ -208,6 +209,8 @@ class ShiftService
                 'counted_cash_cents' => $countedCashCents,
                 'variance_cents' => $shift->variance_cents,
             ], reason: $note, userId: $user->id, branchId: $shift->branch_id, reference: "till:{$shift->till_id}");
+
+            ShiftClosed::dispatch($shift->id);
 
             return $shift;
         });

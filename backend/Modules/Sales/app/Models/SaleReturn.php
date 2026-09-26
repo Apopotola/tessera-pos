@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Modules\Auth\Models\User;
+use Modules\Organisation\Models\Branch;
 
 /** A customer return against a sale (becomes an eTIMS credit note). Immutable. */
 class SaleReturn extends Model
@@ -37,6 +38,12 @@ class SaleReturn extends Model
     public function sale(): BelongsTo
     {
         return $this->belongsTo(Sale::class);
+    }
+
+    /** @return BelongsTo<Branch, $this> */
+    public function branch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class);
     }
 
     /** @return BelongsTo<User, $this> */

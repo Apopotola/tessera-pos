@@ -12,5 +12,6 @@
     "Compliance": true,
     "Reports": true,
     "Dashboard": true,
-    "Settings": true
+    "Settings": true,
+    "Notifications": true
 }

@@ -229,6 +229,21 @@ class StockQueryService
         ])->values()->all();
     }
 
+    /**
+     * Available stock at a branch and its low-stock level (own reorder level, else the branch default).
+     *
+     * @param  list<int>  $variantIds
+     * @return array<int, array{available: int, level: int}>
+     */
+    public function levelsAt(int $branchId, array $variantIds): array
+    {
+        $available = $this->availableQuery([$branchId])->whereIn('sb.variant_id', $variantIds)->get()->pluck('qty', 'variant_id');
+        $own = DB::table('reorder_levels')->where('branch_id', $branchId)->whereIn('variant_id', $variantIds)->pluck('reorder_level', 'variant_id');
+        $default = (int) $this->settings->get('stock.low_stock_default', $branchId);
+
+        return collect($variantIds)->mapWithKeys(fn ($id) => [$id => ['available' => (int) ($available[$id] ?? 0), 'level' => (int) ($own[$id] ?? $default)]])->all();
+    }
+
     /** Available stock (shop floor, store, warehouse) per branch and variant. @param list<int> $branchIds */
     public function availableQuery(array $branchIds): Builder
     {

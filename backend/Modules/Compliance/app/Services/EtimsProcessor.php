@@ -5,6 +5,7 @@ namespace Modules\Compliance\Services;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Modules\Compliance\Contracts\EtimsGateway;
+use Modules\Compliance\Events\EtimsDocumentRejected;
 use Modules\Compliance\Models\EtimsSubmission;
 use Modules\Compliance\Support\EtimsResult;
 use Modules\Sales\Models\Sale;
@@ -126,6 +127,9 @@ class EtimsProcessor
         // Mirror onto the document (the sales triggers allow only this field to change).
         $document = $submission->document_type === EtimsSubmission::SALE ? Sale::class : SaleReturn::class;
         $document::query()->whereKey($submission->document_id)->update(['etims_status' => $submission->status]);
+        if ($submission->status === EtimsSubmission::REJECTED) {
+            EtimsDocumentRejected::dispatch($submission->id);
+        }
 
         return $submission;
     }

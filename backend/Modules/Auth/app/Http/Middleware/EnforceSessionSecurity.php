@@ -31,6 +31,9 @@ class EnforceSessionSecurity
 
     private const WHILE_LOCKED = ['api.v1.auth.till.unlock', 'api.v1.organisation.till-context'];
 
+    /** Background polling (the notification bell) is not activity: it must not keep an idle session alive. */
+    private const PASSIVE = ['api.v1.notifications.index'];
+
     private const WHILE_PASSWORD_DUE = ['api.v1.auth.password', 'api.v1.authorization.menus.index', 'api.v1.settings.app'];
 
     public function __construct(
@@ -59,7 +62,9 @@ class EnforceSessionSecurity
                 return $this->refuse("You were signed out after {$minutes} minutes without activity.", 401, 'idle');
             }
         }
-        $session->put(self::LAST_SEEN, now()->timestamp);
+        if (! $request->routeIs(...self::PASSIVE)) {
+            $session->put(self::LAST_SEEN, now()->timestamp);
+        }
 
         if ($via === 'pin' && $session->get(self::TILL_LOCKED) && ! $allowed(self::WHILE_LOCKED)) {
             return $this->refuse('This till is locked. Enter your PIN to continue.', 423, 'locked');

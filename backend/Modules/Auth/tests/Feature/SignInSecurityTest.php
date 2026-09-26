@@ -138,7 +138,10 @@ class SignInSecurityTest extends TestCase
 
         $this->travel(29)->minutes();
         $this->fromFrontend()->getJson('/api/v1/auth/me')->assertOk();
-        $this->travel(31)->minutes();
+        // The notification bell polls in the background: that is not activity.
+        $this->travel(20)->minutes();
+        $this->fromFrontend()->getJson('/api/v1/notifications')->assertOk();
+        $this->travel(11)->minutes();
         $this->fromFrontend()->getJson('/api/v1/auth/me')->assertUnauthorized()->assertJsonPath('errors.session.0', 'idle');
 
         $this->login($manager, remember: true)->assertOk();

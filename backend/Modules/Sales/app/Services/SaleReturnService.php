@@ -14,6 +14,7 @@ use Modules\Inventory\Services\StockLedger;
 use Modules\Organisation\Enums\LocationType;
 use Modules\Organisation\Models\Location;
 use Modules\Organisation\Models\Till;
+use Modules\Sales\Events\SaleReturned;
 use Modules\Sales\Models\Sale;
 use Modules\Sales\Models\SaleLine;
 use Modules\Sales\Models\SaleReturn;
@@ -145,6 +146,8 @@ class SaleReturnService
 
             $this->audit->log('sales.return.completed', $return, after: ['number' => $number, 'sale' => $sale->number, 'total_cents' => $total],
                 reason: $return->reason, userId: $cashier->id, approverId: $approverId, branchId: $sale->branch_id);
+
+            SaleReturned::dispatch($return->id);
 
             return $return;
         });

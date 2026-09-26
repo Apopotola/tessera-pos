@@ -23,6 +23,7 @@ use Modules\Organisation\Enums\LocationType;
 use Modules\Organisation\Models\Location;
 use Modules\Organisation\Models\Till;
 use Modules\Payments\Services\MpesaAllocator;
+use Modules\Sales\Events\SaleCompleted;
 use Modules\Sales\Models\Sale;
 use Modules\Sales\Models\SaleLine;
 use Modules\Sales\Models\SaleTender;
@@ -158,6 +159,8 @@ class SaleService
                 'below_zero_approved_by' => $stockApprovedBy,
                 'credit_approved_by' => $creditApprovedBy,
             ], userId: $cashier->id, branchId: $till->branch_id, reference: "till:{$till->id}");
+
+            SaleCompleted::dispatch($sale->id);
 
             return ['sale' => $sale, 'replayed' => false];
         });
