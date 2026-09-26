@@ -22,7 +22,7 @@ class EtimsPayloadBuilder
         $sale->loadMissing(['lines.variant.taxRate', 'lines.variant.product', 'branch.business', 'tenders']);
 
         $items = $sale->lines->values()->map(fn ($line, $i) => $this->item(
-            $i + 1, $line->variant, $line->quantity, $line->unit_price_cents, $line->discount_cents, $line->line_total_cents, $line->vat_cents,
+            $i + 1, $line->variant, $line->quantity, $line->unit_price_cents, $line->discount_cents + (int) $line->promotion_discount_cents, $line->line_total_cents, $line->vat_cents,
             $line->unit === 'tot' ? " (tot {$line->tot_ml}ml)" : '',
         ))->all();
 

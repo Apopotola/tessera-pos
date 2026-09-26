@@ -54,6 +54,9 @@ class SaleResource extends JsonResource
                 'listPriceCents' => $l->list_price_cents,
                 'unitPriceCents' => $l->unit_price_cents,
                 'discountCents' => $l->discount_cents,
+                // Promotion on the line (on top of the cashier's discount).
+                'promotionDiscountCents' => (int) $l->promotion_discount_cents,
+                'promotion' => $l->promotion ? ['id' => $l->promotion->id, 'name' => $l->promotion->name] : null,
                 'lineTotalCents' => $l->line_total_cents,
                 'vatCents' => $l->vat_cents,
                 'taxRatePercent' => $l->tax_rate_bp / 100,

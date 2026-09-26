@@ -8,6 +8,7 @@ use Modules\Catalogue\Enums\PriceTier;
 use Modules\Catalogue\Models\ProductVariant;
 use Modules\Catalogue\Services\BarcodeLookupService;
 use Modules\Catalogue\Services\PriceResolver;
+use Modules\Catalogue\Services\PromotionService;
 use Modules\Organisation\Models\Till;
 use Modules\Sales\Models\OpenBottle;
 
@@ -22,7 +23,19 @@ class TillCatalogueService
         private readonly BarcodeLookupService $barcodes,
         private readonly SaleService $sales,
         private readonly TillPolicy $policy,
+        private readonly PromotionService $promotions,
     ) {}
+
+    /**
+     * Approved promotions on today's date at this till's branch; the till checks the weekday and
+     * time window itself (PromotionEngine rules, mirrored in the till).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function promotions(Till $till): array
+    {
+        return $this->promotions->approvedOn(now(), $till->branch_id);
+    }
 
     /** Active items this branch sells (Settings → Business → categories sold at this branch). */
     private function sellable(Till $till): Builder
@@ -64,7 +77,7 @@ class TillCatalogueService
     public function favourites(Till $till): array
     {
         $ids = $this->favouriteIds($till);
-        $variants = $this->sellable($till)->with(['product.brand', 'taxRate'])->whereIn('id', $ids)->get()->keyBy('id');
+        $variants = $this->sellable($till)->with(['product.brand', 'product.category', 'taxRate'])->whereIn('id', $ids)->get()->keyBy('id');
 
         // Keep the owner's order.
         return $this->present($till, array_values(array_filter(array_map(fn ($id) => $variants[$id] ?? null, $ids))));
@@ -76,7 +89,7 @@ class TillCatalogueService
         // Every word must match the product, brand or SKU: "jameson 750" finds JAM-750.
         $words = array_filter(preg_split('/\s+/', mb_strtolower(trim($term))) ?: []);
 
-        $query = $this->sellable($till)->with(['product.brand', 'taxRate']);
+        $query = $this->sellable($till)->with(['product.brand', 'product.category', 'taxRate']);
 
         foreach ($words as $word) {
             $like = '%'.$word.'%';
@@ -99,7 +112,7 @@ class TillCatalogueService
      */
     public function snapshot(Till $till): array
     {
-        $variants = $this->sellable($till)->with(['product.brand', 'taxRate', 'barcodes.pack'])->get();
+        $variants = $this->sellable($till)->with(['product.brand', 'product.category', 'taxRate', 'barcodes.pack'])->get();
 
         $barcodes = [];
         foreach ($variants as $variant) {
@@ -121,6 +134,7 @@ class TillCatalogueService
             ], $this->present($till, $variants->all())),
             'barcodes' => $barcodes,
             'favouriteIds' => $this->favouriteIds($till),
+            'promotions' => $this->promotions($till),
             'customers' => DB::table('customers')->where('is_active', true)->whereNull('anonymised_at')->orderBy('name')
                 ->get(['id', 'name', 'kra_pin', 'is_wholesale'])
                 ->map(fn ($c) => ['id' => (int) $c->id, 'name' => $c->name, 'kraPin' => $c->kra_pin, 'isWholesale' => (bool) $c->is_wholesale])->all(),
@@ -136,7 +150,7 @@ class TillCatalogueService
         }
 
         return [
-            'item' => $this->present($till, [$barcode->variant])[0],
+            'item' => $this->present($till, [$barcode->variant->loadMissing(['product.brand', 'product.category', 'taxRate'])])[0],
             'units' => $barcode->pack->units ?? 1,
             'packName' => $barcode->pack?->name,
         ];
@@ -164,6 +178,9 @@ class TillCatalogueService
             return [
                 'variantId' => $v->id,
                 'displayName' => $v->display_name,
+                // For promotions that target a category (or its parent) or a brand.
+                'categoryIds' => array_values(array_filter([$v->product->category_id, $v->product->category?->parent_id])),
+                'brandId' => $v->product->brand_id,
                 'sku' => $v->sku,
                 'priceCents' => $price?->price_cents,
                 'minPriceCents' => $price?->min_price_cents,

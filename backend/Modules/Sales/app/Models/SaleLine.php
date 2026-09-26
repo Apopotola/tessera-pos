@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Modules\Auth\Models\User;
 use Modules\Catalogue\Models\ProductVariant;
+use Modules\Catalogue\Models\Promotion;
 
 class SaleLine extends Model
 {
@@ -49,5 +50,11 @@ class SaleLine extends Model
     public function approver(): BelongsTo
     {
         return $this->belongsTo(User::class, 'approved_by');
+    }
+
+    /** @return BelongsTo<Promotion, $this> */
+    public function promotion(): BelongsTo
+    {
+        return $this->belongsTo(Promotion::class);
     }
 }

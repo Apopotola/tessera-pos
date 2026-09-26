@@ -11,6 +11,8 @@ export const PERMISSIONS = {
   CATALOGUE_MANAGE: "catalogue.manage",
   PRICES_MANAGE: "catalogue.prices.manage",
   PRICES_APPROVE: "catalogue.prices.approve",
+  PROMOTIONS_REQUEST: "catalogue.promotions.request",
+  PROMOTIONS_APPROVE: "catalogue.promotions.approve",
   INVENTORY_VIEW: "inventory.view",
   INVENTORY_RECEIVE: "inventory.receive",
   INVENTORY_TRANSFER: "inventory.transfer",

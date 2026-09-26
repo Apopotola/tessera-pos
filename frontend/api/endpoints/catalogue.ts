@@ -16,6 +16,8 @@ import type {
   Product,
   ProductFilters,
   ProductPayload,
+  Promotion,
+  PromotionPayload,
   TaxRate,
   Variant,
   VariantPayload,
@@ -54,4 +56,10 @@ export const catalogueApi = {
     api.post<{ price: PriceRecord } & WithWarnings>(U.variantPrices(variantId), payload),
   approvePrice: (id: number, note: string | null = null) => api.post<PriceRecord>(U.approvePrice(id), { note }),
   rejectPrice: (id: number, note: string) => api.post<PriceRecord>(U.rejectPrice(id), { note }),
+
+  promotions: (status: "pending" | "active" | "finished", page = 1) => api.get<Paginated<Promotion>>(U.promotions, { status, page }),
+  createPromotion: (payload: PromotionPayload) => api.post<Promotion>(U.promotions, payload),
+  approvePromotion: (id: number, note: string | null = null) => api.post<Promotion>(U.promotionAction(id, "approve"), { note }),
+  rejectPromotion: (id: number, note: string) => api.post<Promotion>(U.promotionAction(id, "reject"), { note }),
+  endPromotion: (id: number, note: string) => api.post<Promotion>(U.promotionAction(id, "end"), { note }),
 };

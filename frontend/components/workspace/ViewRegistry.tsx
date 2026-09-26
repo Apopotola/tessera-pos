@@ -29,6 +29,7 @@ const ViewRegistry: Record<string, ComponentType<WorkspaceViewProps>> = {
   productsList: lazyView(() => import("@/modules/catalogue/views/ProductsView")),
   productDetail: lazyView(() => import("@/modules/catalogue/views/ProductDetailView")), // record tab, not a menu item
   priceChanges: lazyView(() => import("@/modules/catalogue/views/PriceChangesView")),
+  promotions: lazyView(() => import("@/modules/catalogue/views/PromotionsView")),
   catalogueSetup: lazyView(() => import("@/modules/catalogue/views/CatalogueSetupView")),
 
   // Inventory

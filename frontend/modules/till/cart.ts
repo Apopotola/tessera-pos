@@ -1,4 +1,5 @@
-import type { ParkedLine, SaleLinePayload, SaleUnit, TillItem } from "@/types/sales";
+import { applyPromotions, runsAt } from "@/modules/till/promotions";
+import type { ParkedLine, PromotionRule, SaleLinePayload, SaleUnit, TillItem } from "@/types/sales";
 
 /** One cart line. Prices are the server's VAT-inclusive price for the unit; the API re-prices on submit. */
 export interface CartLine {
@@ -18,6 +19,12 @@ export interface CartLine {
   /** Manager approval for a price override or a discount above the cashier's limit. */
   approvalToken: string | null;
   approvedBy: string | null;
+  /** For promotions (unknown on recalled parked lines: only item-targeted promotions apply then). */
+  categoryIds: number[];
+  brandId: number | null;
+  /** Set by withPromotions(): the promotion's discount on this line. */
+  promotionCents?: number;
+  promotionName?: string | null;
 }
 
 /** A bottle and a tot of the same item are separate lines. */
@@ -25,7 +32,7 @@ export const lineKey = (line: Pick<CartLine, "variantId" | "unit">) => `${line.v
 export const sameLine = (a: Pick<CartLine, "variantId" | "unit">, b: Pick<CartLine, "variantId" | "unit">) => lineKey(a) === lineKey(b);
 
 export const lineGross = (line: CartLine) => line.quantity * line.unitPriceCents;
-export const lineTotal = (line: CartLine) => lineGross(line) - line.discountCents;
+export const lineTotal = (line: CartLine) => lineGross(line) - line.discountCents - (line.promotionCents ?? 0);
 export const lineName = (line: Pick<CartLine, "displayName" | "unit" | "totMl">) =>
   line.unit === "tot" ? `${line.displayName} — tot ${line.totMl}ml` : line.displayName;
 
@@ -48,13 +55,37 @@ export function newLine(item: TillItem, quantity: number, unit: SaleUnit = "bott
     onFloor: item.onFloor,
     approvalToken: null,
     approvedBy: null,
+    categoryIds: item.categoryIds ?? [],
+    brandId: item.brandId ?? null,
   };
+}
+
+/**
+ * Promotions running now at this branch, applied the way the API will (best one per line).
+ * Lines at a changed price or at the wholesale price get none.
+ */
+export function withPromotions(lines: CartLine[], rules: PromotionRule[], at: Date, branchId: number): CartLine[] {
+  const running = rules.filter((rule) => runsAt(rule, at, branchId));
+  const applied = applyPromotions(
+    running,
+    lines.map((l) => ({
+      variantId: l.variantId,
+      categoryIds: l.categoryIds,
+      brandId: l.brandId,
+      unit: l.unit,
+      quantity: l.quantity,
+      grossCents: lineGross(l),
+      eligible: l.unitPriceCents === l.listPriceCents && l.listPriceCents === (l.unit === "bottle" ? l.retailPriceCents : l.listPriceCents),
+    })),
+  );
+  return lines.map((l, i) => ({ ...l, promotionCents: applied[i].discountCents, promotionName: applied[i].name }));
 }
 
 export function cartTotals(lines: CartLine[]) {
   const subtotal = lines.reduce((sum, l) => sum + lineGross(l), 0);
-  const discount = lines.reduce((sum, l) => sum + l.discountCents, 0);
-  return { items: lines.reduce((sum, l) => sum + l.quantity, 0), subtotal, discount, total: subtotal - discount };
+  const promotions = lines.reduce((sum, l) => sum + (l.promotionCents ?? 0), 0);
+  const discount = lines.reduce((sum, l) => sum + l.discountCents, 0) + promotions;
+  return { items: lines.reduce((sum, l) => sum + l.quantity, 0), subtotal, discount, promotions, total: subtotal - discount };
 }
 
 export function toPayload(line: CartLine): SaleLinePayload {
@@ -95,7 +126,7 @@ export function toParked(line: CartLine): ParkedLine {
  * line that needed a manager returns at list price with no discount.
  */
 export function fromParked(line: ParkedLine, rules: ApprovalRules): { line: CartLine; reset: boolean } {
-  const restored: CartLine = { ...line, retailPriceCents: line.listPriceCents, wholesalePriceCents: null, onFloor: 0, approvalToken: null, approvedBy: null };
+  const restored: CartLine = { ...line, retailPriceCents: line.listPriceCents, wholesalePriceCents: null, onFloor: 0, approvalToken: null, approvedBy: null, categoryIds: [], brandId: null };
   if (needsApproval(restored, rules)) {
     return { line: { ...restored, unitPriceCents: restored.listPriceCents, discountCents: 0 }, reset: true };
   }

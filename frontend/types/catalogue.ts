@@ -1,3 +1,4 @@
+import type { PromotionRule } from "@/types/sales";
 /**
  * Mirrors Modules\Catalogue\Http\Resources\*. Money is always integer cents (KES).
  * Fields marked optional are only present when the backend loaded that relation.
@@ -182,4 +183,38 @@ export interface CategoryPayload {
 
 export interface WithWarnings {
   warnings: string[];
+}
+
+/** Mirrors Modules\Catalogue\Http\Controllers\PromotionController::promotionArray(). */
+export interface Promotion extends PromotionRule {
+  status: "pending" | "active" | "rejected" | "ended" | "finished";
+  categories: string[];
+  brands: string[];
+  variants: string[];
+  requestedById: number;
+  requestedBy: string | null;
+  reviewedBy: string | null;
+  reviewNote: string | null;
+  endedAt: string | null;
+  /** Given on sales so far. */
+  discountGivenCents: number;
+  linesCount: number;
+  createdAt: string | null;
+}
+
+export interface PromotionPayload {
+  name: string;
+  discountType: "percent" | "amount";
+  discountValue: number;
+  minQuantity: number;
+  unit: "bottle" | "tot" | "any";
+  startsOn: string;
+  endsOn: string;
+  weekdays: number[] | null;
+  timeFrom: string | null;
+  timeTo: string | null;
+  branchIds: number[] | null;
+  categoryIds: number[];
+  brandIds: number[];
+  variantIds: number[];
 }

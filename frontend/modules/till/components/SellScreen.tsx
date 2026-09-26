@@ -5,11 +5,11 @@ import { useIdle } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
 import { IconBarcode, IconBuildingBank, IconDiscount, IconDots, IconUser, IconGlassFull, IconLock, IconLogout, IconMinus, IconPlayerPause, IconPlus, IconPrinter, IconReceiptRefund, IconSearch, IconTag, IconTrash, IconUsers } from "@tabler/icons-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, authApi, salesApi } from "@/api";
 import { brand } from "@/app/theme";
 import Receipt, { ReceiptPrint } from "@/modules/sales/components/Receipt";
-import { type ApprovalRules, type CartLine, cartTotals, fromParked, lineKey, lineName, lineTotal, looksLikeBarcode, needsApproval, newClientId, newLine, repriceForCustomer, sameLine, toParked, toPayload } from "@/modules/till/cart";
+import { type ApprovalRules, type CartLine, cartTotals, withPromotions, fromParked, lineKey, lineName, lineTotal, looksLikeBarcode, needsApproval, newClientId, newLine, repriceForCustomer, sameLine, toParked, toPayload } from "@/modules/till/cart";
 import CustomerPicker from "@/modules/till/components/CustomerPicker";
 import type { TillCustomer } from "@/types/customers";
 import { useApprovalPrompt } from "@/modules/till/components/ApprovalModal";
@@ -26,7 +26,7 @@ import { buildOfflineReceipt } from "@/modules/till/offline/offlineReceipt";
 import { useOfflineTill } from "@/modules/till/offline/useOfflineTill";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logout } from "@/store/slices/authSlice";
-import type { ParkedSale, Sale, SaleUnit, ScanResult, TenderPayload, TillItem } from "@/types/sales";
+import type { ParkedSale, Sale, SaleUnit, ScanResult, TenderPayload, TillItem, PromotionRule } from "@/types/sales";
 import type { Shift, TillContext } from "@/types/till";
 import { formatKes } from "@/utils/money";
 import { onTillLocked } from "@/utils/sessionEvents";
@@ -104,7 +104,27 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   }, [idle, autoLockMs, isOnline, locked, paying, lockScreen]);
   useEffect(() => onTillLocked(() => setLocked(true)), []);
 
-  const totals = cartTotals(lines);
+  // Promotions (approved by the owner): the day's rules, re-checked every minute for happy hours.
+  const [promotionRules, setPromotionRules] = useState<PromotionRule[]>([]);
+  const [clock, setClock] = useState(() => new Date());
+  useEffect(() => {
+    const timer = window.setInterval(() => setClock(new Date()), 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
+  const snapshotPromotions = offline.snapshot?.promotions;
+  useEffect(() => {
+    if (!isOnline) {
+      setPromotionRules(snapshotPromotions ?? []); // eslint-disable-line react-hooks/set-state-in-effect -- offline: the saved copy
+      return;
+    }
+    salesApi
+      .promotions()
+      .then(setPromotionRules)
+      .catch(() => setPromotionRules(snapshotPromotions ?? []));
+  }, [isOnline, snapshotPromotions]);
+  const priced = useMemo(() => withPromotions(lines, promotionRules, clock, context.branch.id), [lines, promotionRules, clock, context.branch.id]);
+
+  const totals = cartTotals(priced);
   const refocus = () => window.setTimeout(() => searchRef.current?.focus(), 0);
 
   // Live search as the cashier types (scanner input is handled on Enter instead).
@@ -340,7 +360,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     const occurredAt = new Date().toISOString();
     const payload = { clientId, occurredAt, customerId: customer?.id ?? null, customerPin, lines: lines.map(toPayload), tenders };
     const localNumber = await offline.enqueueSale(payload, totals.total);
-    finishSale(buildOfflineReceipt({ localNumber, occurredAt, context, user, lines, tenders, customer, customerPin, snapshot: offline.snapshot }));
+    finishSale(buildOfflineReceipt({ localNumber, occurredAt, context, user, lines: priced, tenders, customer, customerPin, snapshot: offline.snapshot }));
   };
 
   /** Manager approvals the server asked for, gathered one at a time before sending again. */
@@ -609,7 +629,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
             </Text>
           ) : (
             <Stack gap={8}>
-              {lines.map((line) => (
+              {priced.map((line) => (
                 <div key={lineKey(line)} className={classes.cartLine}>
                   <UnstyledButton onClick={() => setEditing(line)} style={{ flex: 1, minWidth: 0 }}>
                     <Text c="white" fw={600} size="sm" truncate>
@@ -620,6 +640,11 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
                       {line.discountCents > 0 && ` · −${formatKes(line.discountCents)}`}
                       {line.approvedBy && ` · approved by ${line.approvedBy}`}
                     </Text>
+                    {(line.promotionCents ?? 0) > 0 && (
+                      <Text c="amber.4" size="xs" truncate>
+                        {line.promotionName} · −{formatKes(line.promotionCents)}
+                      </Text>
+                    )}
                   </UnstyledButton>
                   <Group gap={4} wrap="nowrap">
                     <ActionIcon variant="default" size="md" aria-label="One less" onClick={() => changeQty(line, -1)}>
@@ -653,7 +678,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
           {totals.discount > 0 && (
             <Group justify="space-between">
               <Text c="gray.5" size="sm">
-                Discounts
+                {totals.promotions > 0 ? "Discounts & promotions" : "Discounts"}
               </Text>
               <Text c="gray.4" size="sm">
                 −{formatKes(totals.discount)}

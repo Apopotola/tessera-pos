@@ -21,6 +21,9 @@ export interface TillItem {
   wholesalePriceCents: number | null;
   taxRatePercent: number;
   onFloor: number;
+  /** For promotions targeting a category (or its parent) or a brand. */
+  categoryIds: number[];
+  brandId: number | null;
   /** Sell by tot: null when the item is not poured. */
   totMl: number | null;
   totPriceCents: number | null;
@@ -108,6 +111,9 @@ export interface Sale {
     listPriceCents: number;
     unitPriceCents: number;
     discountCents: number;
+    /** Promotion on the line, on top of the cashier's discount. */
+    promotionDiscountCents: number;
+    promotion: { id: number; name: string } | null;
     lineTotalCents: number;
     vatCents: number;
     taxRatePercent: number;
@@ -216,4 +222,25 @@ export interface OpenBottle {
   openedAt: string;
   closedBy: string | null;
   closedAt: string | null;
+}
+
+/** A promotion as the till applies it. Mirrors Modules\Catalogue\Models\Promotion::rule(). */
+export interface PromotionRule {
+  id: number;
+  name: string;
+  discountType: "percent" | "amount";
+  /** percent: basis points (1000 = 10%); amount: cents off each unit. */
+  discountValue: number;
+  minQuantity: number;
+  unit: "bottle" | "tot" | "any";
+  startsOn: string;
+  endsOn: string;
+  /** ISO weekdays 1 (Mon) … 7 (Sun); null = every day. */
+  weekdays: number[] | null;
+  timeFrom: string | null;
+  timeTo: string | null;
+  branchIds: number[] | null;
+  categoryIds: number[];
+  brandIds: number[];
+  variantIds: number[];
 }

@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Modules\Catalogue\Http\Controllers\PriceController;
 use Modules\Catalogue\Http\Controllers\ProductController;
+use Modules\Catalogue\Http\Controllers\PromotionController;
 use Modules\Catalogue\Http\Controllers\TaxonomyController;
 use Modules\Catalogue\Http\Controllers\VariantController;
 
@@ -43,4 +44,10 @@ Route::middleware('auth:sanctum')->prefix('catalogue')->name('catalogue.')->grou
     Route::post('variants/{variant}/prices', [PriceController::class, 'store'])->name('prices.store');
     Route::post('prices/{price}/approve', [PriceController::class, 'approve'])->name('prices.approve');
     Route::post('prices/{price}/reject', [PriceController::class, 'reject'])->name('prices.reject');
+
+    Route::get('promotions', [PromotionController::class, 'index'])->name('promotions.index');
+    Route::post('promotions', [PromotionController::class, 'store'])->name('promotions.store');
+    Route::post('promotions/{promotion}/approve', [PromotionController::class, 'approve'])->name('promotions.approve');
+    Route::post('promotions/{promotion}/reject', [PromotionController::class, 'reject'])->name('promotions.reject');
+    Route::post('promotions/{promotion}/end', [PromotionController::class, 'end'])->name('promotions.end');
 });

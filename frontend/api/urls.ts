@@ -78,6 +78,7 @@ export const SALES_URLS = {
   tillItems: "/sales/till/items",
   tillCatalogue: "/sales/till/catalogue",
   tillFavourites: "/sales/till/favourites",
+  tillPromotions: "/sales/till/promotions",
   tillScan: (code: string) => `/sales/till/scan/${encodeURIComponent(code)}`,
   tillApprovers: "/sales/till/approvers",
   tillApprovals: "/sales/till/approvals",
@@ -107,6 +108,8 @@ export const ORGANISATION_URLS = {
 
 export const CATALOGUE_URLS = {
   taxRates: "/catalogue/tax-rates",
+  promotions: "/catalogue/promotions",
+  promotionAction: (id: number, action: "approve" | "reject" | "end") => `/catalogue/promotions/${id}/${action}`,
   brands: "/catalogue/brands",
   brand: (id: number) => `/catalogue/brands/${id}`,
   categories: "/catalogue/categories",

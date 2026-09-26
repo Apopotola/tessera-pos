@@ -27,7 +27,7 @@ use OpenApi\Attributes as OA;
 /** Everything the selling screen calls. Requires a signed-in cashier on a paired till. */
 class TillSaleController extends Controller
 {
-    public const RELATIONS = ['lines.variant.product', 'lines.approver', 'tenders.confirmation', 'returns.tenders', 'branch.business', 'till', 'cashier', 'etimsSubmission', 'customer'];
+    public const RELATIONS = ['lines.variant.product', 'lines.approver', 'lines.promotion', 'tenders.confirmation', 'returns.tenders', 'branch.business', 'till', 'cashier', 'etimsSubmission', 'customer'];
 
     public function __construct(
         private readonly TillCatalogueService $catalogue,
@@ -54,6 +54,14 @@ class TillSaleController extends Controller
         $this->requireSeller($request);
 
         return $this->success('Favourites.', $this->catalogue->favourites($this->till($request)));
+    }
+
+    #[OA\Get(path: '/api/v1/sales/till/promotions', summary: 'Promotions approved for today at this branch (the till applies the same rules as the API)', tags: ['Till'], responses: [new OA\Response(response: 200, description: 'Rules')])]
+    public function promotions(Request $request): JsonResponse
+    {
+        $this->requireSeller($request);
+
+        return $this->success('Promotions.', $this->catalogue->promotions($this->till($request)));
     }
 
     #[OA\Get(path: '/api/v1/sales/till/scan/{code}', summary: 'Resolve a scanned barcode (case barcodes return units per case)', tags: ['Till'], responses: [new OA\Response(response: 200, description: 'Item'), new OA\Response(response: 404, description: 'Unknown barcode')])]

@@ -13,6 +13,8 @@ use Modules\Authorization\Support\Permissions;
 use Modules\Catalogue\Enums\PriceTier;
 use Modules\Catalogue\Models\ProductVariant;
 use Modules\Catalogue\Services\PriceResolver;
+use Modules\Catalogue\Services\PromotionService;
+use Modules\Catalogue\Support\PromotionEngine;
 use Modules\Compliance\Services\EtimsOutbox;
 use Modules\Customers\Models\Customer;
 use Modules\Customers\Services\CustomerAccountService;
@@ -49,6 +51,7 @@ class SaleService
         private readonly EtimsOutbox $etims,
         private readonly TillPolicy $policy,
         private readonly CustomerAccountService $accounts,
+        private readonly PromotionService $promotions,
     ) {}
 
     /**
@@ -120,7 +123,8 @@ class SaleService
                 // The buyer PIN printed on the eTIMS invoice: typed at the till, or the customer's own.
                 'customer_pin' => isset($data['customerPin']) ? mb_strtoupper($data['customerPin']) : $customer?->kra_pin,
                 'subtotal_cents' => array_sum(array_map(fn ($l) => $l['quantity'] * $l['unit_price_cents'], $lines)),
-                'discount_cents' => array_sum(array_column($lines, 'discount_cents')),
+                // The cashier's discounts and promotions.
+                'discount_cents' => array_sum(array_column($lines, 'discount_cents')) + array_sum(array_column($lines, 'promotion_discount_cents')),
                 'total_cents' => $total,
                 'rounding_cents' => $rounding,
                 'vat_cents' => array_sum(array_column($lines, 'vat_cents')),
@@ -312,13 +316,14 @@ class SaleService
      */
     private function priceLines(Till $till, User $cashier, array $input, bool $wholesale = false, ?CarbonImmutable $at = null): array
     {
-        $variants = ProductVariant::query()->with(['taxRate', 'product'])->findMany(array_column($input, 'variantId'))->keyBy('id');
+        $variants = ProductVariant::query()->with(['taxRate', 'product.category'])->findMany(array_column($input, 'variantId'))->keyBy('id');
         $current = $this->prices->currentForVariants($variants->modelKeys(), $till->branch_id, $at);
         $limitPercent = $this->policy->discountLimitPercent($cashier, $till);
         $priceChangeApproval = $this->policy->priceChangeNeedsApproval($till);
         $blockBigDiscounts = $this->policy->discountAboveLimit($till) === 'blocked';
         $sellByTot = $this->policy->sellByTot($till);
         $lines = [];
+        $promotionLines = [];
 
         foreach ($input as $i => $row) {
             $variant = $variants[$row['variantId']] ?? null;
@@ -326,7 +331,8 @@ class SaleService
             $tier = $unit === SaleLine::UNIT_TOT ? PriceTier::Tot : PriceTier::Retail;
             $price = $current[$row['variantId']][$tier->value] ?? null;
             // Wholesale customers pay the wholesale price where the item has one.
-            if ($wholesale && $unit === SaleLine::UNIT_BOTTLE && isset($current[$row['variantId']][PriceTier::Wholesale->value])) {
+            $wholesalePrice = $wholesale && $unit === SaleLine::UNIT_BOTTLE && isset($current[$row['variantId']][PriceTier::Wholesale->value]);
+            if ($wholesalePrice) {
                 $price = $current[$row['variantId']][PriceTier::Wholesale->value];
             }
 
@@ -369,8 +375,6 @@ class SaleService
                 $approvedBy = $this->approvals->consume($row['approvalToken'] ?? null, $needsOverride ? 'override' : 'discount', $till, $cashier);
             }
 
-            $lineTotal = $gross - $discount;
-            $bp = $variant->taxRate->rate_bp;
             $lines[] = [
                 'variant' => $variant, // for pouring; removed before the line is saved
                 'variant_id' => $variant->id,
@@ -380,10 +384,35 @@ class SaleService
                 'list_price_cents' => $price->price_cents,
                 'unit_price_cents' => $unitPrice,
                 'discount_cents' => $discount,
-                'line_total_cents' => $lineTotal,
-                'vat_cents' => Money::vatIncluded($lineTotal, $bp),
-                'tax_rate_bp' => $bp,
+                'tax_rate_bp' => $variant->taxRate->rate_bp,
                 'approved_by' => $approvedBy,
+            ];
+            $promotionLines[] = [
+                'variantId' => $variant->id,
+                'categoryIds' => array_values(array_filter([$variant->product->category_id, $variant->product->category?->parent_id])),
+                'brandId' => $variant->product->brand_id,
+                'unit' => $unit,
+                'quantity' => $qty,
+                'grossCents' => $gross,
+                // A changed price or the wholesale price is already a deal: no promotion on top.
+                'eligible' => ! $overridden && ! $wholesalePrice,
+            ];
+        }
+
+        // Promotions (approved by the owner) running now at this branch: the best one per line.
+        $promotions = $lines ? PromotionEngine::apply($this->promotions->runningAt($till->branch_id, $at ?? CarbonImmutable::now()), $promotionLines) : [];
+        foreach ($lines as $i => $line) {
+            $gross = $line['quantity'] * $line['unit_price_cents'];
+            $promotion = $promotions[$i]['discountCents'] ?? 0;
+            if ($gross < $line['discount_cents'] + $promotion) {
+                throw ValidationException::withMessages(["lines.{$i}.discountCents" => 'With the promotion, this discount is more than the line.']);
+            }
+            $total = $gross - $promotion - $line['discount_cents'];
+            $lines[$i] += [
+                'promotion_id' => $promotion > 0 ? $promotions[$i]['promotionId'] : null,
+                'promotion_discount_cents' => $promotion,
+                'line_total_cents' => $total,
+                'vat_cents' => Money::vatIncluded($total, $line['tax_rate_bp']),
             ];
         }
 

@@ -1,5 +1,5 @@
 import type { TillCustomer } from "@/types/customers";
-import type { ReceiptSettings, SalePayload, TenderMethod, TillItem } from "@/types/sales";
+import type { PromotionRule, ReceiptSettings, SalePayload, TenderMethod, TillItem } from "@/types/sales";
 
 /** Mirrors Modules\Organisation\Http\Resources\TillResource. */
 export interface Till {
@@ -107,6 +107,8 @@ export interface TillSnapshot {
   barcodes: { code: string; variantId: number; units: number; packName: string | null }[];
   /** First-screen favourites, in order. */
   favouriteIds: number[];
+  /** Promotions approved for the day the snapshot was taken. */
+  promotions: PromotionRule[];
   customers: TillCustomer[];
 }
 

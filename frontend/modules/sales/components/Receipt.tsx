@@ -76,6 +76,12 @@ export default function Receipt({ sale, copy = false }: { sale: Sale; copy?: boo
             </span>
             <span>{formatKes(line.quantity * line.unitPriceCents)}</span>
           </div>
+          {line.promotionDiscountCents > 0 && (
+            <div className={classes.row}>
+              <span>&nbsp;&nbsp;{line.promotion?.name ?? "Promotion"}</span>
+              <span>-{formatKes(line.promotionDiscountCents)}</span>
+            </div>
+          )}
           {line.discountCents > 0 && (
             <div className={classes.row}>
               <span>&nbsp;&nbsp;Discount</span>

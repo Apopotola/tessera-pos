@@ -1,7 +1,7 @@
 import { api } from "@/api/client";
 import { PING_URL, SALES_URLS as U } from "@/api/urls";
 import type { Paginated } from "@/types/api";
-import type { ApprovalAction, Approval, OpenBottle, ParkedLine, ParkedSale, ReturnPayload, Sale, SalePayload, ScanResult, ShiftDetail, ShiftRow, TillItem } from "@/types/sales";
+import type { Approval, ApprovalAction, OpenBottle, ParkedLine, ParkedSale, PromotionRule, ReturnPayload, Sale, SalePayload, ScanResult, ShiftDetail, ShiftRow, TillItem } from "@/types/sales";
 import type { Shift, TillSnapshot } from "@/types/till";
 
 export const salesApi = {
@@ -19,6 +19,8 @@ export const salesApi = {
   searchItems: (search: string) => api.get<TillItem[]>(U.tillItems, { search }),
   /** First-screen favourites (Settings → Sales screen). */
   favourites: () => api.get<TillItem[]>(U.tillFavourites),
+  /** Promotions approved for today at this branch; the till applies them like the API does. */
+  promotions: () => api.get<PromotionRule[]>(U.tillPromotions),
   tillCatalogue: () => api.get<TillSnapshot>(U.tillCatalogue),
   ping: () => api.get<{ time: string }>(PING_URL),
   scan: (code: string) => api.get<ScanResult>(U.tillScan(code)),

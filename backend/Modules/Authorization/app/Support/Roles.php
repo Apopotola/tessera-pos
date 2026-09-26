@@ -33,12 +33,13 @@ final class Roles
 
             self::OWNER => array_values(array_diff(P::all(), [P::SETTINGS_PLATFORM])),
 
-            self::ADMIN => array_values(array_diff(P::all(), [P::PRICES_APPROVE, P::SETTINGS_PLATFORM])),
+            // Price changes and promotions are approved by the owner.
+            self::ADMIN => array_values(array_diff(P::all(), [P::PRICES_APPROVE, P::PROMOTIONS_APPROVE, P::SETTINGS_PLATFORM])),
 
             self::BRANCH_MANAGER => [
                 P::DASHBOARD_VIEW, P::SALES_SELL, P::SALES_VIEW, P::SALES_DISCOUNT_WITHIN_LIMIT,
                 P::SALES_OVERRIDE_APPROVE, P::SALES_VOID_APPROVE, P::SALES_REFUND_APPROVE,
-                P::SHIFTS_CASHUP_APPROVE, P::CATALOGUE_VIEW,
+                P::SHIFTS_CASHUP_APPROVE, P::CATALOGUE_VIEW, P::PROMOTIONS_REQUEST,
                 P::INVENTORY_VIEW, P::INVENTORY_RECEIVE, P::INVENTORY_TRANSFER_APPROVE,
                 P::INVENTORY_ADJUST_APPROVE, P::INVENTORY_COUNT_APPROVE,
                 P::PURCHASING_VIEW, P::PURCHASING_APPROVE, P::CUSTOMERS_VIEW, P::CUSTOMERS_MANAGE, P::CUSTOMERS_PAYMENTS,

@@ -46,6 +46,12 @@ final class Permissions
 
     public const PRICES_APPROVE = 'catalogue.prices.approve';
 
+    /** Set up promotions (sent to the owner for approval). */
+    public const PROMOTIONS_REQUEST = 'catalogue.promotions.request';
+
+    /** Approve, reject or end promotions (owner). */
+    public const PROMOTIONS_APPROVE = 'catalogue.promotions.approve';
+
     // Inventory
     public const INVENTORY_VIEW = 'inventory.view';
 
