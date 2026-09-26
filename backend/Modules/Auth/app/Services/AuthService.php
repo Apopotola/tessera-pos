@@ -5,6 +5,8 @@ namespace Modules\Auth\Services;
 use App\Support\PhoneNumber;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Validation\ValidationException;
 use Modules\AuditTrail\Services\AuditLogger;
 use Modules\Auth\Models\User;
 use Modules\Authorization\Support\Permissions;
@@ -21,6 +23,7 @@ class AuthService
     /**
      * Back-office sign-in with email or Kenyan phone number + password.
      * Failures return one generic message so the response never reveals whether an account exists.
+     * The sign-in is recorded (recordLogin) once any two-step code has been checked.
      *
      * @throws AuthenticationException
      */
@@ -34,7 +37,9 @@ class AuthService
             throw new AuthenticationException('These credentials do not match our records.');
         }
 
-        return $this->completeLogin($user, 'auth.login');
+        $this->assertActive($user, 'auth.login');
+
+        return $user;
     }
 
     /**
@@ -59,7 +64,44 @@ class AuthService
             throw new AuthenticationException('You are not allowed to sell at this till.');
         }
 
-        return $this->completeLogin($user, 'auth.pin-login', $till);
+        $this->assertActive($user, 'auth.pin-login', $till);
+        $this->recordLogin($user, 'auth.pin-login', $till);
+
+        return $user;
+    }
+
+    /**
+     * Unlock a till screen: the cashier who was signed in, or a manager of this branch
+     * (who can then park or finish the sale). Returns the manager's id when a manager did it.
+     */
+    public function unlockTill(Till $till, User $cashier, int $userId, string $pin): ?int
+    {
+        $throttleKey = "till-unlock:{$till->id}:{$userId}";
+        if (RateLimiter::tooManyAttempts($throttleKey, 5)) {
+            throw ValidationException::withMessages(['pin' => 'Too many wrong PINs. Wait a minute and try again.']);
+        }
+
+        $user = User::query()->find($userId);
+        if (! $user || ! $user->is_active || ! $user->pin_hash || ! Hash::check($pin, $user->pin_hash)) {
+            RateLimiter::hit($throttleKey, 60);
+            $this->audit->log('auth.till.unlock-failed', $user, reason: 'Wrong PIN', userId: $cashier->id, branchId: $till->branch_id, reference: "till:{$till->id}");
+            throw ValidationException::withMessages(['pin' => 'Wrong PIN.']);
+        }
+
+        $manager = ! $user->is($cashier);
+        if ($manager && (! $user->can(Permissions::SHIFTS_CASHUP_APPROVE) || ! $this->branchAccess->canAccess($user, $till->branch_id))) {
+            throw ValidationException::withMessages(['pin' => "{$user->name} cannot unlock this till. The cashier or a branch manager can."]);
+        }
+
+        RateLimiter::clear($throttleKey);
+        $this->audit->log('auth.till.unlocked', $cashier, userId: $cashier->id, approverId: $manager ? $user->id : null, branchId: $till->branch_id, reference: "till:{$till->id}");
+
+        return $manager ? $user->id : null;
+    }
+
+    public function lockTill(Till $till, User $cashier, string $reason): void
+    {
+        $this->audit->log('auth.till.locked', $cashier, reason: $reason, userId: $cashier->id, branchId: $till->branch_id, reference: "till:{$till->id}");
     }
 
     public function recordLogout(User $user): void
@@ -81,17 +123,18 @@ class AuthService
     }
 
     /** @throws AuthenticationException */
-    private function completeLogin(User $user, string $action, ?Till $till = null): User
+    private function assertActive(User $user, string $action, ?Till $till = null): void
     {
         if (! $user->is_active) {
             $this->audit->log("{$action}.blocked", $user, reason: 'Account inactive', userId: $user->id, branchId: $till?->branch_id);
 
             throw new AuthenticationException('This account is disabled. Contact your administrator.');
         }
+    }
 
+    public function recordLogin(User $user, string $action, ?Till $till = null, ?string $reason = null): void
+    {
         $user->forceFill(['last_login_at' => now()])->save();
-        $this->audit->log($action, $user, userId: $user->id, branchId: $till?->branch_id, reference: $till ? "till:{$till->id}" : null);
-
-        return $user;
+        $this->audit->log($action, $user, reason: $reason, userId: $user->id, branchId: $till?->branch_id, reference: $till ? "till:{$till->id}" : null);
     }
 }

@@ -52,6 +52,8 @@ export interface TillContext {
     /** Confirm the customer is 18 or over before payment. */
     ageCheck: boolean;
     blindCashUp: boolean;
+    /** Lock the screen after this many idle minutes (0 = never); the sale in progress is kept. */
+    autoLockMinutes: number;
     layout: "tiles" | "list" | "barcode";
     touchMode: "standard" | "large";
     quickButtons: QuickButton[];

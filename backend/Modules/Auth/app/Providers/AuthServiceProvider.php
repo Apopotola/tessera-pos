@@ -3,6 +3,7 @@
 namespace Modules\Auth\Providers;
 
 use Illuminate\Console\Scheduling\Schedule;
+use Modules\Auth\Http\Middleware\EnforceSessionSecurity;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 class AuthServiceProvider extends ModuleServiceProvider
@@ -34,6 +35,14 @@ class AuthServiceProvider extends ModuleServiceProvider
         EventServiceProvider::class,
         RouteServiceProvider::class,
     ];
+
+    public function boot(): void
+    {
+        parent::boot();
+
+        // Idle sign-out, till lock and forced password change on every API call (after the session starts).
+        $this->app['router']->pushMiddlewareToGroup('api', EnforceSessionSecurity::class);
+    }
 
     /**
      * Define module schedules.

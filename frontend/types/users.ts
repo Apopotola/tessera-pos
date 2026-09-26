@@ -7,6 +7,7 @@ export interface ManagedUser {
   role: string | null;
   branchIds: number[];
   hasPin: boolean;
+  mfaEnabled: boolean;
   isActive: boolean;
   lastLoginAt: string | null;
 }

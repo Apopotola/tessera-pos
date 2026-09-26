@@ -1,10 +1,13 @@
 "use client";
 
 import { Avatar, Burger, Group, Menu, Text, UnstyledButton } from "@mantine/core";
-import { IconCalculator, IconChevronDown, IconLogout } from "@tabler/icons-react";
+import { IconCalculator, IconChevronDown, IconKey, IconLogout, IconShieldLock } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { brand } from "@/app/theme";
+import ChangePasswordModal from "@/components/auth/ChangePasswordModal";
+import TwoStepModal from "@/components/auth/TwoStepModal";
 import Logo from "@/components/brand/Logo";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logout } from "@/store/slices/authSlice";
@@ -20,6 +23,7 @@ export default function Header({ navOpened, onToggleNav }: HeaderProps) {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const user = useAppSelector((state) => state.auth.user);
+  const [dialog, setDialog] = useState<"password" | "twoStep" | null>(null);
 
   const handleLogout = async () => {
     await dispatch(logout());
@@ -66,12 +70,25 @@ export default function Header({ navOpened, onToggleNav }: HeaderProps) {
             <Menu.Item component={Link} href="/till" leftSection={<IconCalculator size={16} />}>
               Open till screen
             </Menu.Item>
+            <Menu.Item leftSection={<IconKey size={16} />} onClick={() => setDialog("password")}>
+              Change password
+            </Menu.Item>
+            <Menu.Item leftSection={<IconShieldLock size={16} />} onClick={() => setDialog("twoStep")}>
+              Two-step login{user.mfaEnabled ? " · on" : ""}
+            </Menu.Item>
             <Menu.Item leftSection={<IconLogout size={16} />} onClick={handleLogout}>
               Sign out
             </Menu.Item>
           </Menu.Dropdown>
         </Menu>
       )}
+      {/* Set by an admin or expired (Settings → Staff): nothing else works until it is changed. */}
+      {user?.mustChangePassword ? (
+        <ChangePasswordModal forced onClose={() => undefined} />
+      ) : (
+        dialog === "password" && <ChangePasswordModal onClose={() => setDialog(null)} />
+      )}
+      {dialog === "twoStep" && <TwoStepModal onClose={() => setDialog(null)} />}
     </Group>
   );
 }

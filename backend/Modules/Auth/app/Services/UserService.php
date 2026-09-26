@@ -31,6 +31,7 @@ class UserService
                 'password' => $data['password'] ?? Str::random(40),
                 'must_change_password' => isset($data['password']),
             ]);
+            $user->forceFill(['password_changed_at' => now()])->save();
             $user->syncRoles([$data['role']]);
             $user->branches()->sync($data['branchIds'] ?? []);
 

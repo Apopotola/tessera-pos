@@ -21,14 +21,15 @@ export default function SessionBootstrap() {
 
   useEffect(
     () =>
-      onSessionExpired(() => {
+      onSessionExpired(({ status, message }) => {
         dispatch(sessionExpired());
         dispatch(resetTabs());
         notifications.show({
           id: "session-expired",
           color: "yellow",
-          title: "Session expired",
-          message: "Please sign in again.",
+          title: "Signed out",
+          // The idle sign-out explains itself; other expiries just ask to sign in again.
+          message: status === 401 && message !== "Unauthenticated." ? message : "Please sign in again.",
         });
       }),
     [dispatch],

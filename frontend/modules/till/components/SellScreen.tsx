@@ -1,11 +1,12 @@
 "use client";
 
 import { ActionIcon, Badge, Button, Group, Loader, Menu, Modal, ScrollArea, Stack, Text, TextInput, UnstyledButton } from "@mantine/core";
+import { useIdle } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import { IconBarcode, IconBuildingBank, IconDiscount, IconDots, IconUser, IconGlassFull, IconLock, IconLogout, IconMinus, IconPlayerPause, IconPlus, IconPrinter, IconReceiptRefund, IconSearch, IconTag, IconTrash } from "@tabler/icons-react";
+import { IconBarcode, IconBuildingBank, IconDiscount, IconDots, IconUser, IconGlassFull, IconLock, IconLogout, IconMinus, IconPlayerPause, IconPlus, IconPrinter, IconReceiptRefund, IconSearch, IconTag, IconTrash, IconUsers } from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ApiError, salesApi } from "@/api";
+import { ApiError, authApi, salesApi } from "@/api";
 import { brand } from "@/app/theme";
 import Receipt, { ReceiptPrint } from "@/modules/sales/components/Receipt";
 import { type ApprovalRules, type CartLine, cartTotals, fromParked, lineKey, lineName, lineTotal, looksLikeBarcode, needsApproval, newClientId, newLine, repriceForCustomer, sameLine, toParked, toPayload } from "@/modules/till/cart";
@@ -14,6 +15,7 @@ import type { TillCustomer } from "@/types/customers";
 import { useApprovalPrompt } from "@/modules/till/components/ApprovalModal";
 import { CashDropModal, EndShiftModal, ShiftSummaryModal } from "@/modules/till/components/EndShift";
 import LineEditModal from "@/modules/till/components/LineEditModal";
+import LockScreen from "@/modules/till/components/LockScreen";
 import { ParkModal, RecallModal } from "@/modules/till/components/ParkedSales";
 import PriceCheckModal from "@/modules/till/components/PriceCheck";
 import ReturnModal from "@/modules/till/components/ReturnModal";
@@ -27,6 +29,7 @@ import { logout } from "@/store/slices/authSlice";
 import type { ParkedSale, Sale, SaleUnit, ScanResult, TenderPayload, TillItem } from "@/types/sales";
 import type { Shift, TillContext } from "@/types/till";
 import { formatKes } from "@/utils/money";
+import { onTillLocked } from "@/utils/sessionEvents";
 import classes from "../Till.module.css";
 
 interface SellScreenProps {
@@ -77,7 +80,29 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   const [recalling, setRecalling] = useState(false);
   const [checkingPrice, setCheckingPrice] = useState(false);
   const [favourites, setFavourites] = useState<TillItem[]>([]);
+  const [locked, setLocked] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+
+  // Screen lock (Settings → Staff → till locks after N idle minutes). The server refuses
+  // everything but unlocking while locked; the cart stays on this device.
+  const autoLockMs = policy.autoLockMinutes * 60_000;
+  const idle = useIdle(autoLockMs > 0 ? autoLockMs : 86_400_000, { initialState: false });
+  const lockScreen = useCallback(async (reason: "idle" | "manual") => {
+    try {
+      await authApi.lockTill(reason);
+      setLocked(true);
+      // Digits typed for the PIN must not land in the search box underneath.
+      if (document.activeElement instanceof HTMLElement) document.activeElement.blur();
+    } catch (e) {
+      // Offline the till keeps selling unlocked (unlocking needs the server).
+      if (e instanceof ApiError && e.status === 423) setLocked(true);
+    }
+  }, []);
+  useEffect(() => {
+    // Not while taking payment: the customer may be approving M-PESA on their phone.
+    if (idle && autoLockMs > 0 && isOnline && !locked && !paying) void lockScreen("idle"); // eslint-disable-line react-hooks/set-state-in-effect -- the lock is a server call; state changes after it answers
+  }, [idle, autoLockMs, isOnline, locked, paying, lockScreen]);
+  useEffect(() => onTillLocked(() => setLocked(true)), []);
 
   const totals = cartTotals(lines);
   const refocus = () => window.setTimeout(() => searchRef.current?.focus(), 0);
@@ -552,8 +577,11 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
               <Menu.Item leftSection={<IconBuildingBank size={16} />} disabled={!isOnline} onClick={() => setDropping(true)}>
                 Cash drop to safe{!isOnline && " (needs connection)"}
               </Menu.Item>
-              <Menu.Item leftSection={<IconLock size={16} />} disabled={lines.length > 0 || !isOnline} onClick={() => void lock()}>
-                Lock till
+              <Menu.Item leftSection={<IconLock size={16} />} disabled={!isOnline} onClick={() => void lockScreen("manual")}>
+                Lock screen (keeps the sale)
+              </Menu.Item>
+              <Menu.Item leftSection={<IconUsers size={16} />} disabled={lines.length > 0 || !isOnline} onClick={() => void lock()}>
+                Switch cashier
               </Menu.Item>
               <Menu.Item leftSection={<IconLogout size={16} />} disabled={lines.length > 0 || !isOnline || offline.unsynced > 0} onClick={() => setEnding(true)}>
                 End shift{offline.unsynced > 0 ? " (offline sales still sending)" : !isOnline ? " (needs connection)" : ""}
@@ -756,6 +784,16 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
         />
       )}
       {approvalModal}
+      {locked && user && (
+        <LockScreen
+          context={context}
+          user={user}
+          onUnlocked={() => {
+            setLocked(false);
+            refocus();
+          }}
+        />
+      )}
       {printing && <ReceiptPrint sale={printing.sale} copy={printing.copy} />}
     </div>
   );

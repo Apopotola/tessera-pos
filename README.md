@@ -83,6 +83,8 @@ Open **http://localhost:3010** (use `localhost`, not `127.0.0.1`, so the Sanctum
 | Njeri Wambui (Storekeeper) | `njeri@tessera.test` / `password` | — |
 | Tessera Support (all settings, incl. KRA PIN and eTIMS) | `support@tessera.test` / `password` | — |
 
+Owner, Admin and Tessera Support accounts use **two-step login**: the first sign-in shows a QR code for an authenticator app (Google Authenticator, Microsoft Authenticator, Authy) and then recovery codes. For demos without a phone, an owner can switch it off under **Settings → Staff and roles** (Tessera Support always keeps it).
+
 ### Setting up a till
 
 1. On the till device, open **http://localhost:3010/till** and choose **Manager sign in**.
@@ -175,3 +177,10 @@ When the connection drops the till keeps selling **cash and card** from a copy o
 - **Branding:** primary and accent colours (custom colours must keep white text readable), logo, receipt logo, app icon, login page style, background and welcome text apply live.
 - **What they drive:** the till gets its rules through `GET /organisation/till-context` (`Modules\Sales\Services\TillPolicy`) and the API re-checks them on every sale: invoice prefix (locked after the first sale), discount limit per role, approvals (price change, big discounts, removing items, refunds), selling below zero stock, accepted payment methods and order, split payments, cash rounding (`sales.rounding_cents`), STK Push on/off, eTIMS per branch (sales outside eTIMS are `not_required`), sell by tot, categories sold per branch, favourites, layout, touch mode, quick buttons, age check, receipt layout and printing, blind cash-up, allowed cash variance, low-stock default level, password length and dashboard tiles per role.
 - Settings for features not built yet are shown with **Coming later** and change nothing.
+
+## Sign-in security
+
+- **Two-step login (TOTP):** required for owners and admins while *Settings → Staff → Two-step login* is on, and always for Tessera support. The first sign-in sets it up (QR code, then 8 one-time recovery codes). Anyone can turn it on from the account menu. Lost phone: sign in with a recovery code, or an administrator uses *Users & roles → Reset two-step login* (only Tessera support can reset a Tessera support account). Secrets are stored encrypted, recovery codes hashed, and a code cannot be used twice.
+- **Passwords:** *Change password* in the account menu. A password set by an administrator, or older than *Password expiry*, must be changed before the back office works again.
+- **Back-office timeout:** signed out after *Back office signs out after (minutes idle)* (default 30), enforced by the API (`Modules\Auth\Http\Middleware\EnforceSessionSecurity`). Computers where *Keep me signed in* was ticked are exempt.
+- **Till lock:** after *Till locks after (minutes idle)* (default 2, per branch or till; not while taking payment or while offline) or *Lock screen* in the till menu. The sale in progress is kept; the API refuses everything but unlocking. The cashier unlocks with their PIN, or a branch manager with theirs (logged with the manager as approver).

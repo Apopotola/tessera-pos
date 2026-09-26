@@ -10,9 +10,10 @@ import { useEffect, useState } from "react";
 import { brand } from "@/app/theme";
 import BottleSkyline from "@/components/brand/BottleSkyline";
 import Logo from "@/components/brand/Logo";
+import { AuthenticatorQr, RecoveryCodes, TwoStepCodeForm } from "@/components/auth/TwoStepParts";
 import { useBrand } from "@/components/brand/useBrand";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
-import { login } from "@/store/slices/authSlice";
+import { cancelMfa, login, recoveryCodesSeen, setupMfa, verifyMfa } from "@/store/slices/authSlice";
 import type { LoginPayload } from "@/types/auth";
 import { safeRedirectPath } from "@/utils/menu";
 import classes from "./LoginForm.module.css";
@@ -22,7 +23,8 @@ export default function LoginForm() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { status, loginError, loginFieldErrors } = useAppSelector((state) => state.auth);
+  const { status, loginError, loginFieldErrors, mfa, recoveryCodes } = useAppSelector((state) => state.auth);
+  const [codeError, setCodeError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [forgotOpened, forgot] = useDisclosure(false);
   const next = safeRedirectPath(searchParams.get("next"));
@@ -41,18 +43,31 @@ export default function LoginForm() {
     },
   });
 
+  // Recovery codes from a first two-step set-up are shown before going on.
   useEffect(() => {
-    if (status === "authenticated") router.replace(next);
-  }, [status, next, router]);
+    if (status === "authenticated" && !recoveryCodes) router.replace(next);
+  }, [status, recoveryCodes, next, router]);
 
   const handleSubmit = async (values: Required<LoginPayload>) => {
     if (submitting) return;
     setSubmitting(true);
     const result = await dispatch(login({ ...values, login: values.login.trim() }));
-    if (login.rejected.match(result)) {
-      form.setErrors(result.payload?.fieldErrors ?? {});
-      setSubmitting(false);
+    if (login.rejected.match(result)) form.setErrors(result.payload?.fieldErrors ?? {});
+    // A two-step code comes next (or the page moves on): the password form is done.
+    setSubmitting(false);
+  };
+
+  const submitCode = async (code: string) => {
+    if (submitting || !mfa) return;
+    setSubmitting(true);
+    setCodeError(null);
+    const result = await dispatch(mfa.mfaStep === "setup" ? setupMfa(code) : verifyMfa(code));
+    if (verifyMfa.rejected.match(result) || setupMfa.rejected.match(result)) {
+      setCodeError(result.payload?.fieldErrors.code ?? result.payload?.message ?? "That code is not right.");
+      // Timed out: back to the password.
+      if (!result.payload?.fieldErrors.code) dispatch(cancelMfa());
     }
+    setSubmitting(false);
   };
 
   return (
@@ -78,69 +93,108 @@ export default function LoginForm() {
       </section>
 
       <section className={classes.formPanel} style={{ background: brand.cream }}>
-        <form onSubmit={form.onSubmit(handleSubmit)} noValidate className={classes.form}>
-          <Stack gap="lg">
+        {recoveryCodes ? (
+          <Stack gap="lg" className={classes.form}>
+            <Title order={1} fz={28} c={brand.navy}>
+              Two-step login is on
+            </Title>
+            <RecoveryCodes codes={recoveryCodes} />
+            <Button size="md" onClick={() => dispatch(recoveryCodesSeen())}>
+              I have saved them — continue
+            </Button>
+          </Stack>
+        ) : mfa ? (
+          <Stack gap="lg" className={classes.form}>
             <div>
               <Text size="xs" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: "0.12em" }}>
-                Back office
+                Two-step login
               </Text>
-              <Title order={1} fz={branding?.welcomeText && branding.welcomeText.length > 24 ? 26 : 32} c={brand.navy}>
-                {branding?.welcomeText ?? "Sign in"}
+              <Title order={1} fz={28} c={brand.navy}>
+                {mfa.mfaStep === "setup" ? "Protect your account" : "Enter your code"}
               </Title>
+              {mfa.mfaStep === "setup" && (
+                <Text size="sm" c="dimmed" mt={4}>
+                  Your role needs a code from your phone as well as your password. This takes a minute, once.
+                </Text>
+              )}
             </div>
-
-            {loginError && Object.keys(loginFieldErrors).length === 0 && (
-              <Alert color="red" variant="light" icon={<IconAlertCircle size={18} />}>
-                {loginError}
-              </Alert>
-            )}
-
-            <TextInput
-              label="Email or phone number"
-              placeholder="you@shop.co.ke or 0712 345 678"
-              autoComplete="username"
-              size="md"
-              required
-              withAsterisk={false}
-              key={form.key("login")}
-              {...form.getInputProps("login")}
+            {mfa.setup && <AuthenticatorQr setup={mfa.setup} />}
+            <TwoStepCodeForm
+              onSubmit={(code) => void submitCode(code)}
+              pending={submitting}
+              error={codeError}
+              allowRecovery={mfa.mfaStep === "verify"}
+              submitLabel={mfa.mfaStep === "setup" ? "Turn on and sign in" : "Sign in"}
             />
-
-            <PasswordInput
-              label={
-                <Group justify="space-between" w="100%" component="span">
-                  <span>Password</span>
-                  <Anchor component="button" type="button" size="sm" fw={600} onClick={forgot.open}>
-                    Forgot password?
-                  </Anchor>
-                </Group>
-              }
-              labelProps={{ style: { width: "100%" } }}
-              autoComplete="current-password"
-              size="md"
-              required
-              withAsterisk={false}
-              key={form.key("password")}
-              {...form.getInputProps("password")}
-            />
-
-            <Checkbox label="Keep me signed in on this computer" key={form.key("remember")} {...form.getInputProps("remember", { type: "checkbox" })} />
-
-            <Button type="submit" size="md" fullWidth loading={submitting}>
-              Sign in
-            </Button>
-
-            <Divider label="or" labelPosition="center" />
-
-            <Button component={Link} href="/till" variant="default" size="md" fullWidth leftSection={<IconCalculator size={18} />}>
-              Cashier? Sign in with your PIN
-            </Button>
-
-            <Text size="xs" c="dimmed" ta="center">
-              {poweredBy.text} · Need help? Contact your shop administrator.
-            </Text>
+            <Anchor component="button" type="button" size="sm" c="dimmed" onClick={() => dispatch(cancelMfa())}>
+              ← Back to password
+            </Anchor>
           </Stack>
-        </form>
+        ) : (
+          <form onSubmit={form.onSubmit(handleSubmit)} noValidate className={classes.form}>
+            <Stack gap="lg">
+              <div>
+                <Text size="xs" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: "0.12em" }}>
+                  Back office
+                </Text>
+                <Title order={1} fz={branding?.welcomeText && branding.welcomeText.length > 24 ? 26 : 32} c={brand.navy}>
+                  {branding?.welcomeText ?? "Sign in"}
+                </Title>
+              </div>
+
+              {loginError && Object.keys(loginFieldErrors).length === 0 && (
+                <Alert color="red" variant="light" icon={<IconAlertCircle size={18} />}>
+                  {loginError}
+                </Alert>
+              )}
+
+              <TextInput
+                label="Email or phone number"
+                placeholder="you@shop.co.ke or 0712 345 678"
+                autoComplete="username"
+                size="md"
+                required
+                withAsterisk={false}
+                key={form.key("login")}
+                {...form.getInputProps("login")}
+              />
+
+              <PasswordInput
+                label={
+                  <Group justify="space-between" w="100%" component="span">
+                    <span>Password</span>
+                    <Anchor component="button" type="button" size="sm" fw={600} onClick={forgot.open}>
+                      Forgot password?
+                    </Anchor>
+                  </Group>
+                }
+                labelProps={{ style: { width: "100%" } }}
+                autoComplete="current-password"
+                size="md"
+                required
+                withAsterisk={false}
+                key={form.key("password")}
+                {...form.getInputProps("password")}
+              />
+
+              <Checkbox label="Keep me signed in on this computer" key={form.key("remember")} {...form.getInputProps("remember", { type: "checkbox" })} />
+
+              <Button type="submit" size="md" fullWidth loading={submitting}>
+                Sign in
+              </Button>
+
+              <Divider label="or" labelPosition="center" />
+
+              <Button component={Link} href="/till" variant="default" size="md" fullWidth leftSection={<IconCalculator size={18} />}>
+                Cashier? Sign in with your PIN
+              </Button>
+
+              <Text size="xs" c="dimmed" ta="center">
+                {poweredBy.text} · Need help? Contact your shop administrator.
+              </Text>
+            </Stack>
+          </form>
+        )}
       </section>
 
       <Modal opened={forgotOpened} onClose={forgot.close} title="Forgot your password?" centered>

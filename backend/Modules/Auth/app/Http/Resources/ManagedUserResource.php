@@ -24,6 +24,7 @@ class ManagedUserResource extends JsonResource
             'role' => $this->roles->first()?->name,
             'branchIds' => $this->branches->pluck('id')->values(),
             'hasPin' => $this->pin_hash !== null,
+            'mfaEnabled' => $this->mfa_enabled_at !== null,
             'isActive' => $this->is_active,
             'lastLoginAt' => $this->last_login_at?->toIso8601String(),
         ];

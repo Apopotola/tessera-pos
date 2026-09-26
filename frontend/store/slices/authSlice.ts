@@ -1,6 +1,6 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { ApiError, authApi, authorizationApi } from "@/api";
-import type { AuthUser, LoginPayload, MenuItem } from "@/types/auth";
+import type { AuthUser, LoginPayload, MenuItem, MfaChallenge } from "@/types/auth";
 
 export type AuthStatus = "idle" | "loading" | "authenticated" | "unauthenticated";
 
@@ -10,6 +10,10 @@ export interface AuthState {
   menus: MenuItem[];
   loginError: string | null;
   loginFieldErrors: Record<string, string>;
+  /** The password was right; a two-step code is needed before the session starts. */
+  mfa: MfaChallenge | null;
+  /** Shown once after two-step login is set up at sign-in, before going on. */
+  recoveryCodes: string[] | null;
 }
 
 const initialState: AuthState = {
@@ -18,6 +22,8 @@ const initialState: AuthState = {
   menus: [],
   loginError: null,
   loginFieldErrors: {},
+  mfa: null,
+  recoveryCodes: null,
 };
 
 interface SessionPayload {
@@ -42,18 +48,42 @@ export const bootstrapSession = createAsyncThunk<SessionPayload | null>("auth/bo
   }
 });
 
-export const login = createAsyncThunk<SessionPayload, LoginPayload, { rejectValue: LoginRejection }>(
+const rejection = (error: unknown): LoginRejection =>
+  error instanceof ApiError ? { message: error.message, fieldErrors: error.formErrors } : { message: "Unable to sign in. Try again.", fieldErrors: {} };
+
+export const login = createAsyncThunk<SessionPayload | { mfa: MfaChallenge }, LoginPayload, { rejectValue: LoginRejection }>(
   "auth/login",
   async (payload, { rejectWithValue }) => {
     try {
-      const user = await authApi.login(payload);
+      const result = await authApi.login(payload);
+      if ("mfaStep" in result) return { mfa: result };
       const menus = await authorizationApi.menus();
-      return { user, menus };
+      return { user: result, menus };
     } catch (error) {
-      if (error instanceof ApiError) {
-        return rejectWithValue({ message: error.message, fieldErrors: error.formErrors });
-      }
-      return rejectWithValue({ message: "Unable to sign in. Try again.", fieldErrors: {} });
+      return rejectWithValue(rejection(error));
+    }
+  },
+);
+
+/** Second step of sign-in: a code from the authenticator app or a recovery code. */
+export const verifyMfa = createAsyncThunk<SessionPayload, string, { rejectValue: LoginRejection }>("auth/verifyMfa", async (code, { rejectWithValue }) => {
+  try {
+    const user = await authApi.verifyMfa(code);
+    return { user, menus: await authorizationApi.menus() };
+  } catch (error) {
+    return rejectWithValue(rejection(error));
+  }
+});
+
+/** First sign-in with two-step login required: confirm the app's code; recovery codes are shown next. */
+export const setupMfa = createAsyncThunk<SessionPayload & { recoveryCodes: string[] }, string, { rejectValue: LoginRejection }>(
+  "auth/setupMfa",
+  async (code, { rejectWithValue }) => {
+    try {
+      const { user, recoveryCodes } = await authApi.setupMfa(code);
+      return { user, recoveryCodes, menus: await authorizationApi.menus() };
+    } catch (error) {
+      return rejectWithValue(rejection(error));
     }
   },
 );
@@ -97,6 +127,19 @@ const authSlice = createSlice({
       state.user = null;
       state.menus = [];
     },
+    /** Back to the password step (e.g. the code timed out). */
+    cancelMfa(state) {
+      state.mfa = null;
+      state.loginError = null;
+      state.loginFieldErrors = {};
+    },
+    recoveryCodesSeen(state) {
+      state.recoveryCodes = null;
+    },
+    /** After a password change or two-step change. */
+    userUpdated(state, { payload }: { payload: AuthUser }) {
+      state.user = payload;
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -116,6 +159,10 @@ const authSlice = createSlice({
         state.loginFieldErrors = {};
       })
       .addCase(login.fulfilled, (state, { payload }) => {
+        if ("mfa" in payload) {
+          state.mfa = payload.mfa;
+          return;
+        }
         state.status = "authenticated";
         state.user = payload.user;
         state.menus = payload.menus;
@@ -123,6 +170,19 @@ const authSlice = createSlice({
       .addCase(login.rejected, (state, { payload }) => {
         state.loginError = payload?.message ?? "Unable to sign in. Try again.";
         state.loginFieldErrors = payload?.fieldErrors ?? {};
+      })
+      .addCase(verifyMfa.fulfilled, (state, { payload }) => {
+        state.mfa = null;
+        state.status = "authenticated";
+        state.user = payload.user;
+        state.menus = payload.menus;
+      })
+      .addCase(setupMfa.fulfilled, (state, { payload }) => {
+        state.mfa = null;
+        state.recoveryCodes = payload.recoveryCodes;
+        state.status = "authenticated";
+        state.user = payload.user;
+        state.menus = payload.menus;
       })
       .addCase(pinLogin.fulfilled, (state, { payload }) => {
         state.status = "authenticated";
@@ -133,9 +193,10 @@ const authSlice = createSlice({
         state.status = "unauthenticated";
         state.user = null;
         state.menus = [];
+        state.mfa = null;
       });
   },
 });
 
-export const { restoreOfflineSession, sessionExpired } = authSlice.actions;
+export const { restoreOfflineSession, sessionExpired, cancelMfa, recoveryCodesSeen, userUpdated } = authSlice.actions;
 export default authSlice.reducer;

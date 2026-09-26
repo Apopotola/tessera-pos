@@ -5,6 +5,7 @@ namespace Modules\Auth\Http\Resources;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Modules\Auth\Models\User;
+use Modules\Auth\Services\PasswordService;
 
 /**
  * The signed-in user as the frontend sees it (frontend/types/auth.ts → AuthUser).
@@ -21,7 +22,9 @@ class AuthUserResource extends JsonResource
             'name' => $this->name,
             'email' => $this->email,
             'phone' => $this->phone,
-            'mustChangePassword' => $this->must_change_password,
+            // Set by an admin, or older than Settings → Staff → Password expiry.
+            'mustChangePassword' => app(PasswordService::class)->mustChange($this->resource),
+            'mfaEnabled' => $this->mfa_enabled_at !== null,
             'roles' => $this->getRoleNames()->values(),
             'permissions' => $this->getAllPermissions()->pluck('name')->sort()->values(),
         ];

@@ -1,7 +1,8 @@
 "use client";
 
 import { ActionIcon, Button, Menu, Table, Text } from "@mantine/core";
-import { IconDots, IconEdit, IconKey, IconPlus } from "@tabler/icons-react";
+import { modals } from "@mantine/modals";
+import { IconDots, IconEdit, IconKey, IconPlus, IconShieldOff } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { useCallback, useMemo, useState } from "react";
 import { organisationApi, usersApi } from "@/api";
@@ -10,6 +11,7 @@ import StatusBadge from "@/components/shared/StatusBadge";
 import WorkspacePage from "@/components/shared/WorkspacePage";
 import QueryState from "@/components/shared/QueryState";
 import type { WorkspaceViewProps } from "@/components/workspace/types";
+import { useApiMutation } from "@/hooks/useApiMutation";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import PinModal from "@/modules/users/components/PinModal";
 import UserFormModal from "@/modules/users/components/UserFormModal";
@@ -31,6 +33,20 @@ export default function UsersView({ title, section }: WorkspaceViewProps) {
     users.reload();
   };
 
+  // Lost phone: two-step login is set up again at the person's next sign-in.
+  const resetMfa = useApiMutation((user: ManagedUser) => usersApi.resetMfa(user.id), {
+    successMessage: (user) => `Two-step login reset for ${user.name}.`,
+    onSuccess: users.reload,
+  });
+  const confirmResetMfa = (user: ManagedUser) =>
+    modals.openConfirmModal({
+      title: `Reset two-step login for ${user.name}?`,
+      children: <Text size="sm">Use this when they lost their phone. They set up two-step login again, with their new phone, the next time they sign in.</Text>,
+      labels: { confirm: "Reset", cancel: "Cancel" },
+      confirmProps: { color: "red" },
+      onConfirm: () => void resetMfa.mutate(user),
+    });
+
   return (
     <WorkspacePage section={section}
       title={title}
@@ -51,6 +67,7 @@ export default function UsersView({ title, section }: WorkspaceViewProps) {
                 <Table.Th>Role</Table.Th>
                 <Table.Th>Branches</Table.Th>
                 <Table.Th>Till PIN</Table.Th>
+                <Table.Th>Two-step login</Table.Th>
                 <Table.Th>Last sign-in</Table.Th>
                 <Table.Th>Status</Table.Th>
                 <Table.Th />
@@ -75,6 +92,9 @@ export default function UsersView({ title, section }: WorkspaceViewProps) {
                     <StatusBadge active={user.hasPin} activeLabel="Set" inactiveLabel="Not set" />
                   </Table.Td>
                   <Table.Td>
+                    <StatusBadge active={user.mfaEnabled} activeLabel="On" inactiveLabel="Off" />
+                  </Table.Td>
+                  <Table.Td>
                     <Text size="sm">{user.lastLoginAt ? dayjs(user.lastLoginAt).format("DD MMM YYYY HH:mm") : "Never"}</Text>
                   </Table.Td>
                   <Table.Td>
@@ -94,6 +114,11 @@ export default function UsersView({ title, section }: WorkspaceViewProps) {
                         <Menu.Item leftSection={<IconKey size={14} />} onClick={() => setDialog({ kind: "pin", user })}>
                           {user.hasPin ? "Change till PIN" : "Set till PIN"}
                         </Menu.Item>
+                        {user.mfaEnabled && (
+                          <Menu.Item leftSection={<IconShieldOff size={14} />} color="red" onClick={() => confirmResetMfa(user)}>
+                            Reset two-step login
+                          </Menu.Item>
+                        )}
                       </Menu.Dropdown>
                     </Menu>
                   </Table.Td>

@@ -1,11 +1,12 @@
 "use client";
 
-import { Anchor, Avatar, Button, Group, SimpleGrid, Stack, Text, UnstyledButton } from "@mantine/core";
-import { IconBackspace, IconClock } from "@tabler/icons-react";
+import { Anchor, Avatar, Group, SimpleGrid, Stack, Text, UnstyledButton } from "@mantine/core";
+import { IconClock } from "@tabler/icons-react";
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useState } from "react";
 import { ApiError, salesApi } from "@/api";
 import { brand } from "@/app/theme";
+import PinPad, { PIN_LENGTH, usePinEntry } from "@/modules/till/components/PinPad";
 import TillHeader from "@/modules/till/components/TillHeader";
 import { useAppDispatch } from "@/store/hooks";
 import { pinLogin } from "@/store/slices/authSlice";
@@ -13,8 +14,7 @@ import type { Shift, TillCashier, TillContext } from "@/types/till";
 import { formatKes } from "@/utils/money";
 import classes from "../Till.module.css";
 
-const PIN_LENGTH = 4;
-const AVATAR_COLORS = [brand.purple, brand.amber, brand.lilac, "#3dbb7f", "#e8664a", "#c9c6d6"];
+export const AVATAR_COLORS = [brand.purple, brand.amber, brand.lilac, "#3dbb7f", "#e8664a", "#c9c6d6"];
 
 interface PinScreenProps {
   context: TillContext;
@@ -25,26 +25,22 @@ interface PinScreenProps {
 export default function PinScreen({ context, onShiftStarted }: PinScreenProps) {
   const dispatch = useAppDispatch();
   const [selected, setSelected] = useState<TillCashier | null>(context.cashiers[0] ?? null);
-  const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const { pin, press: pressKey, reset } = usePinEntry(busy);
+  const press = useCallback(
+    (key: string) => {
+      setError(null);
+      pressKey(key);
+    },
+    [pressKey],
+  );
 
   const select = (cashier: TillCashier) => {
     setSelected(cashier);
-    setPin("");
+    reset();
     setError(null);
   };
-
-  const press = useCallback(
-    (key: string) => {
-      if (busy) return;
-      setError(null);
-      if (key === "clear") setPin("");
-      else if (key === "back") setPin((p) => p.slice(0, -1));
-      else setPin((p) => (p.length < PIN_LENGTH ? p + key : p));
-    },
-    [busy],
-  );
 
   const submit = useCallback(async () => {
     if (!selected || pin.length !== PIN_LENGTH || busy) return;
@@ -53,7 +49,7 @@ export default function PinScreen({ context, onShiftStarted }: PinScreenProps) {
 
     if (pinLogin.rejected.match(result)) {
       setError(result.payload ?? "Wrong PIN. Try again.");
-      setPin("");
+      reset();
       setBusy(false);
       return;
     }
@@ -62,22 +58,10 @@ export default function PinScreen({ context, onShiftStarted }: PinScreenProps) {
       onShiftStarted(await salesApi.startShift());
     } catch (e) {
       setError(e instanceof ApiError ? (Object.values(e.fieldErrors)[0]?.[0] ?? e.message) : "Could not start the shift.");
-      setPin("");
+      reset();
       setBusy(false);
     }
-  }, [busy, dispatch, onShiftStarted, pin, selected]);
-
-  // Physical keyboard / numpad support.
-  useEffect(() => {
-    const onKey = (event: KeyboardEvent) => {
-      if (/^\d$/.test(event.key)) press(event.key);
-      else if (event.key === "Backspace") press("back");
-      else if (event.key === "Escape") press("clear");
-      else if (event.key === "Enter") void submit();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [press, submit]);
+  }, [busy, dispatch, onShiftStarted, pin, selected, reset]);
 
   const colorFor = (cashier: TillCashier) => AVATAR_COLORS[context.cashiers.indexOf(cashier) % AVATAR_COLORS.length];
 
@@ -146,36 +130,7 @@ export default function PinScreen({ context, onShiftStarted }: PinScreenProps) {
               Enter your {PIN_LENGTH}-digit PIN
             </Text>
 
-            <Group gap="md" my="md" aria-label={`${pin.length} of ${PIN_LENGTH} digits entered`}>
-              {Array.from({ length: PIN_LENGTH }, (_, i) => (
-                <span key={i} className={classes.dot} data-filled={i < pin.length || undefined} />
-              ))}
-            </Group>
-
-            <Text c="red.4" size="sm" mih={20} role="alert">
-              {error}
-            </Text>
-
-            <SimpleGrid cols={3} spacing="sm" w="100%">
-              {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((digit) => (
-                <UnstyledButton key={digit} className={classes.key} onClick={() => press(digit)}>
-                  {digit}
-                </UnstyledButton>
-              ))}
-              <UnstyledButton className={classes.keyText} onClick={() => press("clear")}>
-                Clear
-              </UnstyledButton>
-              <UnstyledButton className={classes.key} onClick={() => press("0")}>
-                0
-              </UnstyledButton>
-              <UnstyledButton className={classes.keyText} onClick={() => press("back")} aria-label="Delete last digit">
-                <IconBackspace size={24} />
-              </UnstyledButton>
-            </SimpleGrid>
-
-            <Button fullWidth size="xl" mt="lg" radius="md" disabled={pin.length !== PIN_LENGTH} loading={busy} onClick={() => void submit()} className={classes.start}>
-              Start shift
-            </Button>
+            <PinPad pin={pin} press={press} onSubmit={() => void submit()} busy={busy} error={error} submitLabel="Start shift" />
           </Stack>
         ) : (
           <Text c="gray.5">Select your name to sign in.</Text>

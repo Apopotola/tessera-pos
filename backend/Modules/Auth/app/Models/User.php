@@ -36,6 +36,8 @@ class User extends Authenticatable
         'password',
         'pin_hash',
         'remember_token',
+        'mfa_secret',
+        'mfa_recovery_codes',
     ];
 
     protected function casts(): array
@@ -44,6 +46,11 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'last_login_at' => 'datetime',
             'pin_set_at' => 'datetime',
+            'password_changed_at' => 'datetime',
+            'mfa_secret' => 'encrypted',
+            'mfa_enabled_at' => 'datetime',
+            'mfa_recovery_codes' => 'array',
+            'mfa_last_step' => 'integer',
             'password' => 'hashed',
             'is_active' => 'boolean',
             'must_change_password' => 'boolean',

@@ -1,7 +1,7 @@
 import axios, { AxiosError, type AxiosRequestConfig } from "axios";
 import { API_BASE_URL, CSRF_COOKIE_URL } from "@/api/urls";
 import type { ApiEnvelope, ApiErrorEnvelope } from "@/types/api";
-import { emitSessionExpired } from "@/utils/sessionEvents";
+import { emitSessionExpired, emitTillLocked } from "@/utils/sessionEvents";
 import { getTillToken } from "@/utils/tillDevice";
 
 /**
@@ -47,7 +47,7 @@ http.interceptors.request.use((config) => {
 });
 
 /** Auth bootstrap endpoints must not trigger the global "session expired" flow. */
-const SESSION_NEUTRAL_PATHS = ["/auth/login", "/auth/pin-login", "/auth/me"];
+const SESSION_NEUTRAL_PATHS = ["/auth/login", "/auth/pin-login", "/auth/me", "/auth/mfa/verify", "/auth/mfa/setup"];
 
 function isErrorEnvelope(value: unknown): value is ApiErrorEnvelope {
   return typeof value === "object" && value !== null && "success" in value && (value as { success: unknown }).success === false;
@@ -85,8 +85,9 @@ export async function apiRequest<T>(config: AxiosRequestConfig): Promise<T> {
     const path = config.url ?? "";
 
     if ((apiError.status === 401 || apiError.status === 419) && !SESSION_NEUTRAL_PATHS.includes(path)) {
-      emitSessionExpired(apiError.status);
+      emitSessionExpired(apiError.status, apiError.message);
     }
+    if (apiError.status === 423) emitTillLocked();
 
     throw apiError;
   }

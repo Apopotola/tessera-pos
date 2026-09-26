@@ -90,6 +90,34 @@ class TillShiftTest extends TestCase
             ->assertJsonPath('message', 'This device is not set up as a till.');
     }
 
+    public function test_locked_till_only_unlocks_with_the_cashiers_or_a_managers_pin(): void
+    {
+        $cashier = $this->cashier();
+        $other = $this->cashier('Amina Hassan', '3691');
+        $manager = User::factory()->create(['name' => 'Wanjiru Mwangi']);
+        $manager->assignRole(Roles::BRANCH_MANAGER);
+        $manager->branches()->attach($this->branch);
+        $manager->forceFill(['pin_hash' => Hash::make('4826')])->save();
+
+        $this->fromTill()->postJson('/api/v1/auth/pin-login', ['userId' => $cashier->id, 'pin' => '2580'])->assertOk();
+        $this->fromTill()->postJson('/api/v1/sales/shifts')->assertCreated();
+        $this->fromTill()->postJson('/api/v1/auth/till/lock', ['reason' => 'idle'])->assertOk();
+
+        // Nothing works while locked, except unlocking and the till screen's own context.
+        $this->fromTill()->getJson('/api/v1/sales/till/parked')->assertStatus(423)->assertJsonPath('errors.session.0', 'locked');
+        $this->fromTill()->getJson('/api/v1/organisation/till-context')->assertOk();
+
+        $this->fromTill()->postJson('/api/v1/auth/till/unlock', ['userId' => $cashier->id, 'pin' => '0000'])->assertUnprocessable();
+        $this->fromTill()->postJson('/api/v1/auth/till/unlock', ['userId' => $other->id, 'pin' => '3691'])->assertUnprocessable();
+        $this->fromTill()->postJson('/api/v1/auth/till/unlock', ['userId' => $manager->id, 'pin' => '4826'])->assertOk()->assertJsonPath('data.id', $cashier->id);
+        $this->assertDatabaseHas('audit_logs', ['action' => 'auth.till.unlocked', 'user_id' => $cashier->id, 'approver_id' => $manager->id]);
+        $this->fromTill()->getJson('/api/v1/sales/till/parked')->assertOk();
+
+        $this->fromTill()->postJson('/api/v1/auth/till/lock')->assertOk();
+        $this->fromTill()->postJson('/api/v1/auth/till/unlock', ['userId' => $cashier->id, 'pin' => '2580'])->assertOk();
+        $this->fromTill()->getJson('/api/v1/sales/till/parked')->assertOk();
+    }
+
     public function test_cashier_signs_in_with_pin_and_starts_then_resumes_a_shift(): void
     {
         $cashier = $this->cashier();

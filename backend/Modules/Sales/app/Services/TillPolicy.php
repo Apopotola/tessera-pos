@@ -139,6 +139,7 @@ class TillPolicy
             'sellByTot' => $this->sellByTot($till),
             'ageCheck' => (bool) $this->value('sales.age_check_prompt', $till),
             'blindCashUp' => $this->blindCashUp($till),
+            'autoLockMinutes' => (int) $this->value('staff.till_auto_lock_minutes', $till),
             'layout' => $this->value('sales.layout', $till),
             'touchMode' => $this->value('sales.touch_mode', $till),
             'quickButtons' => array_values((array) $this->value('sales.quick_buttons', $till)),

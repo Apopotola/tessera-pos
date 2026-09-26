@@ -1,13 +1,25 @@
 import { api, ensureCsrfCookie } from "@/api/client";
 import { AUTH_URLS, AUTHORIZATION_URLS } from "@/api/urls";
-import type { AuthUser, LoginPayload, MenuItem } from "@/types/auth";
+import type { AuthUser, ChangePasswordPayload, LoginPayload, MenuItem, MfaChallenge, MfaSetup, MfaStatus } from "@/types/auth";
 import type { ManagedUser, UserPayload, UsersList } from "@/types/users";
 
 export const authApi = {
-  async login(payload: LoginPayload): Promise<AuthUser> {
+  /** Signed in, or a two-step code is needed first. */
+  async login(payload: LoginPayload): Promise<AuthUser | MfaChallenge> {
     await ensureCsrfCookie();
-    return api.post<AuthUser>(AUTH_URLS.login, payload);
+    return api.post<AuthUser | MfaChallenge>(AUTH_URLS.login, payload);
   },
+  verifyMfa: (code: string) => api.post<AuthUser>(AUTH_URLS.mfaVerify, { code }),
+  /** First sign-in with two-step login: confirm the app's code; recovery codes come back once. */
+  setupMfa: (code: string) => api.post<{ user: AuthUser; recoveryCodes: string[] }>(AUTH_URLS.mfaSetup, { code }),
+  changePassword: (payload: ChangePasswordPayload) => api.post<AuthUser>(AUTH_URLS.password, payload),
+  mfaStatus: () => api.get<MfaStatus>(AUTH_URLS.mfa),
+  mfaStart: () => api.post<MfaSetup>(AUTH_URLS.mfaStart),
+  mfaEnable: (code: string) => api.post<{ recoveryCodes: string[] }>(AUTH_URLS.mfaEnable, { code }),
+  mfaDisable: (code: string) => api.post<null>(AUTH_URLS.mfaDisable, { code }),
+  /** Till screen lock; the sale in progress stays on the device. */
+  lockTill: (reason: "idle" | "manual") => api.post<null>(AUTH_URLS.tillLock, { reason }),
+  unlockTill: (userId: number, pin: string) => api.post<AuthUser>(AUTH_URLS.tillUnlock, { userId, pin }),
   /** Till sign-in; the device token header is added by the API client. */
   async pinLogin(userId: number, pin: string): Promise<AuthUser> {
     await ensureCsrfCookie();
@@ -27,4 +39,5 @@ export const usersApi = {
   update: (id: number, payload: UserPayload) => api.put<ManagedUser>(AUTH_URLS.user(id), payload),
   setPin: (id: number, pin: string, pinConfirmation: string) =>
     api.post<ManagedUser>(AUTH_URLS.userPin(id), { pin, pin_confirmation: pinConfirmation }),
+  resetMfa: (id: number) => api.post<ManagedUser>(AUTH_URLS.userMfaReset(id)),
 };

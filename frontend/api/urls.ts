@@ -55,6 +55,16 @@ export const AUTH_URLS = {
   users: "/auth/users",
   user: (id: number) => `/auth/users/${id}`,
   userPin: (id: number) => `/auth/users/${id}/pin`,
+  userMfaReset: (id: number) => `/auth/users/${id}/mfa/reset`,
+  mfaVerify: "/auth/mfa/verify",
+  mfaSetup: "/auth/mfa/setup",
+  mfa: "/auth/mfa",
+  mfaStart: "/auth/mfa/start",
+  mfaEnable: "/auth/mfa/enable",
+  mfaDisable: "/auth/mfa/disable",
+  password: "/auth/password",
+  tillLock: "/auth/till/lock",
+  tillUnlock: "/auth/till/unlock",
 } as const;
 
 export const SALES_URLS = {
