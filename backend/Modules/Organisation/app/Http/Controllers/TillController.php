@@ -11,11 +11,15 @@ use Modules\Organisation\Http\Requests\PairTillRequest;
 use Modules\Organisation\Http\Resources\TillResource;
 use Modules\Organisation\Models\Till;
 use Modules\Organisation\Services\TillDeviceService;
+use Modules\Sales\Services\TillPolicy;
 use OpenApi\Attributes as OA;
 
 class TillController extends Controller
 {
-    public function __construct(private readonly TillDeviceService $tills) {}
+    public function __construct(
+        private readonly TillDeviceService $tills,
+        private readonly TillPolicy $policy,
+    ) {}
 
     #[OA\Get(path: '/api/v1/organisation/tills', summary: 'All tills with pairing status', tags: ['Organisation'], responses: [new OA\Response(response: 200, description: 'Tills')])]
     public function index(Request $request): JsonResponse
@@ -63,14 +67,12 @@ class TillController extends Controller
             'till' => new TillResource($till),
             // Limits the till enforces up front (the API re-checks them on every sale).
             'policy' => [
-                'discountLimitPercent' => (int) config('sales.discount_limit_percent', 5),
-                'voidApprovalThresholdCents' => (int) config('sales.void_approval_threshold_cents', 500000),
+                // Settings for this till (till → branch → business → default).
+                ...$this->policy->forTill($till),
                 'returnWindowDays' => (int) config('sales.return_window_days', 7),
                 // "stk": prompt the customer's phone / pick their payment; "manual": type the code (unverified).
                 'mpesaMode' => config('payments.mpesa.driver') === 'manual' ? 'manual' : 'stk',
                 'mpesaDemo' => config('payments.mpesa.driver') === 'fake',
-                // Printed on receipts, including those the till prints while offline.
-                'receiptFooter' => (string) config('sales.receipt_footer'),
             ],
             // Display names only — no emails or phone numbers on a shared screen.
             'cashiers' => $this->tills->cashiersFor($till)->map(fn (User $user) => [

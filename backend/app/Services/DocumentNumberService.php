@@ -11,7 +11,11 @@ use Modules\Organisation\Models\Branch;
  */
 class DocumentNumberService
 {
-    public function next(Branch $branch, string $type): string
+    /**
+     * "MAIN-S-000001", or with an invoice prefix (Settings → Receipts) "INV-MAIN-000001".
+     * The prefixed format keeps the same per-branch sequence.
+     */
+    public function next(Branch $branch, string $type, string $prefix = ''): string
     {
         DB::table('document_sequences')->insertOrIgnore([
             'branch_id' => $branch->id,
@@ -29,6 +33,8 @@ class DocumentNumberService
             ->where(['branch_id' => $branch->id, 'document_type' => $type])
             ->update(['last_number' => $number]);
 
-        return sprintf('%s-%s-%06d', $branch->code, $type, $number);
+        return $prefix !== ''
+            ? sprintf('%s%s-%06d', $prefix, $branch->code, $number)
+            : sprintf('%s-%s-%06d', $branch->code, $type, $number);
     }
 }

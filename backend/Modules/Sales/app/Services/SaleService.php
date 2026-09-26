@@ -45,10 +45,11 @@ class SaleService
         private readonly OpenBottleService $bottles,
         private readonly MpesaAllocator $mpesa,
         private readonly EtimsOutbox $etims,
+        private readonly TillPolicy $policy,
     ) {}
 
     /**
-     * @param  array{clientId: string, customerPin?: string|null, lines: list<array{variantId: int, unit?: string|null, quantity: int, unitPriceCents?: int|null, discountCents?: int|null, approvalToken?: string|null}>, tenders: list<array{method: string, amountCents: int, reference?: string|null, cardLast4?: string|null}>}  $data
+     * @param  array{clientId: string, customerPin?: string|null, stockApprovalToken?: string|null, lines: list<array{variantId: int, unit?: string|null, quantity: int, unitPriceCents?: int|null, discountCents?: int|null, approvalToken?: string|null}>, tenders: list<array{method: string, amountCents: int, reference?: string|null, cardLast4?: string|null}>}  $data
      * @return array{sale: Sale, replayed: bool}
      */
     public function complete(Till $till, User $cashier, array $data): array
@@ -76,12 +77,15 @@ class SaleService
         }
         $lines = $this->priceLines($till, $cashier, $data['lines'], (bool) $customer?->is_wholesale, $occurredAt);
         $total = array_sum(array_column($lines, 'line_total_cents'));
-        $tenders = $this->settle($data['tenders'], $total, $till->branch_id);
+        ['tenders' => $tenders, 'rounding' => $rounding] = $this->settle($till, $data['tenders'], $total);
+        $etims = $this->policy->etimsEnabled($till);
 
-        return DB::transaction(function () use ($till, $cashier, $data, $shift, $location, $lines, $total, $tenders, $customer, $occurredAt, $offline) {
+        return DB::transaction(function () use ($till, $cashier, $data, $shift, $location, $lines, $total, $tenders, $rounding, $customer, $occurredAt, $offline, $etims) {
+            // Offline sales already happened: they are always recorded and the next count catches any gap.
+            $stockApprovedBy = $offline ? null : $this->checkStock($till, $cashier, $location, $lines, $data['stockApprovalToken'] ?? null);
             // Reserve the id first so the ledger can reference the sale and give us exact costs.
             $saleId = (int) DB::selectOne("SELECT nextval('sales_id_seq') AS id")->id;
-            $number = $this->numbers->next($till->branch, Sale::NUMBER_PREFIX);
+            $number = $this->numbers->next($till->branch, Sale::NUMBER_PREFIX, $this->policy->invoicePrefix($till));
 
             // Bottles leave the shelf through the ledger; tots pour from the open bottle.
             $bottleLines = array_values(array_filter($lines, fn ($l) => $l['unit'] === SaleLine::UNIT_BOTTLE));
@@ -114,10 +118,12 @@ class SaleService
                 'subtotal_cents' => array_sum(array_map(fn ($l) => $l['quantity'] * $l['unit_price_cents'], $lines)),
                 'discount_cents' => array_sum(array_column($lines, 'discount_cents')),
                 'total_cents' => $total,
+                'rounding_cents' => $rounding,
                 'vat_cents' => array_sum(array_column($lines, 'vat_cents')),
                 'cost_cents' => array_sum(array_map(fn ($l) => $l['quantity'] * $l['unit_cost_cents'], $lines)),
                 'status' => 'completed',
-                'etims_status' => 'pending',
+                // Branches outside eTIMS (Settings → Integrations) send nothing to KRA.
+                'etims_status' => $etims ? 'pending' : Sale::ETIMS_NOT_REQUIRED,
                 'completed_at' => $occurredAt,
                 'captured_offline' => $offline,
             ]);
@@ -135,7 +141,9 @@ class SaleService
             }
 
             // Transactional outbox: the sale cannot commit without its eTIMS job.
-            $this->etims->queueSale($sale);
+            if ($etims) {
+                $this->etims->queueSale($sale);
+            }
 
             $this->audit->log('sales.sale.completed', $sale, after: [
                 'number' => $number,
@@ -143,6 +151,8 @@ class SaleService
                 'tenders' => array_map(fn ($t) => [$t['method'], $t['amount_cents']], $tenders),
                 'approved_lines' => count(array_filter($lines, fn ($l) => $l['approved_by'] !== null)),
                 'captured_offline' => $offline,
+                'rounding_cents' => $rounding,
+                'below_zero_approved_by' => $stockApprovedBy,
             ], userId: $cashier->id, branchId: $till->branch_id, reference: "till:{$till->id}");
 
             return ['sale' => $sale, 'replayed' => false];
@@ -199,6 +209,43 @@ class SaleService
         return $customer;
     }
 
+    /**
+     * Selling more bottles than the shop floor holds (Settings → Products and stock):
+     * allowed, allowed with a manager's PIN, or blocked. Returns the approving manager.
+     *
+     * @param  list<array<string, mixed>>  $lines
+     */
+    private function checkStock(Till $till, User $cashier, Location $location, array $lines, ?string $approvalToken): ?int
+    {
+        $rule = $this->policy->belowZero($till);
+        if ($rule === 'allow') {
+            return null;
+        }
+
+        $wanted = [];
+        foreach ($lines as $line) {
+            if ($line['unit'] === SaleLine::UNIT_BOTTLE) {
+                $wanted[$line['variant_id']] = ($wanted[$line['variant_id']] ?? 0) + $line['quantity'];
+            }
+        }
+        $short = array_keys(array_filter($wanted, fn ($qty, $variantId) => $this->ledger->onHand($location, $variantId) < $qty, ARRAY_FILTER_USE_BOTH));
+        if ($short === []) {
+            return null;
+        }
+
+        $names = ProductVariant::query()->with('product')->findMany($short)->map(fn ($v) => $v->display_name)->implode(', ');
+        if ($rule === 'block') {
+            throw ValidationException::withMessages(['stock' => "Not enough on the shop floor: {$names}."]);
+        }
+
+        // A distinct error, so the till knows to ask a manager and send the sale again.
+        if ($approvalToken === null) {
+            throw ValidationException::withMessages(['stockApproval' => "Not enough on the shop floor: {$names}. A manager must approve selling it."]);
+        }
+
+        return $this->approvals->consume($approvalToken, 'below_zero', $till, $cashier);
+    }
+
     public function openShift(Till $till, User $cashier): Shift
     {
         $shift = Shift::query()->where('till_id', $till->id)->whereNull('closed_at')->first();
@@ -229,7 +276,10 @@ class SaleService
     {
         $variants = ProductVariant::query()->with(['taxRate', 'product'])->findMany(array_column($input, 'variantId'))->keyBy('id');
         $current = $this->prices->currentForVariants($variants->modelKeys(), $till->branch_id, $at);
-        $limitPercent = (int) config('sales.discount_limit_percent', 5);
+        $limitPercent = $this->policy->discountLimitPercent($cashier, $till);
+        $priceChangeApproval = $this->policy->priceChangeNeedsApproval($till);
+        $blockBigDiscounts = $this->policy->discountAboveLimit($till) === 'blocked';
+        $sellByTot = $this->policy->sellByTot($till);
         $lines = [];
 
         foreach ($input as $i => $row) {
@@ -244,6 +294,9 @@ class SaleService
 
             if (! $variant || ! $variant->is_active || ! $variant->product->is_active) {
                 throw ValidationException::withMessages(["lines.{$i}.variantId" => 'This item is not for sale.']);
+            }
+            if ($unit === SaleLine::UNIT_TOT && ! $sellByTot) {
+                throw ValidationException::withMessages(["lines.{$i}.unit" => 'Selling by the tot is switched off.']);
             }
             if ($unit === SaleLine::UNIT_TOT && ! $variant->tot_ml) {
                 throw ValidationException::withMessages(["lines.{$i}.unit" => "{$variant->display_name} is not sold by the tot."]);
@@ -267,9 +320,15 @@ class SaleService
                 throw ValidationException::withMessages(["lines.{$i}.discountCents" => 'The discount is larger than the line.']);
             }
 
+            if ($bigDiscount && $blockBigDiscounts) {
+                throw ValidationException::withMessages(["lines.{$i}.discountCents" => "Discounts above {$limitPercent}% are not allowed."]);
+            }
+
+            // Price changes follow Settings → Approvals ("allowed" ones stay visible on the line: list vs unit price).
+            $needsOverride = $overridden && $priceChangeApproval;
             $approvedBy = null;
-            if ($overridden || $bigDiscount) {
-                $approvedBy = $this->approvals->consume($row['approvalToken'] ?? null, $overridden ? 'override' : 'discount', $till, $cashier);
+            if ($needsOverride || $bigDiscount) {
+                $approvedBy = $this->approvals->consume($row['approvalToken'] ?? null, $needsOverride ? 'override' : 'discount', $till, $cashier);
             }
 
             $lineTotal = $gross - $discount;
@@ -300,11 +359,23 @@ class SaleService
      * M-PESA is confirmed by Safaricom (a confirmation id from the till), never by the cashier's
      * word — except while the business runs M-PESA in manual mode (no Daraja yet).
      *
+     * Cash is rounded to the owner's step (Settings → Payments); the difference is kept on the sale.
+     *
      * @param  list<array{method: string, amountCents: int, reference?: string|null, cardLast4?: string|null, confirmationId?: int|null}>  $input
-     * @return list<array<string, mixed>>
+     * @return array{tenders: list<array<string, mixed>>, rounding: int}
      */
-    private function settle(array $input, int $total, int $branchId): array
+    private function settle(Till $till, array $input, int $total): array
     {
+        $branchId = $till->branch_id;
+        $methods = array_values(array_unique(array_column($input, 'method')));
+        $refused = array_diff($methods, $this->policy->paymentMethods($till));
+        if ($refused !== []) {
+            throw ValidationException::withMessages(['tenders' => 'This shop does not take '.implode(', ', array_map(fn ($m) => SaleTender::LABELS[$m], $refused)).' payments.']);
+        }
+        if (count($methods) > 1 && ! $this->policy->splitAllowed($till)) {
+            throw ValidationException::withMessages(['tenders' => 'Split payments are switched off: take one payment method.']);
+        }
+
         $nonCash = array_filter($input, fn ($t) => $t['method'] !== SaleTender::CASH);
         $cashGiven = array_sum(array_map(fn ($t) => $t['amountCents'], array_filter($input, fn ($t) => $t['method'] === SaleTender::CASH)));
         $nonCashTotal = array_sum(array_column($nonCash, 'amountCents'));
@@ -312,7 +383,8 @@ class SaleService
         if ($nonCashTotal > $total) {
             throw ValidationException::withMessages(['tenders' => 'M-PESA and card payments cannot be more than the total.']);
         }
-        $cashDue = $total - $nonCashTotal;
+        $exactCashDue = $total - $nonCashTotal;
+        $cashDue = Money::roundTo($exactCashDue, $this->policy->cashRoundingCents($till));
         if ($cashGiven < $cashDue) {
             throw ValidationException::withMessages(['tenders' => 'KES '.number_format(($cashDue - $cashGiven) / 100, 2).' still to pay.']);
         }
@@ -357,6 +429,6 @@ class SaleService
             ];
         }
 
-        return $tenders;
+        return ['tenders' => $tenders, 'rounding' => $cashDue - $exactCashDue];
     }
 }

@@ -34,9 +34,10 @@ class SaleReturnService
         private readonly DocumentNumberService $numbers,
         private readonly AuditLogger $audit,
         private readonly EtimsOutbox $etims,
+        private readonly TillPolicy $policy,
     ) {}
 
-    /** @param array{saleId: int, reason: string, approvalToken: string, lines: list<array{saleLineId: int, quantity: int, restock: bool}>} $data */
+    /** @param array{saleId: int, reason: string, approvalToken?: string|null, lines: list<array{saleLineId: int, quantity: int, restock: bool}>} $data */
     public function create(Till $till, User $cashier, array $data): SaleReturn
     {
         $shift = $this->sales->openShift($till, $cashier);
@@ -52,7 +53,11 @@ class SaleReturnService
                 throw ValidationException::withMessages(['saleId' => "Returns are accepted within {$window} days of the sale."]);
             }
 
-            $approverId = $this->approvals->consume($data['approvalToken'] ?? null, 'refund', $till, $cashier);
+            // Settings → Approvals: refunds need a manager's PIN, or are allowed and logged.
+            $approverId = $this->policy->refundNeedsApproval($till)
+                ? $this->approvals->consume($data['approvalToken'] ?? null, 'refund', $till, $cashier)
+                : null;
+            $etims = $sale->etims_status !== Sale::ETIMS_NOT_REQUIRED;
             $floor = $this->sales->salesLocation($till);
             $quarantine = Location::query()->where('branch_id', $till->branch_id)->where('type', LocationType::Quarantine)->first() ?? $floor;
             $number = $this->numbers->next($till->branch, SaleReturn::NUMBER_PREFIX);
@@ -89,7 +94,7 @@ class SaleReturnService
                 'reason' => trim($data['reason']),
                 'total_cents' => $total,
                 'vat_cents' => array_sum(array_column($rows, 'vat')),
-                'etims_status' => 'pending',
+                'etims_status' => $etims ? 'pending' : Sale::ETIMS_NOT_REQUIRED,
             ]);
 
             $entries = [];
@@ -126,7 +131,9 @@ class SaleReturnService
             $sale->forceFill(['status' => $fullyReturned ? 'returned' : 'partially_returned'])->save();
 
             // Credit note referencing the original invoice, queued with the return.
-            $this->etims->queueCreditNote($return, $sale);
+            if ($etims) {
+                $this->etims->queueCreditNote($return, $sale);
+            }
 
             $this->audit->log('sales.return.completed', $return, after: ['number' => $number, 'sale' => $sale->number, 'total_cents' => $total],
                 reason: $return->reason, userId: $cashier->id, approverId: $approverId, branchId: $sale->branch_id);

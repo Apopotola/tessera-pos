@@ -28,6 +28,7 @@ const ETIMS = {
   signed: { label: "Signed", color: "green" },
   failed: { label: "Retrying", color: "yellow" },
   rejected: { label: "Needs fixing", color: "red" },
+  not_required: { label: "Not required", color: "gray" },
 } as const;
 
 const METHOD = { cash: "Cash", mpesa: "M-PESA", card: "Card" } as const;

@@ -9,19 +9,31 @@ use Modules\Organisation\Models\Till;
 use Modules\Sales\Http\Resources\ShiftResource;
 use Modules\Sales\Models\Shift;
 use Modules\Sales\Services\ShiftService;
+use Modules\Sales\Services\TillPolicy;
 use OpenApi\Attributes as OA;
 
 /** Till shift endpoints. All require a signed-in user on a paired till device. */
 class ShiftController extends Controller
 {
-    public function __construct(private readonly ShiftService $shifts) {}
+    public function __construct(
+        private readonly ShiftService $shifts,
+        private readonly TillPolicy $policy,
+    ) {}
 
     #[OA\Get(path: '/api/v1/sales/shifts/current', summary: 'Open shift on this till, if any', tags: ['Sales'], responses: [new OA\Response(response: 200, description: 'Shift or null')])]
     public function current(Request $request): JsonResponse
     {
-        $shift = $this->shifts->openShiftOn($this->till($request));
+        $till = $this->till($request);
+        $shift = $this->shifts->openShiftOn($till);
+        if (! $shift) {
+            return $this->success('Current shift.', null);
+        }
 
-        return $this->success('Current shift.', $shift ? new ShiftResource($shift) : null);
+        // Blind cash-up off (Settings → Staff): the cashier sees what the drawer should hold.
+        return $this->success('Current shift.', [
+            ...(new ShiftResource($shift))->toArray($request),
+            'expectedCashCents' => $this->policy->blindCashUp($till) ? null : $this->shifts->cashInDrawer($shift),
+        ]);
     }
 
     #[OA\Post(

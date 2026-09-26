@@ -17,6 +17,8 @@ export const salesApi = {
 
   // Selling
   searchItems: (search: string) => api.get<TillItem[]>(U.tillItems, { search }),
+  /** First-screen favourites (Settings → Sales screen). */
+  favourites: () => api.get<TillItem[]>(U.tillFavourites),
   tillCatalogue: () => api.get<TillSnapshot>(U.tillCatalogue),
   ping: () => api.get<{ time: string }>(PING_URL),
   scan: (code: string) => api.get<ScanResult>(U.tillScan(code)),

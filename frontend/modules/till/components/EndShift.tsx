@@ -2,9 +2,10 @@
 
 import { Alert, Button, Group, Modal, NumberInput, SimpleGrid, Stack, Table, Text, Textarea } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { ApiError, salesApi } from "@/api";
 import { useApiMutation } from "@/hooks/useApiMutation";
+import { useApiQuery } from "@/hooks/useApiQuery";
 import type { Approval, ApprovalAction } from "@/types/sales";
 import type { Shift } from "@/types/till";
 import { formatKes, kesToCents } from "@/utils/money";
@@ -23,11 +24,14 @@ const DENOMINATIONS = [
 ] as const;
 
 /**
- * Blind count by denomination: the cashier counts each note and coin; the total is added
- * up here and again on the server. The expected amount is only shown after submitting.
+ * Count by denomination: the cashier counts each note and coin; the total is added up here
+ * and again on the server. With blind cash-up (Settings → Staff, the default) the expected
+ * amount is only shown after submitting; otherwise it is shown while counting.
  */
-export function EndShiftModal({ shift, onClose, onClosed }: { shift: Shift; onClose: () => void; onClosed: (shift: Shift) => void }) {
+export function EndShiftModal({ shift, blind, onClose, onClosed }: { shift: Shift; blind: boolean; onClose: () => void; onClosed: (shift: Shift) => void }) {
   const [pieces, setPieces] = useState<Record<number, number | string>>({});
+  const fetchCurrent = useCallback(() => (blind ? Promise.resolve(null) : salesApi.currentShift()), [blind]);
+  const expected = useApiQuery(fetchCurrent).data?.expectedCashCents ?? null;
   const [note, setNote] = useState("");
 
   const total = DENOMINATIONS.reduce((sum, d) => sum + d.cents * (Number(pieces[d.cents]) || 0), 0);
@@ -45,8 +49,15 @@ export function EndShiftModal({ shift, onClose, onClosed }: { shift: Shift; onCl
     <Modal opened onClose={onClose} title="End shift — count the cash drawer" centered size="lg">
       <Stack>
         <Text size="sm" c="dimmed">
-          Count every note and coin in the drawer, including the float. Cash already dropped to the safe is not in the drawer. The expected amount is shown after you submit.
+          Count every note and coin in the drawer, including the float. Cash already dropped to the safe is not in the drawer.
+          {blind && " The expected amount is shown after you submit."}
         </Text>
+        {expected !== null && (
+          <Alert color="tessera" variant="light">
+            The drawer should hold <b>{formatKes(expected)}</b>
+            {counted && total !== expected && ` · counted ${total > expected ? "over" : "short"} by ${formatKes(Math.abs(total - expected))}`}.
+          </Alert>
+        )}
         <Table verticalSpacing={4}>
           <Table.Thead>
             <Table.Tr>

@@ -75,10 +75,10 @@ class SettingsSchema
         return $this->fieldArray($user, $key, $def, $scope, $scopeId, $hasHistory);
     }
 
-    /** What the back office or a till needs: effective values plus this user's role limits. */
-    public function forUser(User $user, ?Till $till): array
+    /** What the back office needs: business-wide values plus this user's role limits (tills use TillPolicy). */
+    public function forUser(User $user): array
     {
-        $values = $this->settings->effective($till?->branch_id, $till?->id);
+        $values = $this->settings->effective(null, null);
         $role = $user->roles->first()?->name;
 
         return [

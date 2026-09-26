@@ -6,8 +6,8 @@ import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import MpesaPanel, { type MpesaPaid } from "@/modules/till/components/MpesaPanel";
 import type { TillCustomer } from "@/types/customers";
-import type { TenderPayload } from "@/types/sales";
-import { formatKes, optionalKesToCents } from "@/utils/money";
+import type { TenderMethod, TenderPayload } from "@/types/sales";
+import { formatKes, optionalKesToCents, roundTo } from "@/utils/money";
 
 type Mode = "cash" | "mpesa" | "card" | "split";
 
@@ -16,6 +16,11 @@ interface TenderModalProps {
   /** "stk": Safaricom confirms M-PESA; "manual": the cashier types the code (unverified). */
   mpesaMode: "stk" | "manual";
   mpesaDemo: boolean;
+  /** Settings → Payments: accepted methods in button order, split payments, cash rounding, STK Push. */
+  methods: TenderMethod[];
+  splitAllowed: boolean;
+  cashRoundingCents: number;
+  stkPush: boolean;
   /** Registered customer on the sale; their KRA PIN goes on the invoice. */
   customer: TillCustomer | null;
   /** Offline: cash and card only (M-PESA needs Safaricom). */
@@ -25,6 +30,13 @@ interface TenderModalProps {
   onClose: () => void;
   onPay: (tenders: TenderPayload[], customerPin: string | null) => void;
 }
+
+const MODE_LABEL: Record<Mode, { text: string; icon: React.ReactNode }> = {
+  cash: { text: "Cash", icon: <IconCash size={18} /> },
+  mpesa: { text: "M-PESA", icon: <IconDeviceMobile size={18} /> },
+  card: { text: "Card", icon: <IconCreditCard size={18} /> },
+  split: { text: "Split", icon: <IconArrowsSplit size={18} /> },
+};
 
 /** Quick cash buttons: exact, then the next round amounts a customer is likely to hand over. */
 function quickCash(totalCents: number): number[] {
@@ -38,9 +50,11 @@ function quickCash(totalCents: number): number[] {
  * (the same rule the API applies). M-PESA codes are checked against the statement until the
  * Payments module confirms them automatically.
  */
-export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, customer, offline = false, pending, serverError, onClose, onPay }: TenderModalProps) {
-  const [mode, setMode] = useState<Mode>("cash");
-  const [cashKes, setCashKes] = useState<number | string>(totalCents / 100);
+export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, methods, splitAllowed, cashRoundingCents, stkPush, customer, offline = false, pending, serverError, onClose, onPay }: TenderModalProps) {
+  const modes: Mode[] = [...methods, ...(splitAllowed && methods.length > 1 ? (["split"] as const) : [])];
+  const usable = (m: Mode) => !(offline && m === "mpesa");
+  const [mode, setMode] = useState<Mode>(() => modes.find(usable) ?? "cash");
+  const [cashKes, setCashKes] = useState<number | string>(roundTo(totalCents, cashRoundingCents) / 100);
   const [mpesaKes, setMpesaKes] = useState<number | string>("");
   const [mpesaCode, setMpesaCode] = useState("");
   const [cardKes, setCardKes] = useState<number | string>("");
@@ -53,7 +67,9 @@ export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, customer
   const mpesaCents = mode === "mpesa" ? totalCents : mode === "split" ? (optionalKesToCents(mpesaKes) ?? 0) : 0;
   const cardCents = mode === "card" ? totalCents : mode === "split" ? (optionalKesToCents(cardKes) ?? 0) : 0;
   const cashCents = mode === "cash" || mode === "split" ? (optionalKesToCents(cashKes) ?? 0) : 0;
-  const cashDue = totalCents - mpesaCents - cardCents;
+  const exactCashDue = totalCents - mpesaCents - cardCents;
+  // Cash is rounded to the owner's step; M-PESA and card are exact.
+  const cashDue = exactCashDue > 0 ? roundTo(exactCashDue, cashRoundingCents) : exactCashDue;
   // M-PESA only counts as paid once Safaricom confirms it.
   const mpesaOutstanding = stk && mpesaCents > 0 && mpesaPaid?.amountCents !== mpesaCents ? mpesaCents : 0;
   const remaining = Math.max(0, cashDue - cashCents) + mpesaOutstanding;
@@ -97,7 +113,7 @@ export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, customer
       <NumberInput label="Cash received (KES)" size="lg" min={0} decimalScale={2} thousandSeparator="," value={cashKes} onChange={setCashKes} data-autofocus />
       {mode === "cash" && (
         <Group gap="xs">
-          {quickCash(totalCents).map((kes, i) => (
+          {quickCash(cashDue).map((kes, i) => (
             <Button key={kes} variant="light" onClick={() => setCashKes(kes)}>
               {i === 0 ? "Exact" : kes.toLocaleString("en-KE")}
             </Button>
@@ -121,7 +137,7 @@ export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, customer
   const mpesaInputs = stk ? (
     <Stack gap="xs">
       {mpesaAmountInput}
-      {mpesaCents > 0 && <MpesaPanel amountCents={mpesaCents} demo={mpesaDemo} paid={mpesaPaid} onPaid={setMpesaPaid} />}
+      {mpesaCents > 0 && <MpesaPanel amountCents={mpesaCents} demo={mpesaDemo} paid={mpesaPaid} onPaid={setMpesaPaid} stkPush={stkPush} />}
     </Stack>
   ) : (
     <Group grow align="flex-start">
@@ -146,6 +162,11 @@ export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, customer
             {formatKes(totalCents)}
           </Text>
         </Group>
+        {mode === "cash" && cashDue !== totalCents && (
+          <Text size="sm" c="dimmed" ta="right" mt={-12}>
+            Cash rounded to {formatKes(cashDue)}
+          </Text>
+        )}
 
         <SegmentedControl
           fullWidth
@@ -153,12 +174,7 @@ export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, customer
           value={mode}
           onChange={(value) => setMode(value as Mode)}
           disabled={Boolean(mpesaPaid)}
-          data={[
-            { value: "cash", label: <Label icon={<IconCash size={18} />} text="Cash" /> },
-            { value: "mpesa", label: <Label icon={<IconDeviceMobile size={18} />} text="M-PESA" />, disabled: offline },
-            { value: "card", label: <Label icon={<IconCreditCard size={18} />} text="Card" /> },
-            { value: "split", label: <Label icon={<IconArrowsSplit size={18} />} text="Split" /> },
-          ]}
+          data={modes.map((m) => ({ value: m, label: <Label icon={MODE_LABEL[m].icon} text={MODE_LABEL[m].text} />, disabled: !usable(m) }))}
         />
 
         {mode === "cash" && cashInput}
@@ -171,9 +187,9 @@ export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, customer
         )}
         {mode === "split" && (
           <Stack gap="sm">
-            {!offline && mpesaInputs}
-            {cardInputs}
-            {cashInput}
+            {!offline && methods.includes("mpesa") && mpesaInputs}
+            {methods.includes("card") && cardInputs}
+            {methods.includes("cash") && cashInput}
           </Stack>
         )}
 

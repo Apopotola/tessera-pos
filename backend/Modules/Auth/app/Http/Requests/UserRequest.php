@@ -10,6 +10,7 @@ use Illuminate\Validation\Rules\Password;
 use Modules\Auth\Models\User;
 use Modules\Authorization\Support\Permissions;
 use Modules\Authorization\Support\Roles;
+use Modules\Settings\Services\SettingsService;
 
 /** POST /auth/users (create) or PUT /auth/users/{user} (update). */
 class UserRequest extends FormRequest
@@ -42,7 +43,7 @@ class UserRequest extends FormRequest
             'role' => ['required', Rule::in(array_keys(Roles::defaults()))],
             'branchIds' => ['sometimes', 'array'],
             'branchIds.*' => ['integer', Rule::exists('branches', 'id')],
-            'password' => $ignoreId ? ['prohibited'] : ['nullable', 'string', Password::min(8)],
+            'password' => $ignoreId ? ['prohibited'] : ['nullable', 'string', Password::min((int) app(SettingsService::class)->get('staff.password_min_length'))],
             'isActive' => ['sometimes', 'boolean'],
         ];
     }

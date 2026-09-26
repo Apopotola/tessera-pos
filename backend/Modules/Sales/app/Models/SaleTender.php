@@ -16,6 +16,8 @@ class SaleTender extends Model
 
     public const CARD = 'card';
 
+    public const LABELS = [self::CASH => 'cash', self::MPESA => 'M-PESA', self::CARD => 'card'];
+
     public const CONFIRMED = 'confirmed';
 
     /** Recorded from the cashier's entry; confirmed later by reconciliation (Payments module). */

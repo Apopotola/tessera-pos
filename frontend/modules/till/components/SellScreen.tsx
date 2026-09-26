@@ -1,19 +1,21 @@
 "use client";
 
 import { ActionIcon, Badge, Button, Group, Loader, Menu, Modal, ScrollArea, Stack, Text, TextInput, UnstyledButton } from "@mantine/core";
+import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import { IconBarcode, IconBuildingBank, IconDots, IconUser, IconGlassFull, IconLock, IconLogout, IconMinus, IconPlayerPause, IconPlus, IconPrinter, IconReceiptRefund, IconSearch, IconTrash } from "@tabler/icons-react";
+import { IconBarcode, IconBuildingBank, IconDiscount, IconDots, IconUser, IconGlassFull, IconLock, IconLogout, IconMinus, IconPlayerPause, IconPlus, IconPrinter, IconReceiptRefund, IconSearch, IconTag, IconTrash } from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, salesApi } from "@/api";
 import { brand } from "@/app/theme";
 import Receipt, { ReceiptPrint } from "@/modules/sales/components/Receipt";
-import { type CartLine, cartTotals, fromParked, lineKey, lineName, lineTotal, looksLikeBarcode, needsApproval, newClientId, newLine, repriceForCustomer, sameLine, toParked, toPayload } from "@/modules/till/cart";
+import { type ApprovalRules, type CartLine, cartTotals, fromParked, lineKey, lineName, lineTotal, looksLikeBarcode, needsApproval, newClientId, newLine, repriceForCustomer, sameLine, toParked, toPayload } from "@/modules/till/cart";
 import CustomerPicker from "@/modules/till/components/CustomerPicker";
 import type { TillCustomer } from "@/types/customers";
 import { useApprovalPrompt } from "@/modules/till/components/ApprovalModal";
 import { CashDropModal, EndShiftModal, ShiftSummaryModal } from "@/modules/till/components/EndShift";
 import LineEditModal from "@/modules/till/components/LineEditModal";
 import { ParkModal, RecallModal } from "@/modules/till/components/ParkedSales";
+import PriceCheckModal from "@/modules/till/components/PriceCheck";
 import ReturnModal from "@/modules/till/components/ReturnModal";
 import TenderModal from "@/modules/till/components/TenderModal";
 import TillHeader from "@/modules/till/components/TillHeader";
@@ -41,7 +43,11 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   const dispatch = useAppDispatch();
   const user = useAppSelector((state) => state.auth.user);
   const canDiscount = user?.permissions.includes("sales.discount.within-limit") ?? false;
-  const { discountLimitPercent, voidApprovalThresholdCents, returnWindowDays } = context.policy;
+  const { policy } = context;
+  const { voidApprovalThresholdCents, returnWindowDays } = policy;
+  // Settings → Staff: the best discount limit of the cashier's roles, and what needs a manager.
+  const discountLimitPercent = Math.max(0, ...(user?.roles ?? []).map((role) => policy.discountLimits[role] ?? 0));
+  const rules: ApprovalRules = { limitPercent: discountLimitPercent, priceChangeNeedsApproval: policy.priceChangeNeedsApproval, blockBigDiscounts: policy.discountAboveLimit === "blocked" };
   const { requestApproval, approvalModal } = useApprovalPrompt();
   const offline = useOfflineTill(context.till.id, user?.id);
   const isOnline = offline.online;
@@ -69,6 +75,8 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   const [parked, setParked] = useState<ParkedSale[]>([]);
   const [parking, setParking] = useState(false);
   const [recalling, setRecalling] = useState(false);
+  const [checkingPrice, setCheckingPrice] = useState(false);
+  const [favourites, setFavourites] = useState<TillItem[]>([]);
   const searchRef = useRef<HTMLInputElement>(null);
 
   const totals = cartTotals(lines);
@@ -105,6 +113,26 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
       window.clearTimeout(timer);
     };
   }, [query, isOnline, searchLocal, markOffline]);
+
+  // First screen (Settings → Sales screen): favourites while nothing is typed.
+  const showFavourites = policy.layout !== "barcode" && policy.favouritesMode !== "none";
+  const { snapshot } = offline;
+  const loadFavourites = useCallback(() => {
+    if (!showFavourites) return;
+    const fromSnapshot = () => {
+      const byId = new Map((snapshot?.items ?? []).map((i) => [i.variantId, i]));
+      setFavourites((snapshot?.favouriteIds ?? []).flatMap((id) => byId.get(id) ?? []));
+    };
+    if (!isOnline) {
+      fromSnapshot();
+      return;
+    }
+    salesApi.favourites().then(setFavourites).catch(fromSnapshot);
+  }, [showFavourites, isOnline, snapshot]);
+
+  useEffect(() => {
+    loadFavourites();
+  }, [loadFavourites]);
 
   const loadParked = useCallback(() => {
     salesApi
@@ -207,8 +235,9 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
       setLines((current) => current.filter((l) => !sameLine(l, line)));
       refocus();
     };
+    const needsManager = voidApprovalThresholdCents !== null && value > voidApprovalThresholdCents;
     if (!isOnline) {
-      if (value > voidApprovalThresholdCents) {
+      if (needsManager) {
         notifications.show({ color: "yellow", message: "Removing this needs a manager's approval, which needs the connection." });
         return false;
       }
@@ -217,7 +246,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
       return true;
     }
     let token: string | null = null;
-    if (value > voidApprovalThresholdCents) {
+    if (needsManager) {
       const approval = await requestApproval("void", `${lineName(line)}, ${formatKes(value)}.`);
       if (!approval) return false;
       token = approval.token;
@@ -246,7 +275,11 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
 
   const saveLine = async (updated: CartLine) => {
     let line = updated;
-    const needed = needsApproval(line, discountLimitPercent);
+    const needed = needsApproval(line, rules);
+    if (needed === "blocked") {
+      notifications.show({ color: "red", message: `Discounts above ${discountLimitPercent}% are not allowed.` });
+      return;
+    }
     if (needed && !line.approvalToken && !isOnline) {
       notifications.show({ color: "yellow", message: "Price changes and big discounts need a manager's approval, which needs the connection." });
       return;
@@ -264,6 +297,9 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   const finishSale = (sale: Sale) => {
     setPaying(false);
     setCompleted(sale);
+    // Settings → Receipts → Print behaviour.
+    if (policy.receipt.printBehaviour === "always") setPrinting({ sale, copy: false });
+    loadFavourites();
     setLines([]);
     setCustomer(null);
     setClientId(newClientId());
@@ -282,7 +318,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     finishSale(buildOfflineReceipt({ localNumber, occurredAt, context, user, lines, tenders, customer, customerPin, snapshot: offline.snapshot }));
   };
 
-  const pay = async (tenders: TenderPayload[], customerPin: string | null) => {
+  const pay = async (tenders: TenderPayload[], customerPin: string | null, stockApprovalToken: string | null = null) => {
     setPayPending(true);
     setPayError(null);
     try {
@@ -290,8 +326,16 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
         await payOffline(tenders, customerPin);
         return;
       }
-      finishSale(await salesApi.completeSale({ clientId, customerId: customer?.id ?? null, customerPin, lines: lines.map(toPayload), tenders }));
+      finishSale(await salesApi.completeSale({ clientId, customerId: customer?.id ?? null, customerPin, stockApprovalToken, lines: lines.map(toPayload), tenders }));
     } catch (e) {
+      // Settings → stock: selling more than the shelf holds needs a manager; then send it again.
+      if (e instanceof ApiError && e.formErrors.stockApproval && !stockApprovalToken) {
+        setPayPending(false);
+        const approval = await requestApproval("below_zero", e.formErrors.stockApproval);
+        if (approval) await pay(tenders, customerPin, approval.token);
+        else setPayError(e.formErrors.stockApproval);
+        return;
+      }
       if (e instanceof ApiError && e.status === 0) {
         // Same clientId: if the server did get it, the later resend is recorded once.
         markOffline();
@@ -318,7 +362,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
 
   const recall = async (sale: ParkedSale) => {
     const recalled = await salesApi.recall(sale.id);
-    const restored = recalled.lines.map((l) => fromParked(l, discountLimitPercent));
+    const restored = recalled.lines.map((l) => fromParked(l, rules));
     setLines(restored.map((r) => r.line));
     setClientId(newClientId());
     setRecalling(false);
@@ -336,13 +380,83 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     refocus();
   };
 
+  /** Settings → Sales screen: confirm the customer's age before taking payment. */
+  const startPayment = () => {
+    const open = () => {
+      setPayError(null);
+      setPaying(true);
+    };
+    if (!policy.ageCheck) {
+      open();
+      return;
+    }
+    modals.openConfirmModal({
+      title: "Age check",
+      centered: true,
+      children: <Text size="sm">Is the customer 18 or over? Ask for ID if you are not sure.</Text>,
+      labels: { confirm: "Yes, 18 or over", cancel: "No — do not sell" },
+      onConfirm: open,
+      onCancel: refocus,
+    });
+  };
+
+  /** Settings → Sales screen → Quick buttons ("customer" is the customer button above). */
+  const quick = policy.quickButtons.filter((b) => b !== "customer" && b !== "open_drawer");
+  const editLastLine = () => {
+    const last = lines.at(-1);
+    if (last) setEditing(last);
+  };
+
+  const renderItems = (items: TillItem[]) => (
+    <div className={policy.layout === "list" ? classes.itemList : classes.itemGrid}>
+      {items.map((item) => (
+        <div key={item.variantId} className={classes.item} data-disabled={item.priceCents == null || undefined}>
+          <UnstyledButton className={classes.itemMain} onClick={() => addItem(item)}>
+            <Text c="white" fw={600} lineClamp={2} style={{ flex: policy.layout === "list" ? 1 : undefined }}>
+              {item.displayName}
+            </Text>
+            <Text c="gray.5" size="xs" ff="monospace">
+              {item.sku}
+            </Text>
+            <Group justify="space-between" mt={policy.layout === "list" ? 0 : "auto"} gap="sm" wrap="nowrap">
+              <Text c="amber.4" fw={700}>
+                {item.priceCents == null ? "No price" : formatKes(item.priceCents)}
+              </Text>
+              <Badge variant="light" color={item.onFloor > 0 ? "gray" : "red"} size="sm">
+                {item.onFloor} on floor
+              </Badge>
+            </Group>
+          </UnstyledButton>
+          {item.totMl && item.totPriceCents != null && (
+            <UnstyledButton className={classes.totButton} onClick={() => addItem(item, 1, "tot")}>
+              <Group justify="space-between" wrap="nowrap" gap={6}>
+                <Group gap={6} wrap="nowrap">
+                  <IconGlassFull size={16} />
+                  <Text size="sm" fw={600}>
+                    Tot {item.totMl}ml
+                  </Text>
+                </Group>
+                <Text size="sm" fw={700}>
+                  {formatKes(item.totPriceCents)}
+                </Text>
+              </Group>
+              <Text size="xs" c="gray.5">
+                {item.openBottleMl == null ? "Opens a new bottle" : `${item.openBottleMl}ml left in open bottle`}
+              </Text>
+            </UnstyledButton>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+
   const lock = async () => {
     await dispatch(logout());
     onEnded();
   };
 
   return (
-    <div className={classes.sell}>
+    <div className={classes.sell} data-touch={policy.touchMode}>
       <section className={classes.sellMain}>
         <TillHeader context={context} />
         <OfflineBanner offline={offline} />
@@ -352,7 +466,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
           size="xl"
           radius="md"
           autoFocus
-          placeholder="Scan a barcode or type a name / SKU"
+          placeholder={policy.layout === "barcode" ? "Scan a barcode" : "Scan a barcode or type a name / SKU"}
           leftSection={looksLikeBarcode(query) ? <IconBarcode size={22} /> : <IconSearch size={22} />}
           rightSection={searching ? <Loader size="sm" color="tessera.4" /> : null}
           value={query}
@@ -363,46 +477,12 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
 
         <ScrollArea className={classes.results} type="auto">
           {results.length > 0 ? (
-            <div className={classes.itemGrid}>
-              {results.map((item) => (
-                <div key={item.variantId} className={classes.item} data-disabled={item.priceCents == null || undefined}>
-                  <UnstyledButton className={classes.itemMain} onClick={() => addItem(item)}>
-                    <Text c="white" fw={600} lineClamp={2}>
-                      {item.displayName}
-                    </Text>
-                    <Text c="gray.5" size="xs" ff="monospace">
-                      {item.sku}
-                    </Text>
-                    <Group justify="space-between" mt="auto">
-                      <Text c="amber.4" fw={700}>
-                        {item.priceCents == null ? "No price" : formatKes(item.priceCents)}
-                      </Text>
-                      <Badge variant="light" color={item.onFloor > 0 ? "gray" : "red"} size="sm">
-                        {item.onFloor} on floor
-                      </Badge>
-                    </Group>
-                  </UnstyledButton>
-                  {item.totMl && item.totPriceCents != null && (
-                    <UnstyledButton className={classes.totButton} onClick={() => addItem(item, 1, "tot")}>
-                      <Group justify="space-between" wrap="nowrap" gap={6}>
-                        <Group gap={6} wrap="nowrap">
-                          <IconGlassFull size={16} />
-                          <Text size="sm" fw={600}>
-                            Tot {item.totMl}ml
-                          </Text>
-                        </Group>
-                        <Text size="sm" fw={700}>
-                          {formatKes(item.totPriceCents)}
-                        </Text>
-                      </Group>
-                      <Text size="xs" c="gray.5">
-                        {item.openBottleMl == null ? "Opens a new bottle" : `${item.openBottleMl}ml left in open bottle`}
-                      </Text>
-                    </UnstyledButton>
-                  )}
-                </div>
-              ))}
-            </div>
+            renderItems(results)
+          ) : query.trim().length < 2 && showFavourites && favourites.length > 0 ? (
+            <>
+              <div className={classes.sectionLabel}>{policy.favouritesMode === "top" ? "Best sellers this week" : "Favourites"}</div>
+              {renderItems(favourites)}
+            </>
           ) : (
             <Stack align="center" justify="center" h={240} gap={6}>
               <IconBarcode size={48} color="#7c7d95" stroke={1.2} />
@@ -424,6 +504,30 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
             <Button variant="light" color={customer ? "amber" : "tessera"} c={customer ? "amber.4" : "gray.3"} size="compact-sm" mt={6} leftSection={<IconUser size={14} />} onClick={() => setPickingCustomer(true)}>
               {customer ? `${customer.name}${customer.isWholesale ? " · wholesale" : ""}` : "Walk-in customer"}
             </Button>
+            {quick.length > 0 && (
+              <Group gap={6} mt={8}>
+                {quick.includes("hold") && (
+                  <Button size="compact-sm" variant="default" leftSection={<IconPlayerPause size={14} />} disabled={lines.length === 0 || !isOnline} onClick={() => setParking(true)}>
+                    Hold
+                  </Button>
+                )}
+                {quick.includes("discount") && (
+                  <Button size="compact-sm" variant="default" leftSection={<IconDiscount size={14} />} disabled={lines.length === 0} onClick={editLastLine}>
+                    Discount
+                  </Button>
+                )}
+                {quick.includes("returns") && (
+                  <Button size="compact-sm" variant="default" leftSection={<IconReceiptRefund size={14} />} disabled={!isOnline} onClick={() => setReturning(true)}>
+                    Returns
+                  </Button>
+                )}
+                {quick.includes("price_check") && (
+                  <Button size="compact-sm" variant="default" leftSection={<IconTag size={14} />} disabled={!isOnline} onClick={() => setCheckingPrice(true)}>
+                    Price check
+                  </Button>
+                )}
+              </Group>
+            )}
           </div>
           <Menu position="bottom-end">
             <Menu.Target>
@@ -537,10 +641,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
           color="amber.5"
           c={brand.navy}
           disabled={lines.length === 0}
-          onClick={() => {
-            setPayError(null);
-            setPaying(true);
-          }}
+          onClick={startPayment}
         >
           Pay {lines.length > 0 && formatKes(totals.total)}
         </Button>
@@ -560,7 +661,22 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
         />
       )}
 
-      {paying && <TenderModal totalCents={totals.total} mpesaMode={context.policy.mpesaMode} mpesaDemo={context.policy.mpesaDemo} customer={customer} offline={!isOnline} pending={payPending} serverError={payError} onClose={() => setPaying(false)} onPay={(t, pin) => void pay(t, pin)} />}
+      {paying && (
+        <TenderModal
+          totalCents={totals.total}
+          mpesaMode={policy.mpesaMode}
+          mpesaDemo={policy.mpesaDemo}
+          methods={policy.paymentMethods}
+          splitAllowed={policy.splitAllowed}
+          cashRoundingCents={policy.cashRoundingCents}
+          stkPush={policy.stkPush}
+          customer={customer}           offline={!isOnline}
+          pending={payPending}
+          serverError={payError}
+          onClose={() => setPaying(false)}
+          onPay={(t, pin) => void pay(t, pin)}
+        />
+      )}
 
       {completed && (
         <Modal
@@ -598,6 +714,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
       {returning && (
         <ReturnModal
           returnWindowDays={returnWindowDays}
+          refundNeedsApproval={policy.refundNeedsApproval}
           requestApproval={requestApproval}
           onClose={() => {
             setReturning(false);
@@ -625,10 +742,18 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
           }}
         />
       )}
-      {ending && !closed && <EndShiftModal shift={shift} onClose={() => setEnding(false)} onClosed={setClosed} />}
+      {ending && !closed && <EndShiftModal shift={shift} blind={policy.blindCashUp} onClose={() => setEnding(false)} onClosed={setClosed} />}
       {closed && <ShiftSummaryModal shift={closed} onDone={() => void lock()} />}
       {pickingCustomer && (
         <CustomerPicker current={customer} localCustomers={isOnline ? null : (offline.snapshot?.customers ?? [])} onClose={() => setPickingCustomer(false)} onPick={chooseCustomer} />
+      )}
+      {checkingPrice && (
+        <PriceCheckModal
+          onClose={() => {
+            setCheckingPrice(false);
+            refocus();
+          }}
+        />
       )}
       {approvalModal}
       {printing && <ReceiptPrint sale={printing.sale} copy={printing.copy} />}

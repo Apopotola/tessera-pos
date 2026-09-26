@@ -46,6 +46,9 @@ export default function DashboardView() {
   const fetchSummary = useCallback(() => dashboardApi.summary(), []);
   const { data, loading, error, reload } = useApiQuery(fetchSummary);
   const firstName = user?.name.split(" ")[0] ?? "";
+  // Settings → Notifications → dashboard tiles per role (empty = the standard tiles).
+  const chosenTiles = useAppSelector((state) => state.settings.app?.dashboardTiles);
+  const tile = (key: string) => !chosenTiles?.length || chosenTiles.includes(key);
 
   return (
     <WorkspacePage>
@@ -70,27 +73,31 @@ export default function DashboardView() {
               </Group>
               {data.salesToday && (
                 <SimpleGrid cols={{ base: 2, md: 4 }} mb="md">
-                  <StatTile
-                    tone="dark"
-                    label="Sales today"
-                    value={formatKes(data.salesToday.netCents)}
-                    hint={`${data.salesToday.transactions} ${data.salesToday.transactions === 1 ? "sale" : "sales"}${data.salesToday.refundsCents ? ` · ${formatKes(data.salesToday.refundsCents)} refunded` : ""}`}
-                    onClick={() => dispatch(openTab(SALES_TAB))}
-                  />
-                  <StatTile tone="dark" label="Cash" value={formatKes(data.salesToday.cashCents)} />
-                  <StatTile tone="dark" label="M-PESA · card" value={formatKes(data.salesToday.mpesaCents + data.salesToday.cardCents)} hint={`Card ${formatKes(data.salesToday.cardCents)}`} />
-                  {data.salesToday.grossProfitCents !== null && (
+                  {tile("sales_today") && (
+                    <StatTile
+                      tone="dark"
+                      label="Sales today"
+                      value={formatKes(data.salesToday.netCents)}
+                      hint={`${data.salesToday.transactions} ${data.salesToday.transactions === 1 ? "sale" : "sales"}${data.salesToday.refundsCents ? ` · ${formatKes(data.salesToday.refundsCents)} refunded` : ""}`}
+                      onClick={() => dispatch(openTab(SALES_TAB))}
+                    />
+                  )}
+                  {tile("takings") && <StatTile tone="dark" label="Cash" value={formatKes(data.salesToday.cashCents)} />}
+                  {tile("takings") && (
+                    <StatTile tone="dark" label="M-PESA · card" value={formatKes(data.salesToday.mpesaCents + data.salesToday.cardCents)} hint={`Card ${formatKes(data.salesToday.cardCents)}`} />
+                  )}
+                  {tile("gross_profit") && data.salesToday.grossProfitCents !== null && (
                     <StatTile tone="dark" label="Gross profit today" value={formatKes(data.salesToday.grossProfitCents)} hint="After VAT and cost of goods" />
                   )}
                 </SimpleGrid>
               )}
               <SimpleGrid cols={{ base: 2, md: 4 }}>
-                {data.openShifts && <StatTile tone="dark" label="Shifts open now" value={data.openShifts.length} />}
-                {data.tills && <StatTile tone="dark" label="Tills connected" value={`${data.tills.connected} / ${data.tills.total}`} />}
-                {data.catalogue && (
+                {tile("shifts") && data.openShifts && <StatTile tone="dark" label="Shifts open now" value={data.openShifts.length} />}
+                {tile("tills") && data.tills && <StatTile tone="dark" label="Tills connected" value={`${data.tills.connected} / ${data.tills.total}`} />}
+                {tile("catalogue") && data.catalogue && (
                   <StatTile tone="dark" label="Items on sale" value={data.catalogue.activeVariants} hint={`${data.catalogue.activeProducts} products`} />
                 )}
-                {data.inventory && (
+                {tile("low_stock") && data.inventory && (
                   <StatTile
                     tone="dark"
                     highlight={data.inventory.lowStock > 0}
@@ -99,11 +106,11 @@ export default function DashboardView() {
                     onClick={() => dispatch(openTab(STOCK_TAB))}
                   />
                 )}
-                {data.inventory?.stockValueCents != null && <StatTile tone="dark" label="Stock value (at cost)" value={formatKes(data.inventory.stockValueCents)} />}
-                {data.inventory?.lossesThisMonthCents != null && (
+                {tile("stock_value") && data.inventory?.stockValueCents != null && <StatTile tone="dark" label="Stock value (at cost)" value={formatKes(data.inventory.stockValueCents)} />}
+                {tile("losses") && data.inventory?.lossesThisMonthCents != null && (
                   <StatTile tone="dark" label="Breakage & losses this month" value={formatKes(data.inventory.lossesThisMonthCents)} />
                 )}
-                {data.pendingPriceChanges !== null && (
+                {tile("price_changes") && data.pendingPriceChanges !== null && (
                   <StatTile
                     tone="dark"
                     highlight={data.pendingPriceChanges > 0}

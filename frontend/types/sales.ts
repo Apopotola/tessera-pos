@@ -2,7 +2,9 @@
 import type { EtimsReceipt, EtimsStatus } from "@/types/compliance";
 
 export type TenderMethod = "cash" | "mpesa" | "card";
-export type ApprovalAction = "discount" | "override" | "void" | "refund" | "cash_drop";
+/** "not_required": the branch is outside eTIMS (Settings → Integrations), nothing goes to KRA. */
+export type SaleEtimsStatus = EtimsStatus | "not_required";
+export type ApprovalAction = "discount" | "override" | "void" | "refund" | "cash_drop" | "below_zero";
 /** A bottle off the shelf, or a tot poured from the open bottle. */
 export type SaleUnit = "bottle" | "tot";
 
@@ -59,6 +61,8 @@ export interface SalePayload {
   occurredAt?: string | null;
   customerId?: number | null;
   customerPin?: string | null;
+  /** Manager approval to sell more than the shop floor holds (Settings → stock). */
+  stockApprovalToken?: string | null;
   lines: SaleLinePayload[];
   tenders: TenderPayload[];
 }
@@ -72,7 +76,7 @@ export interface Sale {
   /** Client-side only: a receipt printed offline, not yet on the server. */
   pendingSync?: boolean;
   status: "completed" | "partially_returned" | "returned";
-  etimsStatus: EtimsStatus;
+  etimsStatus: SaleEtimsStatus;
   /** KRA details once signed; null while pending. */
   etims: EtimsReceipt | null;
   business: { name: string; kraPin: string | null };
@@ -84,6 +88,8 @@ export interface Sale {
   subtotalCents: number;
   discountCents: number;
   totalCents: number;
+  /** Cash rounding: cash taken minus cash due (Settings → Payments). */
+  roundingCents: number;
   vatCents: number;
   returnedCents: number;
   costCents: number | null;
@@ -112,14 +118,27 @@ export interface Sale {
     cardLast4: string | null;
     status: "confirmed" | "unverified";
   }[];
-  returns: { id: number; number: string; totalCents: number; reason: string; etimsStatus: EtimsStatus; createdAt: string | null }[];
-  receiptFooter: string;
+  returns: { id: number; number: string; totalCents: number; reason: string; etimsStatus: SaleEtimsStatus; createdAt: string | null }[];
+  receipt: ReceiptSettings;
+}
+
+/** How receipts look at this branch / till (Settings → Receipts). */
+export interface ReceiptSettings {
+  headerLines: string[];
+  footerLines: string[];
+  show: ("logo" | "cashier" | "customer" | "return_policy" | "loyalty")[];
+  paperSize: "58mm" | "80mm" | "a4";
+  printBehaviour: "always" | "ask" | "digital";
+  /** For the return-policy line. */
+  returnWindowDays: number;
+  logo: string | null;
 }
 
 export interface ReturnPayload {
   saleId: number;
   reason: string;
-  approvalToken: string;
+  /** Needed when refunds need a manager (Settings → Approvals). */
+  approvalToken: string | null;
   lines: { saleLineId: number; quantity: number; restock: boolean }[];
 }
 

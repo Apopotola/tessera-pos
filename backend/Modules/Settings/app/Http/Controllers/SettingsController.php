@@ -71,12 +71,6 @@ class SettingsController extends Controller
     #[OA\Get(path: '/api/v1/settings/app', summary: 'Settings the back office needs for the signed-in user (no secrets)', tags: ['Settings'], responses: [new OA\Response(response: 200, description: 'Values')])]
     public function app(Request $request): JsonResponse
     {
-        return $this->success('Settings.', $this->schema->forUser($request->user(), null));
-    }
-
-    #[OA\Get(path: '/api/v1/settings/till', summary: 'Settings for this till (paired device)', tags: ['Settings'], responses: [new OA\Response(response: 200, description: 'Values')])]
-    public function till(Request $request): JsonResponse
-    {
-        return $this->success('Settings.', $this->schema->forUser($request->user(), $request->attributes->get('till')));
+        return $this->success('Settings.', $this->schema->forUser($request->user()));
     }
 }

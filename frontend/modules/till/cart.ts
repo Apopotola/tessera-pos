@@ -69,9 +69,19 @@ export function toPayload(line: CartLine): SaleLinePayload {
 }
 
 /** Same rule as SaleService: a discount above the limit (or any override) needs a manager. */
-export function needsApproval(line: CartLine, limitPercent: number): "override" | "discount" | null {
-  if (line.unitPriceCents !== line.listPriceCents) return "override";
-  if (line.discountCents > Math.floor((lineGross(line) * limitPercent) / 100)) return "discount";
+/** Settings → Staff: this cashier's discount limit and what needs a manager. */
+export interface ApprovalRules {
+  limitPercent: number;
+  priceChangeNeedsApproval: boolean;
+  /** Discounts above the limit are refused outright (not even a manager). */
+  blockBigDiscounts: boolean;
+}
+
+export function needsApproval(line: CartLine, rules: ApprovalRules): "override" | "discount" | "blocked" | null {
+  const bigDiscount = line.discountCents > Math.floor((lineGross(line) * rules.limitPercent) / 100);
+  if (bigDiscount && rules.blockBigDiscounts) return "blocked";
+  if (line.unitPriceCents !== line.listPriceCents && rules.priceChangeNeedsApproval) return "override";
+  if (bigDiscount) return "discount";
   return null;
 }
 
@@ -84,9 +94,9 @@ export function toParked(line: CartLine): ParkedLine {
  * Parked lines come back without approvals (tokens are single-use and short-lived), so any
  * line that needed a manager returns at list price with no discount.
  */
-export function fromParked(line: ParkedLine, limitPercent: number): { line: CartLine; reset: boolean } {
+export function fromParked(line: ParkedLine, rules: ApprovalRules): { line: CartLine; reset: boolean } {
   const restored: CartLine = { ...line, retailPriceCents: line.listPriceCents, wholesalePriceCents: null, onFloor: 0, approvalToken: null, approvedBy: null };
-  if (needsApproval(restored, limitPercent)) {
+  if (needsApproval(restored, rules)) {
     return { line: { ...restored, unitPriceCents: restored.listPriceCents, discountCents: 0 }, reset: true };
   }
   return { line: restored, reset: false };

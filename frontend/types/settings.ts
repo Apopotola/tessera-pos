@@ -101,7 +101,7 @@ export interface PublicBranding {
   poweredBy: { text: string; support: string };
 }
 
-/** GET /settings/app and /settings/till — effective values for this user / till (no secrets). */
+/** GET /settings/app — effective values for this user (no secrets). */
 export interface AppSettings {
   values: Record<string, SettingValue>;
   businessName: string;

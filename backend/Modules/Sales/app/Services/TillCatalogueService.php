@@ -2,6 +2,7 @@
 
 namespace Modules\Sales\Services;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Modules\Catalogue\Enums\PriceTier;
 use Modules\Catalogue\Models\ProductVariant;
@@ -20,7 +21,54 @@ class TillCatalogueService
         private readonly PriceResolver $prices,
         private readonly BarcodeLookupService $barcodes,
         private readonly SaleService $sales,
+        private readonly TillPolicy $policy,
     ) {}
+
+    /** Active items this branch sells (Settings → Business → categories sold at this branch). */
+    private function sellable(Till $till): Builder
+    {
+        $query = ProductVariant::query()
+            ->where('is_active', true)
+            ->whereHas('product', fn ($p) => $p->where('is_active', true));
+
+        if ($categories = $this->policy->categoryIds($till)) {
+            $withChildren = DB::table('categories')->whereIn('parent_id', $categories)->pluck('id')->merge($categories)->all();
+            $query->whereHas('product', fn ($p) => $p->whereIn('category_id', $withChildren));
+        }
+
+        return $query;
+    }
+
+    /**
+     * The first screen of the till (Settings → Sales screen): the owner's picks, this branch's
+     * 12 best sellers of the last 7 days, or nothing.
+     *
+     * @return list<int> variant ids
+     */
+    public function favouriteIds(Till $till): array
+    {
+        return match ($this->policy->value('sales.favourites_mode', $till)) {
+            'pinned' => array_map('intval', (array) $this->policy->value('sales.favourite_items', $till)),
+            'top' => DB::table('sale_lines as l')->join('sales as s', 's.id', '=', 'l.sale_id')
+                ->where('s.branch_id', $till->branch_id)
+                ->where('s.completed_at', '>=', now()->subDays(7))
+                ->groupBy('l.variant_id')
+                ->orderByRaw('SUM(l.quantity) DESC')
+                ->limit(12)
+                ->pluck('l.variant_id')->map(fn ($id) => (int) $id)->all(),
+            default => [],
+        };
+    }
+
+    /** @return list<array<string, mixed>> */
+    public function favourites(Till $till): array
+    {
+        $ids = $this->favouriteIds($till);
+        $variants = $this->sellable($till)->with(['product.brand', 'taxRate'])->whereIn('id', $ids)->get()->keyBy('id');
+
+        // Keep the owner's order.
+        return $this->present($till, array_values(array_filter(array_map(fn ($id) => $variants[$id] ?? null, $ids))));
+    }
 
     /** @return list<array<string, mixed>> */
     public function search(Till $till, string $term): array
@@ -28,10 +76,7 @@ class TillCatalogueService
         // Every word must match the product, brand or SKU: "jameson 750" finds JAM-750.
         $words = array_filter(preg_split('/\s+/', mb_strtolower(trim($term))) ?: []);
 
-        $query = ProductVariant::query()
-            ->with(['product.brand', 'taxRate'])
-            ->where('is_active', true)
-            ->whereHas('product', fn ($p) => $p->where('is_active', true));
+        $query = $this->sellable($till)->with(['product.brand', 'taxRate']);
 
         foreach ($words as $word) {
             $like = '%'.$word.'%';
@@ -54,11 +99,7 @@ class TillCatalogueService
      */
     public function snapshot(Till $till): array
     {
-        $variants = ProductVariant::query()
-            ->with(['product.brand', 'taxRate', 'barcodes.pack'])
-            ->where('is_active', true)
-            ->whereHas('product', fn ($p) => $p->where('is_active', true))
-            ->get();
+        $variants = $this->sellable($till)->with(['product.brand', 'taxRate', 'barcodes.pack'])->get();
 
         $barcodes = [];
         foreach ($variants as $variant) {
@@ -79,6 +120,7 @@ class TillCatalogueService
                 ]))),
             ], $this->present($till, $variants->all())),
             'barcodes' => $barcodes,
+            'favouriteIds' => $this->favouriteIds($till),
             'customers' => DB::table('customers')->where('is_active', true)->whereNull('anonymised_at')->orderBy('name')
                 ->get(['id', 'name', 'kra_pin', 'is_wholesale'])
                 ->map(fn ($c) => ['id' => (int) $c->id, 'name' => $c->name, 'kraPin' => $c->kra_pin, 'isWholesale' => (bool) $c->is_wholesale])->all(),
@@ -89,7 +131,7 @@ class TillCatalogueService
     public function scan(Till $till, string $code): ?array
     {
         $barcode = $this->barcodes->find($code);
-        if (! $barcode) {
+        if (! $barcode || ! $this->sellable($till)->whereKey($barcode->variant_id)->exists()) {
             return null;
         }
 
@@ -112,9 +154,12 @@ class TillCatalogueService
         $stock = DB::table('stock_balances')->where('location_id', $floor->id)->whereIn('variant_id', $ids)->pluck('quantity', 'variant_id');
         $open = OpenBottle::query()->where('location_id', $floor->id)->whereIn('variant_id', $ids)->where('status', OpenBottle::OPEN)->get()->keyBy('variant_id');
 
-        return array_map(function (ProductVariant $v) use ($current, $stock, $open) {
+        $tots = $this->policy->sellByTot($till);
+
+        return array_map(function (ProductVariant $v) use ($current, $stock, $open, $tots) {
             $price = $current[$v->id][PriceTier::Retail->value] ?? null;
-            $totPrice = $v->tot_ml ? ($current[$v->id][PriceTier::Tot->value] ?? null) : null;
+            $totMl = $tots ? $v->tot_ml : null;
+            $totPrice = $totMl ? ($current[$v->id][PriceTier::Tot->value] ?? null) : null;
 
             return [
                 'variantId' => $v->id,
@@ -125,8 +170,8 @@ class TillCatalogueService
                 'wholesalePriceCents' => ($current[$v->id][PriceTier::Wholesale->value] ?? null)?->price_cents,
                 'taxRatePercent' => $v->taxRate->rate_bp / 100,
                 'onFloor' => (int) ($stock[$v->id] ?? 0),
-                // Sell by tot: null when the item is not poured.
-                'totMl' => $v->tot_ml,
+                // Sell by tot: null when the item is not poured (or tots are switched off).
+                'totMl' => $totMl,
                 'totPriceCents' => $totPrice?->price_cents,
                 'openBottleMl' => isset($open[$v->id]) ? $open[$v->id]->remainingMl() : null,
             ];

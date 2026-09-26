@@ -10,6 +10,7 @@ use Modules\Auth\Models\User;
 use Modules\Authorization\Support\Roles;
 use Modules\Catalogue\Models\VariantPrice;
 use Modules\Inventory\Tests\Feature\InventoryTestCase;
+use Modules\Settings\Services\SettingsService;
 
 /** Cash drops with a manager witness, count by denomination, variance reason and sign-off. */
 class CashControlTest extends InventoryTestCase
@@ -118,8 +119,14 @@ class CashControlTest extends InventoryTestCase
             ->assertOk()
             ->assertJsonPath('data.varianceReason', 'Gave KES 100 too much change');
 
+        // KES 100 short is within the default allowed variance (KES 100), so it is not flagged…
         $this->backOffice($this->manager)->getJson('/api/v1/dashboard/summary')
             ->assertJsonPath('data.cashUps.toReview', 1)
+            ->assertJsonPath('data.cashUps.withDifference', 0);
+
+        // …until the owner tightens it (Settings → Staff → Shifts and cash-up).
+        app(SettingsService::class)->set(User::role(Roles::OWNER)->firstOrFail(), 'shifts.allowed_variance', 'business', 0, 5000);
+        $this->backOffice($this->manager)->getJson('/api/v1/dashboard/summary')
             ->assertJsonPath('data.cashUps.withDifference', 1);
 
         // A difference needs the manager's note too.

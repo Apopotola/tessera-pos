@@ -9,15 +9,29 @@ import classes from "./Receipt.module.css";
 
 const METHOD_LABEL = { cash: "Cash", mpesa: "M-PESA", card: "Card" } as const;
 
-/** 80 mm till receipt. Rendered on screen as a preview; `ReceiptPrint` sends it to the printer. */
+const PAPER = { "58mm": classes.paper58, "80mm": "", a4: classes.paperA4 } as const;
+
+/**
+ * Till receipt laid out by Settings → Receipts (paper, logo, header and footer, what to show).
+ * Rendered on screen as a preview; `ReceiptPrint` sends it to the printer.
+ */
 export default function Receipt({ sale, copy = false }: { sale: Sale; copy?: boolean }) {
   const cash = sale.tenders.find((t) => t.method === "cash" && t.amountCents >= 0);
+  const { receipt } = sale;
+  const show = (what: Sale["receipt"]["show"][number]) => receipt.show.includes(what);
 
   return (
-    <div className={classes.receipt}>
+    <div className={`${classes.receipt} ${PAPER[receipt.paperSize]}`}>
       <div className={classes.center}>
+        {show("logo") && receipt.logo && (
+          // eslint-disable-next-line @next/next/no-img-element -- receipt logo served by the API, printed as-is
+          <img src={receipt.logo} alt="" className={classes.logo} />
+        )}
         <div className={classes.shop}>{sale.business.name}</div>
         <div>{sale.branch.name}</div>
+        {receipt.headerLines.map((line, i) => (
+          <div key={i}>{line}</div>
+        ))}
         {sale.business.kraPin && <div>PIN: {sale.business.kraPin}</div>}
         {copy && <div className={classes.copy}>*** COPY ***</div>}
       </div>
@@ -31,11 +45,13 @@ export default function Receipt({ sale, copy = false }: { sale: Sale; copy?: boo
         <span>{dayjs(sale.completedAt).format("DD/MM/YYYY HH:mm")}</span>
         <span>{sale.till.name}</span>
       </div>
-      <div className={classes.row}>
-        <span>Served by</span>
-        <span>{sale.cashier.name}</span>
-      </div>
-      {sale.customer && (
+      {show("cashier") && (
+        <div className={classes.row}>
+          <span>Served by</span>
+          <span>{sale.cashier.name}</span>
+        </div>
+      )}
+      {show("customer") && sale.customer && (
         <div className={classes.row}>
           <span>Customer</span>
           <span>{sale.customer.name}</span>
@@ -92,6 +108,12 @@ export default function Receipt({ sale, copy = false }: { sale: Sale; copy?: boo
             <span>{formatKes(t.method === "cash" ? (t.tenderedCents ?? t.amountCents) : t.amountCents)}</span>
           </div>
         ))}
+      {sale.roundingCents !== 0 && (
+        <div className={classes.row}>
+          <span>Cash rounding</span>
+          <span>{formatKes(sale.roundingCents)}</span>
+        </div>
+      )}
       {cash && (cash.changeCents ?? 0) > 0 && (
         <div className={classes.row}>
           <span>Change</span>
@@ -134,10 +156,13 @@ export default function Receipt({ sale, copy = false }: { sale: Sale; copy?: boo
             )}
             {sale.etims.qrPayload?.includes("mock=1") && <div className={classes.copy}>DEMO eTIMS — NOT A KRA INVOICE</div>}
           </div>
-        ) : (
+        ) : sale.etimsStatus === "not_required" ? null : (
           <div>eTIMS invoice pending — not yet signed by KRA</div>
         )}
-        <div>{sale.receiptFooter}</div>
+        {receipt.footerLines.map((line, i) => (
+          <div key={i}>{line}</div>
+        ))}
+        {show("return_policy") && <div>Sealed bottles can be returned within {receipt.returnWindowDays} days with this receipt.</div>}
       </div>
     </div>
   );

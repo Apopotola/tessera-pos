@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Modules\Authorization\Support\Permissions;
 use Modules\Sales\Models\Sale;
+use Modules\Sales\Services\TillPolicy;
 
 /**
  * A sale as a receipt and back-office record. Cost and margin only with reports.profit.view.
@@ -38,6 +39,8 @@ class SaleResource extends JsonResource
             'subtotalCents' => $this->subtotal_cents,
             'discountCents' => $this->discount_cents,
             'totalCents' => $this->total_cents,
+            // Cash rounding: cash taken minus cash due (the total and VAT stay exact).
+            'roundingCents' => (int) $this->rounding_cents,
             'vatCents' => $this->vat_cents,
             'returnedCents' => $returned,
             'costCents' => $showCost ? $this->cost_cents : null,
@@ -75,7 +78,8 @@ class SaleResource extends JsonResource
                 'etimsStatus' => $r->etims_status,
                 'createdAt' => $r->created_at?->toIso8601String(),
             ])->values(),
-            'receiptFooter' => config('sales.receipt_footer'),
+            // Receipt layout for this branch and till (Settings → Receipts), so reprints match.
+            'receipt' => app(TillPolicy::class)->receipt($this->branch_id, $this->till_id),
         ];
     }
 }

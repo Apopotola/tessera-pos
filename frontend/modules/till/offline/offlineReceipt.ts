@@ -4,6 +4,7 @@ import type { AuthUser } from "@/types/auth";
 import type { TillCustomer } from "@/types/customers";
 import type { Sale, TenderPayload } from "@/types/sales";
 import type { TillContext, TillSnapshot } from "@/types/till";
+import { roundTo } from "@/utils/money";
 
 interface OfflineReceiptInput {
   localNumber: string;
@@ -52,7 +53,9 @@ export function buildOfflineReceipt(input: OfflineReceiptInput): Sale {
   const totalCents = saleLines.reduce((s, l) => s + l.lineTotalCents, 0);
   const nonCash = tenders.filter((t) => t.method !== "cash");
   const cashGiven = tenders.filter((t) => t.method === "cash").reduce((s, t) => s + t.amountCents, 0);
-  const cashDue = totalCents - nonCash.reduce((s, t) => s + t.amountCents, 0);
+  const exactCashDue = totalCents - nonCash.reduce((s, t) => s + t.amountCents, 0);
+  // Same cash rounding as the server (Settings → Payments).
+  const cashDue = exactCashDue > 0 ? roundTo(exactCashDue, context.policy.cashRoundingCents) : exactCashDue;
 
   return {
     id: 0,
@@ -72,6 +75,7 @@ export function buildOfflineReceipt(input: OfflineReceiptInput): Sale {
     subtotalCents: lines.reduce((s, l) => s + lineGross(l), 0),
     discountCents: lines.reduce((s, l) => s + l.discountCents, 0),
     totalCents,
+    roundingCents: cashDue - exactCashDue,
     vatCents: saleLines.reduce((s, l) => s + l.vatCents, 0),
     returnedCents: 0,
     costCents: null,
@@ -84,6 +88,6 @@ export function buildOfflineReceipt(input: OfflineReceiptInput): Sale {
         : []),
     ],
     returns: [],
-    receiptFooter: context.policy.receiptFooter,
+    receipt: context.policy.receipt,
   };
 }

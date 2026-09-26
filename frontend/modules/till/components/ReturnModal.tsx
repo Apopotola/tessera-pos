@@ -10,6 +10,8 @@ import { formatKes } from "@/utils/money";
 
 interface ReturnModalProps {
   returnWindowDays: number;
+  /** Settings → Approvals → Refund: a manager's PIN, or allowed and logged. */
+  refundNeedsApproval: boolean;
   requestApproval: (action: ApprovalAction, detail?: string | null) => Promise<Approval | null>;
   onClose: () => void;
   /** Receives the updated sale; `refundCents` is the cash to hand back. */
@@ -26,7 +28,7 @@ interface Row {
  * Customer return by receipt number: choose items, say whether each is sealed (back on the
  * shelf) or not (quarantine), give a reason, and a manager approves the cash refund.
  */
-export default function ReturnModal({ returnWindowDays, requestApproval, onClose, onReturned, onReprint }: ReturnModalProps) {
+export default function ReturnModal({ returnWindowDays, refundNeedsApproval, requestApproval, onClose, onReturned, onReprint }: ReturnModalProps) {
   const [number, setNumber] = useState("");
   const [sale, setSale] = useState<Sale | null>(null);
   const [rows, setRows] = useState<Record<number, Row>>({});
@@ -59,15 +61,15 @@ export default function ReturnModal({ returnWindowDays, requestApproval, onClose
 
   const submit = async () => {
     if (!sale || selected.length === 0 || !reason.trim()) return;
-    const approval = await requestApproval("refund", `Refund ${formatKes(refundCents)} in cash.`);
-    if (!approval) return;
+    const approval = refundNeedsApproval ? await requestApproval("refund", `Refund ${formatKes(refundCents)} in cash.`) : null;
+    if (refundNeedsApproval && !approval) return;
     setPending(true);
     setError(null);
     try {
       const updated = await salesApi.returnItems({
         saleId: sale.id,
         reason: reason.trim(),
-        approvalToken: approval.token,
+        approvalToken: approval?.token ?? null,
         lines: selected.map((r) => ({ saleLineId: r.line.id, quantity: r.qty, restock: r.restock })),
       });
       onReturned(updated, updated.returns.at(-1)?.totalCents ?? refundCents);
@@ -84,7 +86,7 @@ export default function ReturnModal({ returnWindowDays, requestApproval, onClose
         <Group align="flex-end">
           <TextInput
             label="Receipt number"
-            placeholder="MAIN-S-000123"
+            placeholder="INV-MAIN-000123"
             value={number}
             onChange={(e) => setNumber(e.currentTarget.value.toUpperCase())}
             onKeyDown={(e) => e.key === "Enter" && void find()}

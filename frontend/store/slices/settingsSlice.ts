@@ -5,7 +5,7 @@ import type { AppSettings, PublicBranding, SettingValue } from "@/types/settings
 export interface SettingsState {
   /** Login-page branding (public, loaded on every page). */
   branding: PublicBranding | null;
-  /** Effective settings for the signed-in user (back office) or this till. */
+  /** Effective settings for the signed-in back-office user. */
   app: AppSettings | null;
 }
 
@@ -13,7 +13,6 @@ const initialState: SettingsState = { branding: null, app: null };
 
 export const loadBranding = createAsyncThunk("settings/branding", () => settingsApi.publicBranding());
 export const loadAppSettings = createAsyncThunk("settings/app", () => settingsApi.app());
-export const loadTillSettings = createAsyncThunk("settings/till", () => settingsApi.till());
 
 const settingsSlice = createSlice({
   name: "settings",
@@ -29,9 +28,6 @@ const settingsSlice = createSlice({
         state.branding = payload;
       })
       .addCase(loadAppSettings.fulfilled, (state, { payload }) => {
-        state.app = payload;
-      })
-      .addCase(loadTillSettings.fulfilled, (state, { payload }) => {
         state.app = payload;
       });
   },

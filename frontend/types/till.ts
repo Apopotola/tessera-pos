@@ -1,5 +1,5 @@
 import type { TillCustomer } from "@/types/customers";
-import type { SalePayload, TillItem } from "@/types/sales";
+import type { ReceiptSettings, SalePayload, TenderMethod, TillItem } from "@/types/sales";
 
 /** Mirrors Modules\Organisation\Http\Resources\TillResource. */
 export interface Till {
@@ -14,6 +14,8 @@ export interface Till {
   isActive: boolean;
 }
 
+export type QuickButton = "hold" | "discount" | "customer" | "returns" | "price_check" | "open_drawer";
+
 /** Display-only staff card on the till screen (no contact details). */
 export interface TillCashier {
   id: number;
@@ -27,15 +29,39 @@ export interface TillContext {
   business: { name: string };
   branch: { id: number; code: string; name: string };
   till: Till;
+  /** The owner's Settings for this till (Modules\Sales\Services\TillPolicy::forTill); the API re-checks them. */
   policy: {
-    discountLimitPercent: number;
-    voidApprovalThresholdCents: number;
+    /** Largest discount without a manager, % of the line, per role. */
+    discountLimits: Record<string, number>;
+    discountAboveLimit: "approval" | "blocked";
+    priceChangeNeedsApproval: boolean;
+    refundNeedsApproval: boolean;
+    /** Removing a line worth more than this needs a manager; null = never. */
+    voidApprovalThresholdCents: number | null;
+    /** Selling more bottles than the shop floor holds. */
+    belowZero: "allow" | "approval" | "block";
+    /** Accepted methods in button order. */
+    paymentMethods: TenderMethod[];
+    splitAllowed: boolean;
+    /** Cash is rounded to this step in cents (0 = none). */
+    cashRoundingCents: number;
+    /** Send payment requests to the customer's phone (off: pick their payment only). */
+    stkPush: boolean;
+    etimsEnabled: boolean;
+    sellByTot: boolean;
+    /** Confirm the customer is 18 or over before payment. */
+    ageCheck: boolean;
+    blindCashUp: boolean;
+    layout: "tiles" | "list" | "barcode";
+    touchMode: "standard" | "large";
+    quickButtons: QuickButton[];
+    favouritesMode: "top" | "pinned" | "none";
+    receipt: ReceiptSettings;
     returnWindowDays: number;
     /** "stk": prompt the phone or pick the customer's payment; "manual": type the code (unverified). */
     mpesaMode: "stk" | "manual";
     /** Demo M-PESA (fake driver): nothing reaches Safaricom. */
     mpesaDemo: boolean;
-    receiptFooter: string;
   };
   cashiers: TillCashier[];
 }
@@ -75,6 +101,8 @@ export interface TillSnapshot {
   generatedAt: string;
   items: (TillItem & { search: string })[];
   barcodes: { code: string; variantId: number; units: number; packName: string | null }[];
+  /** First-screen favourites, in order. */
+  favouriteIds: number[];
   customers: TillCustomer[];
 }
 

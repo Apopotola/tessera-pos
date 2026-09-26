@@ -15,4 +15,10 @@ final class Money
     {
         return $whole === 0 ? 0 : intdiv($amountCents * $part * 2 + $whole, 2 * $whole);
     }
+
+    /** Round to the nearest step (e.g. 500 = KSh 5), halves up; step 0 leaves the amount as it is. */
+    public static function roundTo(int $amountCents, int $stepCents): int
+    {
+        return $stepCents <= 0 ? $amountCents : intdiv($amountCents * 2 + $stepCents, 2 * $stepCents) * $stepCents;
+    }
 }

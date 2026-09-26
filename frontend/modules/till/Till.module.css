@@ -231,3 +231,40 @@
     overflow: hidden;
   }
 }
+
+/* Settings → Sales screen: list layout and standard (smaller) buttons. */
+.itemList {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.itemList .item {
+  min-height: 0;
+  padding: 10px 14px;
+}
+
+.itemList .itemMain {
+  flex-direction: row;
+  align-items: center;
+  gap: 16px;
+}
+
+.sell[data-touch="standard"] .item {
+  min-height: 92px;
+  padding: 10px 12px;
+}
+
+.sell[data-touch="standard"] .itemGrid {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.sectionLabel {
+  margin: 4px 0 10px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--mantine-color-gray-5);
+}

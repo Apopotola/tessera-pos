@@ -5,7 +5,6 @@ import type { AppSettings, PresetChange, PublicBranding, SettingChange, SettingF
 export const settingsApi = {
   publicBranding: () => api.get<PublicBranding>(U.public),
   app: () => api.get<AppSettings>(U.app),
-  till: () => api.get<AppSettings>(U.till),
 
   schema: (scope: SettingScope, scopeId: number) => api.get<SettingsSchema>(U.schema, { scope, scopeId }),
   save: (key: string, scope: SettingScope, scopeId: number, value: SettingValue) => api.put<SettingField>(U.value(key), { scope, scopeId, value }),

@@ -81,6 +81,7 @@ Open **http://localhost:3010** (use `localhost`, not `127.0.0.1`, so the Sanctum
 | Otieno Kamau (Cashier) | till only | 2580 |
 | Amina Hassan (Cashier) | till only | 3691 |
 | Njeri Wambui (Storekeeper) | `njeri@tessera.test` / `password` | — |
+| Tessera Support (all settings, incl. KRA PIN and eTIMS) | `support@tessera.test` / `password` | — |
 
 ### Setting up a till
 
@@ -113,6 +114,7 @@ cd frontend && pnpm lint && pnpm typecheck && pnpm build
 | Payments | M-PESA Express (STK Push) with Daraja callback + status query, customer-initiated Till/Paybill (C2B) payments pooled until matched, M-PESA tender confirmed only by a Safaricom confirmation, back-office matching of typed codes; drivers `daraja`, `fake` (demo), `manual` | Till: send payment request / pick customer's payment; M-PESA reconciliation screen |
 | Compliance | eTIMS transactional outbox (every sale and return queued in its own transaction), credit notes referencing the signed invoice, retry back-off 1→30 min, refused data held as "needs fixing", daily POS vs KRA-signed reconciliation, dashboard alerts; drivers `fake` (mock KRA) and `disabled` — VSCU/OSCU driver pending the KRA v2.0 spec | eTIMS monitor (invoices & credit notes, daily check); receipts print KRA invoice no., signature and QR |
 | Reports | 14 reports off the immutable ledgers (sales summary, by item/product/category/brand, by cashier/branch/tender, voids-discounts-overrides, returns; stock on hand, valuation as at a date, losses by reason, count variance, transfers, low stock; gross profit, cash-ups, purchases by supplier) with branch/date/category/brand/staff filters, cost columns hidden without `reports.profit.view`, CSV export gated by `reports.export` and audit-logged | Report centre (grouped catalogue incl. links to existing screens) + one report tab per report with totals, Print / PDF and CSV |
+| Settings | One registry of ~75 settings in 9 sections; scoped values (till → branch → business → default); admin levels (Tessera support / owner / branch manager); every change logged with history and undo; industry presets that keep the owner's own changes; encrypted secrets; branding uploads; locked-after-first-use rules | Settings screen; live branding (colours, logo, favicon, login page); settings drive the till, receipts, approvals, stock, payments, eTIMS and dashboard |
 | Customers | Registered wholesale / B2B customers (business name, KRA PIN, wholesale flag); wholesale price tier and buyer PIN on the eTIMS invoice when picked at the till; purchase history; contact details for managers only, record views logged; Owner/Admin data export and anonymisation (sales kept); retention job anonymises customers inactive 24 months | Customers list + customer tab (history, export, anonymise); till customer picker |
 
 ## M-PESA (Payments module)
@@ -162,3 +164,14 @@ When the connection drops the till keeps selling **cash and card** from a copy o
 - **Closing:** a blind count by note and coin (KES 1,000 … KES 1). Expected cash = opening float + cash sales − cash refunds − drops to the safe.
 - **Differences:** if the count is over or short, the cashier must say why before signing out.
 - **Sign-off:** every closed cash-up waits for a manager in *Sales & Shifts → Shifts & cash-ups* (the dashboard shows how many). A difference needs the manager's note, and nobody can sign off their own cash-up.
+
+## Settings
+
+**Administration → Settings** (owner, admin, branch manager; Tessera support for platform items). The registry in `backend/Modules/Settings/app/Support/SettingsRegistry.php` defines every setting: its screen, type, default, who may change it and at which scopes. The screen and the API validation are generated from it.
+
+- **Scopes:** a value set on a till beats its branch, which beats the business, which beats the default. Branch managers change their own branch and tills.
+- **History and undo:** every change is logged (`setting_changes`, append-only) and written to the audit trail; secrets are stored encrypted and shown as `••••last4`.
+- **Presets:** applying an industry preset previews the changes and keeps the owner's own changes unless they tick *Also replace my own changes*.
+- **Branding:** primary and accent colours (custom colours must keep white text readable), logo, receipt logo, app icon, login page style, background and welcome text apply live.
+- **What they drive:** the till gets its rules through `GET /organisation/till-context` (`Modules\Sales\Services\TillPolicy`) and the API re-checks them on every sale: invoice prefix (locked after the first sale), discount limit per role, approvals (price change, big discounts, removing items, refunds), selling below zero stock, accepted payment methods and order, split payments, cash rounding (`sales.rounding_cents`), STK Push on/off, eTIMS per branch (sales outside eTIMS are `not_required`), sell by tot, categories sold per branch, favourites, layout, touch mode, quick buttons, age check, receipt layout and printing, blind cash-up, allowed cash variance, low-stock default level, password length and dashboard tiles per role.
+- Settings for features not built yet are shown with **Coming later** and change nothing.

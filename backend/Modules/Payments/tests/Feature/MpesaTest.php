@@ -186,7 +186,7 @@ class MpesaTest extends InventoryTestCase
         $this->flushSession();
         $this->actingAs($this->manager)->postJson("/api/v1/payments/mpesa/confirmations/{$unverified['suggestedConfirmationId']}/match", ['tenderId' => $unverified['id']])
             ->assertOk()
-            ->assertJsonPath('data.sale.number', 'MAIN-S-000001');
+            ->assertJsonPath('data.sale.number', 'INV-MAIN-000001');
 
         $this->actingAs($this->manager)->getJson('/api/v1/payments/mpesa/confirmations')
             ->assertJsonPath('data.summary.matchedCount', 1)

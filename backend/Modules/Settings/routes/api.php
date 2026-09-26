@@ -17,10 +17,6 @@ Route::prefix('settings')->name('settings.')->group(function () {
     Route::get('files/{path}', [BrandingController::class, 'file'])->where('path', 'branding/[A-Za-z0-9\-]+\.(png|jpg|jpeg|svg|webp)')->name('files');
 });
 
-Route::middleware(['auth:sanctum', 'till.device'])->prefix('settings')->name('settings.')->group(function () {
-    Route::get('till', [SettingsController::class, 'till'])->name('till');
-});
-
 Route::middleware('auth:sanctum')->prefix('settings')->name('settings.')->group(function () {
     Route::get('app', [SettingsController::class, 'app'])->name('app');
     Route::get('schema', [SettingsController::class, 'schema'])->name('schema');

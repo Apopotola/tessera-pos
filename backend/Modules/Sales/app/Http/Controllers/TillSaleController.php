@@ -21,6 +21,7 @@ use Modules\Sales\Services\SaleReturnService;
 use Modules\Sales\Services\SaleService;
 use Modules\Sales\Services\TillApprovalService;
 use Modules\Sales\Services\TillCatalogueService;
+use Modules\Sales\Services\TillPolicy;
 use OpenApi\Attributes as OA;
 
 /** Everything the selling screen calls. Requires a signed-in cashier on a paired till. */
@@ -35,6 +36,7 @@ class TillSaleController extends Controller
         private readonly TillApprovalService $approvals,
         private readonly AuditLogger $audit,
         private readonly ParkedSaleService $parking,
+        private readonly TillPolicy $policy,
     ) {}
 
     #[OA\Get(path: '/api/v1/sales/till/items', summary: 'Search sellable items with this branch price and shop-floor stock', tags: ['Till'], responses: [new OA\Response(response: 200, description: 'Items')])]
@@ -44,6 +46,14 @@ class TillSaleController extends Controller
         $term = $request->validate(['search' => ['required', 'string', 'min:2', 'max:100']])['search'];
 
         return $this->success('Items.', $this->catalogue->search($this->till($request), $term));
+    }
+
+    #[OA\Get(path: '/api/v1/sales/till/favourites', summary: 'Favourite items for the first screen (Settings → Sales screen)', tags: ['Till'], responses: [new OA\Response(response: 200, description: 'Items')])]
+    public function favourites(Request $request): JsonResponse
+    {
+        $this->requireSeller($request);
+
+        return $this->success('Favourites.', $this->catalogue->favourites($this->till($request)));
     }
 
     #[OA\Get(path: '/api/v1/sales/till/scan/{code}', summary: 'Resolve a scanned barcode (case barcodes return units per case)', tags: ['Till'], responses: [new OA\Response(response: 200, description: 'Item'), new OA\Response(response: 404, description: 'Unknown barcode')])]
@@ -111,6 +121,8 @@ class TillSaleController extends Controller
             'lines.*.unitPriceCents' => ['nullable', 'integer', 'min:1', 'max:100000000'],
             'lines.*.discountCents' => ['nullable', 'integer', 'min:0'],
             'lines.*.approvalToken' => ['nullable', 'string', 'max:60'],
+            // Manager approval to sell more than the shop floor holds (Settings → stock.below_zero).
+            'stockApprovalToken' => ['nullable', 'string', 'max:60'],
             'tenders' => ['required', 'array', 'min:1', 'max:5'],
             'tenders.*.method' => ['required', Rule::in([SaleTender::CASH, SaleTender::MPESA, SaleTender::CARD])],
             'tenders.*.amountCents' => ['required', 'integer', 'min:1', 'max:1000000000'],
@@ -148,7 +160,8 @@ class TillSaleController extends Controller
         $data = $request->validate([
             'saleId' => ['required', 'integer'],
             'reason' => ['required', 'string', 'max:500'],
-            'approvalToken' => ['required', 'string', 'max:60'],
+            // Required when Settings → Approvals → Refund needs a manager (checked in the service).
+            'approvalToken' => ['nullable', 'string', 'max:60'],
             'lines' => ['required', 'array', 'min:1'],
             'lines.*.saleLineId' => ['required', 'integer', 'distinct'],
             'lines.*.quantity' => ['required', 'integer', 'min:1'],
@@ -173,7 +186,8 @@ class TillSaleController extends Controller
         ]);
         $till = $this->till($request);
 
-        $approverId = $data['valueCents'] > (int) config('sales.void_approval_threshold_cents')
+        $threshold = $this->policy->voidApprovalThresholdCents($till);
+        $approverId = $threshold !== null && $data['valueCents'] > $threshold
             ? $this->approvals->consume($data['approvalToken'] ?? null, 'void', $till, $request->user())
             : null;
 

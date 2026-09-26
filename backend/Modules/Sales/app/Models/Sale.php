@@ -19,6 +19,9 @@ class Sale extends Model
 
     public const NUMBER_PREFIX = 'S';
 
+    /** eTIMS switched off for the branch (Settings → Integrations): nothing is sent to KRA. */
+    public const ETIMS_NOT_REQUIRED = 'not_required';
+
     protected $guarded = ['id'];
 
     protected function casts(): array

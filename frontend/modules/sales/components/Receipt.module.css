@@ -57,3 +57,22 @@
   justify-content: center;
   margin: 6px 0;
 }
+
+/* Paper sizes (Settings → Receipts). */
+.paper58 {
+  width: 48mm;
+  font-size: 10px;
+}
+
+.paperA4 {
+  width: 180mm;
+  font-size: 12px;
+}
+
+.logo {
+  display: block;
+  max-width: 60%;
+  max-height: 64px;
+  margin: 0 auto 6px;
+  filter: grayscale(1);
+}

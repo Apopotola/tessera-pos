@@ -22,6 +22,8 @@ interface MpesaPanelProps {
   demo: boolean;
   paid: MpesaPaid | null;
   onPaid: (paid: MpesaPaid | null) => void;
+  /** Settings → Payments: payment requests to the phone; off = pick the customer's payment only. */
+  stkPush?: boolean;
 }
 
 type Mode = "prompt" | "pick";
@@ -30,8 +32,9 @@ type Mode = "prompt" | "pick";
  * M-PESA is only "paid" when Safaricom says so: either the customer approves the prompt on
  * their phone, or they paid the till themselves and the cashier picks that payment.
  */
-export default function MpesaPanel({ amountCents, demo, paid, onPaid }: MpesaPanelProps) {
-  const [mode, setMode] = useState<Mode>("prompt");
+export default function MpesaPanel({ amountCents, demo, paid, onPaid, stkPush = true }: MpesaPanelProps) {
+  const [chosen, setMode] = useState<Mode>("prompt");
+  const mode: Mode = stkPush ? chosen : "pick";
 
   if (paid) {
     return (
@@ -62,15 +65,17 @@ export default function MpesaPanel({ amountCents, demo, paid, onPaid }: MpesaPan
         </Text>
       )}
       {mode === "prompt" ? <StkPrompt amountCents={amountCents} onPaid={onPaid} /> : <PickPayment amountCents={amountCents} onPaid={onPaid} demo={demo} />}
-      <Button
-        variant="subtle"
-        size="xs"
-        w="fit-content"
-        leftSection={mode === "prompt" ? <IconListSearch size={14} /> : <IconDeviceMobileMessage size={14} />}
-        onClick={() => setMode(mode === "prompt" ? "pick" : "prompt")}
-      >
-        {mode === "prompt" ? "Customer already paid to the till?" : "Send a payment request instead"}
-      </Button>
+      {stkPush && (
+        <Button
+          variant="subtle"
+          size="xs"
+          w="fit-content"
+          leftSection={mode === "prompt" ? <IconListSearch size={14} /> : <IconDeviceMobileMessage size={14} />}
+          onClick={() => setMode(mode === "prompt" ? "pick" : "prompt")}
+        >
+          {mode === "prompt" ? "Customer already paid to the till?" : "Send a payment request instead"}
+        </Button>
+      )}
     </Stack>
   );
 }

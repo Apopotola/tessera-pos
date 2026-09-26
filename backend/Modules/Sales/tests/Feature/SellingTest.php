@@ -71,7 +71,7 @@ class SellingTest extends InventoryTestCase
     {
         $this->sell([['variantId' => $this->whisky->id, 'quantity' => 2]], [['method' => 'cash', 'amountCents' => 1000000]])
             ->assertCreated()
-            ->assertJsonPath('data.number', 'MAIN-S-000001')
+            ->assertJsonPath('data.number', 'INV-MAIN-000001')
             ->assertJsonPath('data.totalCents', 960000)
             ->assertJsonPath('data.vatCents', 132414) // 9,600 × 16/116
             ->assertJsonPath('data.tenders.0.changeCents', 40000)
@@ -79,7 +79,7 @@ class SellingTest extends InventoryTestCase
             ->assertJsonPath('data.lines.0.unitPriceCents', 480000);
 
         $this->assertSame(18, $this->onHand($this->floor));
-        $this->assertDatabaseHas('sales', ['number' => 'MAIN-S-000001', 'cost_cents' => 600000]);
+        $this->assertDatabaseHas('sales', ['number' => 'INV-MAIN-000001', 'cost_cents' => 600000]);
         $this->assertDatabaseHas('stock_movements', ['movement_type' => 'sale', 'quantity' => -2, 'unit_cost_cents' => 300000]);
     }
 

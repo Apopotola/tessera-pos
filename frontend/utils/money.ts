@@ -13,6 +13,11 @@ export function centsToKes(cents: number): number {
   return cents / 100;
 }
 
+/** Round to the nearest step (e.g. 500 = KSh 5), halves up. Mirrors Modules\Sales\Support\Money::roundTo. */
+export function roundTo(cents: number, stepCents: number): number {
+  return stepCents > 0 ? Math.floor((cents * 2 + stepCents) / (2 * stepCents)) * stepCents : cents;
+}
+
 /** Mantine NumberInput yields number | string; returns null for empty input. */
 export function optionalKesToCents(value: number | string | null | undefined): number | null {
   if (value === "" || value == null) return null;

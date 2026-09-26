@@ -21,6 +21,7 @@ use Modules\Sales\Models\SaleReturn;
 use Modules\Sales\Models\SaleReturnLine;
 use Modules\Sales\Models\SaleTender;
 use Modules\Sales\Models\Shift;
+use Modules\Settings\Services\SettingsService;
 
 /**
  * Today's operational snapshot, built only from data that exists.
@@ -32,6 +33,7 @@ class DashboardService
     public function __construct(
         private readonly BranchAccessService $branchAccess,
         private readonly StockQueryService $stock,
+        private readonly SettingsService $settings,
     ) {}
 
     /** @return array<string, mixed> */
@@ -74,10 +76,12 @@ class DashboardService
                     ])->values()
                 : null,
 
-            // Closed cash-ups a manager has not signed off yet, and how many had a difference.
+            // Closed cash-ups a manager has not signed off yet, and how many are out by more than
+            // the allowed variance (Settings → Staff → Shifts and cash-up).
             'cashUps' => $user->can(Permissions::SHIFTS_CASHUP_APPROVE) ? [
                 'toReview' => Shift::query()->whereIn('branch_id', $branchIds)->whereNotNull('closed_at')->whereNull('reviewed_at')->count(),
-                'withDifference' => Shift::query()->whereIn('branch_id', $branchIds)->whereNotNull('closed_at')->whereNull('reviewed_at')->where('variance_cents', '<>', 0)->count(),
+                'withDifference' => Shift::query()->whereIn('branch_id', $branchIds)->whereNotNull('closed_at')->whereNull('reviewed_at')
+                    ->whereRaw('ABS(variance_cents) > ?', [(int) $this->settings->get('shifts.allowed_variance')])->count(),
             ] : null,
 
             'salesToday' => $user->can(Permissions::SALES_VIEW) ? $this->salesToday($user, $branchIds) : null,

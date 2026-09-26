@@ -13,6 +13,7 @@ use Modules\Payments\Contracts\MpesaGateway;
 use Modules\Payments\Models\MpesaConfirmation;
 use Modules\Payments\Models\MpesaStkRequest;
 use Modules\Payments\Support\StkStatus;
+use Modules\Settings\Services\SettingsService;
 use Throwable;
 
 /**
@@ -25,10 +26,17 @@ class StkPushService
     /** Daraja rate-limits status queries; do not ask more often than this. */
     private const QUERY_INTERVAL_SECONDS = 10;
 
-    public function __construct(private readonly MpesaGateway $gateway) {}
+    public function __construct(
+        private readonly MpesaGateway $gateway,
+        private readonly SettingsService $settings,
+    ) {}
 
     public function initiate(Till $till, User $cashier, string $phoneInput, int $amountCents): MpesaStkRequest
     {
+        if (! $this->settings->get('payments.stk_push', $till->branch_id, $till->id)) {
+            throw ValidationException::withMessages(['phone' => 'Payment requests to the phone are switched off. Pick the customer\'s payment instead.']);
+        }
+
         $phone = PhoneNumber::normalize($phoneInput)
             ?? throw ValidationException::withMessages(['phone' => 'Enter a Safaricom number like 0712 345 678.']);
         if ($amountCents < 100 || $amountCents % 100 !== 0) {

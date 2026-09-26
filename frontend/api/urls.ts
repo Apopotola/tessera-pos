@@ -67,6 +67,7 @@ export const SALES_URLS = {
   reviewShift: (id: number) => `/sales/shifts/${id}/review`,
   tillItems: "/sales/till/items",
   tillCatalogue: "/sales/till/catalogue",
+  tillFavourites: "/sales/till/favourites",
   tillScan: (code: string) => `/sales/till/scan/${encodeURIComponent(code)}`,
   tillApprovers: "/sales/till/approvers",
   tillApprovals: "/sales/till/approvals",
@@ -189,7 +190,6 @@ export const PING_URL = "/ping";
 export const SETTINGS_URLS = {
   public: "/settings/public",
   app: "/settings/app",
-  till: "/settings/till",
   schema: "/settings/schema",
   value: (key: string) => `/settings/values/${encodeURIComponent(key)}`,
   undo: (key: string) => `/settings/values/${encodeURIComponent(key)}/undo`,
