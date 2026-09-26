@@ -36,6 +36,9 @@ export const PERMISSIONS = {
   USERS_MANAGE: "users.manage",
   COMPLIANCE_MANAGE: "compliance.manage",
   AUDIT_VIEW: "audit.view",
+  SETTINGS_PLATFORM: "settings.platform",
+  SETTINGS_BUSINESS: "settings.business",
+  SETTINGS_BRANCH: "settings.branch",
 } as const;
 
 export type Permission = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

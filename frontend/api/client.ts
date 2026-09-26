@@ -127,6 +127,13 @@ export async function downloadFile(url: string, params: object, fallbackName: st
   }
 }
 
+/** Multipart upload of one file (field "file"); returns the envelope's data. */
+export async function uploadFile<T>(url: string, file: File): Promise<T> {
+  const form = new FormData();
+  form.append("file", file);
+  return apiRequest<T>({ method: "POST", url, data: form, headers: { "Content-Type": "multipart/form-data" } });
+}
+
 export const api = {
   get: <T>(url: string, params?: object) => apiRequest<T>({ method: "GET", url, params }),
   post: <T>(url: string, data?: unknown) => apiRequest<T>({ method: "POST", url, data }),

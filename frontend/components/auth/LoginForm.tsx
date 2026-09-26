@@ -10,6 +10,7 @@ import { useEffect, useState } from "react";
 import { brand } from "@/app/theme";
 import BottleSkyline from "@/components/brand/BottleSkyline";
 import Logo from "@/components/brand/Logo";
+import { useBrand } from "@/components/brand/useBrand";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { login } from "@/store/slices/authSlice";
 import type { LoginPayload } from "@/types/auth";
@@ -25,6 +26,11 @@ export default function LoginForm() {
   const [submitting, setSubmitting] = useState(false);
   const [forgotOpened, forgot] = useDisclosure(false);
   const next = safeRedirectPath(searchParams.get("next"));
+  const branding = useAppSelector((state) => state.settings.branding);
+  const { poweredBy } = useBrand();
+  const centred = branding?.loginStyle === "centered";
+  const background = branding?.loginBackground ?? "bottles";
+  const backgroundImage = background === "image" && branding?.loginBackgroundImage ? `url("${branding.loginBackgroundImage}")` : undefined;
 
   const form = useForm<Required<LoginPayload>>({
     mode: "uncontrolled",
@@ -50,8 +56,11 @@ export default function LoginForm() {
   };
 
   return (
-    <div className={classes.page}>
-      <section className={classes.brandPanel} style={{ background: brand.navy }}>
+    <div className={`${classes.page} ${centred ? classes.centred : ""}`}>
+      <section
+        className={`${classes.brandPanel} ${background === "mosaic" ? classes.mosaic : ""}`}
+        style={{ backgroundColor: brand.navy, backgroundImage, backgroundSize: "cover", backgroundPosition: "center" }}
+      >
         <Logo size={30} />
         <Box className={classes.headline}>
           <h1 className={`tessera-display ${classes.title}`}>
@@ -61,9 +70,11 @@ export default function LoginForm() {
           </h1>
           <Text className={classes.tagline}>Sales, stock and shifts for your wine & spirits shop, in one place.</Text>
         </Box>
-        <div className={classes.skyline}>
-          <BottleSkyline height={230} />
-        </div>
+        {background === "bottles" && (
+          <div className={classes.skyline}>
+            <BottleSkyline height={230} />
+          </div>
+        )}
       </section>
 
       <section className={classes.formPanel} style={{ background: brand.cream }}>
@@ -73,8 +84,8 @@ export default function LoginForm() {
               <Text size="xs" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: "0.12em" }}>
                 Back office
               </Text>
-              <Title order={1} fz={32} c={brand.navy}>
-                Sign in
+              <Title order={1} fz={branding?.welcomeText && branding.welcomeText.length > 24 ? 26 : 32} c={brand.navy}>
+                {branding?.welcomeText ?? "Sign in"}
               </Title>
             </div>
 
@@ -126,7 +137,7 @@ export default function LoginForm() {
             </Button>
 
             <Text size="xs" c="dimmed" ta="center">
-              Powered by Tessera · Need help? Contact your shop administrator.
+              {poweredBy.text} · Need help? Contact your shop administrator.
             </Text>
           </Stack>
         </form>

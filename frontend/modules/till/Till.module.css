@@ -38,8 +38,8 @@
 }
 
 .card[data-active] {
-  background: #3f3570;
-  border-color: #8f74db;
+  background: var(--mantine-color-tessera-9);
+  border-color: var(--mantine-color-tessera-4);
 }
 
 .footer {
@@ -57,8 +57,8 @@
 }
 
 .dot[data-filled] {
-  background: #8f74db;
-  border-color: #8f74db;
+  background: var(--mantine-color-tessera-4);
+  border-color: var(--mantine-color-tessera-4);
 }
 
 .key,
@@ -79,7 +79,7 @@
 }
 
 .key:active {
-  background: #3f3570;
+  background: var(--mantine-color-tessera-9);
 }
 
 .keyText {
@@ -129,7 +129,7 @@
 }
 
 .searchInput:focus {
-  border-color: #8f74db;
+  border-color: var(--mantine-color-tessera-4);
 }
 
 .results {
@@ -156,7 +156,7 @@
 }
 
 .item:hover {
-  border-color: #5b3fa3;
+  border-color: var(--mantine-color-tessera-7);
 }
 
 .itemMain {
@@ -170,12 +170,12 @@
   margin: 4px -8px -6px;
   padding: 8px;
   border-radius: 10px;
-  background: #3f3570;
+  background: var(--mantine-color-tessera-9);
   color: #fff;
 }
 
 .totButton:hover {
-  background: #5b3fa3;
+  background: var(--mantine-color-tessera-7);
 }
 
 .item[data-disabled] {

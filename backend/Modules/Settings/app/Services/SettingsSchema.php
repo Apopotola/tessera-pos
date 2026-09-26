@@ -5,6 +5,7 @@ namespace Modules\Settings\Services;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Modules\Auth\Models\User;
+use Modules\Catalogue\Models\ProductVariant;
 use Modules\Organisation\Models\Business;
 use Modules\Organisation\Models\Till;
 use Modules\Organisation\Services\BranchAccessService;
@@ -38,6 +39,11 @@ class SettingsSchema
         }
 
         $branchIds = $this->branches->branchesFor($user)->modelKeys();
+        // Names for item ids held in "items" settings (favourite products).
+        $itemIds = collect($sections)->flatMap(fn ($section) => $section['fields'])->where('type', 'items')
+            ->flatMap(fn ($f) => array_merge((array) $f['value'], (array) $f['effective']))->unique()->values()->all();
+        $itemNames = ProductVariant::query()->with('product')->findMany($itemIds)
+            ->map(fn (ProductVariant $v) => ['id' => $v->id, 'label' => $v->display_name])->values()->all();
 
         return [
             'level' => $this->settings->levelOf($user),
@@ -55,6 +61,7 @@ class SettingsSchema
                 'categories' => DB::table('categories')->where('is_active', true)->orderBy('name')->get(['id', 'name', 'parent_id as parentId'])->map(fn ($c) => (array) $c)->all(),
                 'roles' => SettingsRegistry::ROLES_FOR_LIMITS,
                 'dashboardTiles' => SettingsRegistry::DASHBOARD_TILES,
+                'items' => $itemNames,
             ],
         ];
     }

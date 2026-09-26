@@ -1,10 +1,12 @@
 import { combineReducers, configureStore } from "@reduxjs/toolkit";
 import authReducer from "@/store/slices/authSlice";
+import settingsReducer from "@/store/slices/settingsSlice";
 import tabsReducer from "@/store/slices/tabsSlice";
 
 const rootReducer = combineReducers({
   auth: authReducer,
   tabs: tabsReducer,
+  settings: settingsReducer,
 });
 
 export function makeStore() {

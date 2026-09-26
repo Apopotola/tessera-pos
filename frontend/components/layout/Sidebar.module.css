@@ -27,13 +27,13 @@
 }
 
 .link[data-active] {
-  background: #5b3fa3;
+  background: var(--mantine-color-tessera-7);
   color: #fff;
   font-weight: 600;
 }
 
 .link[data-active]:hover {
-  background: #6849b5;
+  background: var(--mantine-color-tessera-6);
 }
 
 /* Amber marker on the active item. */
@@ -45,7 +45,7 @@
   bottom: 8px;
   width: 4px;
   border-radius: 0 4px 4px 0;
-  background: #f2a93b;
+  background: var(--mantine-color-amber-5);
 }
 
 .section {

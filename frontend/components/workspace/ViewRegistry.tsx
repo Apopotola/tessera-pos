@@ -63,6 +63,7 @@ const ViewRegistry: Record<string, ComponentType<WorkspaceViewProps>> = {
   branchesList: lazyView(() => import("@/modules/organisation/views/BranchesView")),
   usersList: lazyView(() => import("@/modules/users/views/UsersView")),
   auditLog: lazyView(() => import("@/modules/audit-trail/views/AuditLogView")),
+  settings: lazyView(() => import("@/modules/settings/views/SettingsView")),
 };
 
 export const REGISTERED_VIEW_TYPES = Object.keys(ViewRegistry);

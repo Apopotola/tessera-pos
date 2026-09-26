@@ -86,3 +86,43 @@
     padding: 48px;
   }
 }
+
+/* Mosaic background: tessera tiles in the brand colours. */
+.mosaic {
+  background-image:
+    linear-gradient(135deg, color-mix(in srgb, var(--mantine-color-tessera-7) 45%, transparent) 25%, transparent 25%),
+    linear-gradient(225deg, color-mix(in srgb, var(--mantine-color-amber-5) 22%, transparent) 25%, transparent 25%),
+    linear-gradient(45deg, color-mix(in srgb, var(--mantine-color-tessera-4) 30%, transparent) 25%, transparent 25%);
+  background-size: 72px 72px;
+}
+
+/* Centred card: brand background fills the page, the form floats in a card on top. */
+.centred {
+  grid-template-columns: 1fr !important;
+  grid-template-areas: "stack";
+}
+
+.centred > .brandPanel,
+.centred > .formPanel {
+  grid-area: stack;
+}
+
+.centred > .brandPanel .headline,
+.centred > .brandPanel .skyline {
+  display: none;
+}
+
+.centred > .brandPanel {
+  padding: 24px;
+}
+
+.centred > .formPanel {
+  align-self: center;
+  justify-self: center;
+  width: calc(100% - 32px);
+  max-width: 480px;
+  margin: 96px 0 40px;
+  padding: 32px;
+  border-radius: 16px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+}

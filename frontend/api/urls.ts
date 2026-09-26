@@ -185,3 +185,16 @@ export const CUSTOMERS_URLS = {
 
 /** Connectivity check for the offline till (public, never cached). */
 export const PING_URL = "/ping";
+
+export const SETTINGS_URLS = {
+  public: "/settings/public",
+  app: "/settings/app",
+  till: "/settings/till",
+  schema: "/settings/schema",
+  value: (key: string) => `/settings/values/${encodeURIComponent(key)}`,
+  undo: (key: string) => `/settings/values/${encodeURIComponent(key)}/undo`,
+  history: (key: string) => `/settings/values/${encodeURIComponent(key)}/history`,
+  presetPreview: (preset: string) => `/settings/presets/${preset}/preview`,
+  presetApply: (preset: string) => `/settings/presets/${preset}/apply`,
+  uploads: "/settings/uploads",
+} as const;

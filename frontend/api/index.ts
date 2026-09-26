@@ -14,3 +14,4 @@ export { paymentsApi } from "@/api/endpoints/payments";
 export { complianceApi } from "@/api/endpoints/compliance";
 export { reportsApi } from "@/api/endpoints/reports";
 export { customersApi } from "@/api/endpoints/customers";
+export { settingsApi } from "@/api/endpoints/settings";
