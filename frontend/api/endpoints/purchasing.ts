@@ -1,5 +1,6 @@
 import { api } from "@/api/client";
 import { PURCHASING_URLS as U } from "@/api/urls";
+import type { AccountPayment, AccountsList, Statement, SupplierAccount, SupplierPaymentPayload } from "@/types/accounts";
 import type { Paginated } from "@/types/api";
 import type { DocumentStatus } from "@/types/inventory";
 import type {
@@ -42,5 +43,14 @@ export const purchasingApi = {
   createReturn: (payload: SupplierReturnPayload) => api.post<SupplierReturn>(U.returns, payload),
   approveReturn: (id: number) => api.post<SupplierReturn>(U.returnAction(id, "approve")),
   rejectReturn: (id: number, note: string) => api.post<SupplierReturn>(U.returnAction(id, "reject"), { note }),
-  recordCreditNote: (id: number, reference: string) => api.post<SupplierReturn>(U.returnAction(id, "credit-note"), { reference }),
+  recordCreditNote: (id: number, reference: string, amountCents: number, date: string) =>
+    api.post<SupplierReturn>(U.returnAction(id, "credit-note"), { reference, amountCents, date }),
+
+  // Supplier balances and payments (payables)
+  payables: (asAt?: string) => api.get<AccountsList<SupplierAccount>>(U.payables, asAt ? { asAt } : undefined),
+  supplierAccount: (id: number) => api.get<SupplierAccount>(U.supplierAccount(id)),
+  supplierStatement: (id: number, from: string, to: string) => api.get<Statement>(U.supplierStatement(id), { from, to }),
+  supplierPayments: (id: number) => api.get<AccountPayment[]>(U.supplierPayments(id)),
+  paySupplier: (id: number, payload: SupplierPaymentPayload) => api.post<AccountPayment>(U.supplierPayments(id), payload),
+  reverseSupplierPayment: (paymentId: number, reason: string) => api.post<AccountPayment>(U.reverseSupplierPayment(paymentId), { reason }),
 };

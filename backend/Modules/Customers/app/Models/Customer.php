@@ -19,6 +19,8 @@ class Customer extends Model
             'is_wholesale' => 'boolean',
             'is_active' => 'boolean',
             'anonymised_at' => 'immutable_datetime',
+            'credit_limit_cents' => 'integer',
+            'credit_terms_days' => 'integer',
         ];
     }
 

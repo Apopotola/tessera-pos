@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Purchasing\Http\Controllers\PurchaseOrderController;
+use Modules\Purchasing\Http\Controllers\SupplierAccountController;
 use Modules\Purchasing\Http\Controllers\SupplierController;
 use Modules\Purchasing\Http\Controllers\SupplierDocumentController;
 
@@ -37,4 +38,12 @@ Route::middleware('auth:sanctum')->prefix('purchasing')->name('purchasing.')->gr
     Route::post('returns/{supplierReturn}/approve', [SupplierDocumentController::class, 'approveReturn'])->name('returns.approve');
     Route::post('returns/{supplierReturn}/reject', [SupplierDocumentController::class, 'rejectReturn'])->name('returns.reject');
     Route::post('returns/{supplierReturn}/credit-note', [SupplierDocumentController::class, 'creditNote'])->name('returns.credit-note');
+
+    // Supplier balances and payments (payables).
+    Route::get('payables', [SupplierAccountController::class, 'index'])->name('payables.index');
+    Route::get('suppliers/{supplier}/account', [SupplierAccountController::class, 'show'])->name('suppliers.account');
+    Route::get('suppliers/{supplier}/statement', [SupplierAccountController::class, 'statement'])->name('suppliers.statement');
+    Route::get('suppliers/{supplier}/payments', [SupplierAccountController::class, 'payments'])->name('suppliers.payments.index');
+    Route::post('suppliers/{supplier}/payments', [SupplierAccountController::class, 'store'])->name('suppliers.payments.store');
+    Route::post('payments/{payment}/reverse', [SupplierAccountController::class, 'reverse'])->name('payments.reverse');
 });

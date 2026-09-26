@@ -123,6 +123,10 @@ class DashboardService
                 'invoicesWithVariance' => SupplierInvoice::query()->where('match_status', SupplierInvoice::VARIANCE)->count(),
             ] : null,
 
+            // Phase 2: credit accounts and supplier balances (financial figures).
+            'receivables' => $user->can(Permissions::REPORTS_FINANCIAL_VIEW) && $user->can(Permissions::CUSTOMERS_VIEW) ? $this->kpis->receivables() : null,
+            'payables' => $user->can(Permissions::REPORTS_FINANCIAL_VIEW) && $user->can(Permissions::PURCHASING_VIEW) ? $this->kpis->payables() : null,
+
             'staff' => $user->can(Permissions::USERS_MANAGE) ? [
                 'active' => User::query()->where('is_active', true)->count(),
                 'cashiersWithoutPin' => User::permission(Permissions::SALES_SELL)->where('is_active', true)->whereNull('pin_hash')->count(),
@@ -174,6 +178,7 @@ class DashboardService
             'cashCents' => (int) ($tenders[SaleTender::CASH] ?? 0),
             'mpesaCents' => (int) ($tenders[SaleTender::MPESA] ?? 0),
             'cardCents' => (int) ($tenders[SaleTender::CARD] ?? 0),
+            'creditCents' => (int) ($tenders[SaleTender::CREDIT] ?? 0),
             'grossProfitCents' => $showProfit
                 ? ($gross - $refunds) - ((int) (clone $sales)->sum('vat_cents') - (int) (clone $returns)->sum('vat_cents'))
                     - ((int) (clone $sales)->sum('cost_cents') - $returnedCost)

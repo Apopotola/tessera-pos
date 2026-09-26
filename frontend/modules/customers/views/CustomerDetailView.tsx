@@ -14,6 +14,7 @@ import WorkspacePage from "@/components/shared/WorkspacePage";
 import type { WorkspaceViewProps } from "@/components/workspace/types";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { usePermissions } from "@/hooks/usePermissions";
+import CreditAccountSection from "@/modules/customers/components/CreditAccountSection";
 import CustomerFormModal from "@/modules/customers/components/CustomerFormModal";
 import { PERMISSIONS } from "@/types/permissions";
 import { formatKes } from "@/utils/money";
@@ -97,6 +98,9 @@ export default function CustomerDetailView({ title, section, props }: WorkspaceV
                 </Text>
               </DataCard>
             )}
+
+            {/* Credit account: balances are financial data (payments, credit or financial reports). */}
+            {(can(PERMISSIONS.CUSTOMERS_PAYMENTS) || can(PERMISSIONS.CUSTOMERS_CREDIT) || can(PERMISSIONS.REPORTS_FINANCIAL_VIEW)) && <CreditAccountSection customer={c} />}
 
             {sales.data && (
               <DataCard>

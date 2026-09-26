@@ -146,6 +146,11 @@ export const PURCHASING_URLS = {
   suppliers: "/purchasing/suppliers",
   supplier: (id: number) => `/purchasing/suppliers/${id}`,
   supplierItems: (id: number) => `/purchasing/suppliers/${id}/items`,
+  payables: "/purchasing/payables",
+  supplierAccount: (id: number) => `/purchasing/suppliers/${id}/account`,
+  supplierStatement: (id: number) => `/purchasing/suppliers/${id}/statement`,
+  supplierPayments: (id: number) => `/purchasing/suppliers/${id}/payments`,
+  reverseSupplierPayment: (paymentId: number) => `/purchasing/payments/${paymentId}/reverse`,
   orders: "/purchasing/orders",
   order: (id: number) => `/purchasing/orders/${id}`,
   orderAction: (id: number, action: "approve" | "send" | "cancel" | "receive") => `/purchasing/orders/${id}/${action}`,
@@ -192,6 +197,12 @@ export const CUSTOMERS_URLS = {
   export: (id: number) => `/customers/${id}/export`,
   anonymise: (id: number) => `/customers/${id}/anonymise`,
   tillSearch: "/customers/till/search",
+  accounts: "/customers/accounts",
+  account: (id: number) => `/customers/${id}/account`,
+  credit: (id: number) => `/customers/${id}/credit`,
+  statement: (id: number) => `/customers/${id}/statement`,
+  payments: (id: number) => `/customers/${id}/payments`,
+  reversePayment: (paymentId: number) => `/customers/payments/${paymentId}/reverse`,
 } as const;
 
 /** Connectivity check for the offline till (public, never cached). */

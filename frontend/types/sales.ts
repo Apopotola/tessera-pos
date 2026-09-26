@@ -1,10 +1,13 @@
 /** Mirrors Modules\Sales resources. Prices are VAT-inclusive cents. */
 import type { EtimsReceipt, EtimsStatus } from "@/types/compliance";
 
-export type TenderMethod = "cash" | "mpesa" | "card";
+/** "credit" = on the customer's credit account (no money changes hands). */
+export type TenderMethod = "cash" | "mpesa" | "card" | "credit";
+
+export const TENDER_LABELS: Record<TenderMethod, string> = { cash: "Cash", mpesa: "M-PESA", card: "Card", credit: "On account" };
 /** "not_required": the branch is outside eTIMS (Settings → Integrations), nothing goes to KRA. */
 export type SaleEtimsStatus = EtimsStatus | "not_required";
-export type ApprovalAction = "discount" | "override" | "void" | "refund" | "cash_drop" | "below_zero";
+export type ApprovalAction = "discount" | "override" | "void" | "refund" | "cash_drop" | "below_zero" | "credit";
 /** A bottle off the shelf, or a tot poured from the open bottle. */
 export type SaleUnit = "bottle" | "tot";
 
@@ -63,6 +66,8 @@ export interface SalePayload {
   customerPin?: string | null;
   /** Manager approval to sell more than the shop floor holds (Settings → stock). */
   stockApprovalToken?: string | null;
+  /** Manager approval for a sale on account over the limit (or any, per Settings). */
+  creditApprovalToken?: string | null;
   lines: SaleLinePayload[];
   tenders: TenderPayload[];
 }
@@ -118,7 +123,7 @@ export interface Sale {
     cardLast4: string | null;
     status: "confirmed" | "unverified";
   }[];
-  returns: { id: number; number: string; totalCents: number; reason: string; etimsStatus: SaleEtimsStatus; createdAt: string | null }[];
+  returns: { id: number; number: string; totalCents: number; reason: string; etimsStatus: SaleEtimsStatus; toAccountCents: number; createdAt: string | null }[];
   receipt: ReceiptSettings;
 }
 

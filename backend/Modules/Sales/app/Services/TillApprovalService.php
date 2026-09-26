@@ -29,6 +29,8 @@ class TillApprovalService
         'refund' => Permissions::SALES_REFUND_APPROVE,
         // Selling more than the shop floor holds (Settings → stock.below_zero = approval).
         'below_zero' => Permissions::SALES_OVERRIDE_APPROVE,
+        // A sale on account over the customer's limit, or any, per Settings → Payments.
+        'credit' => Permissions::SALES_OVERRIDE_APPROVE,
         // Manager witnesses cash leaving the drawer for the safe.
         'cash_drop' => Permissions::SHIFTS_CASHUP_APPROVE,
     ];

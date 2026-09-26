@@ -126,6 +126,8 @@ final class PurchasingResources
             'location' => ['id' => $r->location->id, 'name' => $r->location->name],
             'reason' => $r->reason,
             'creditNoteRef' => $r->credit_note_ref,
+            'creditNoteCents' => $r->credit_note_cents !== null ? (int) $r->credit_note_cents : null,
+            'creditNoteDate' => $r->credit_note_date,
             'requestedBy' => self::user($r->requester),
             'reviewedBy' => self::user($r->reviewer),
             'reviewNote' => $r->review_note,

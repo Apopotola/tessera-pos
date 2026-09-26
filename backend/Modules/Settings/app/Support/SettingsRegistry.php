@@ -43,7 +43,7 @@ final class SettingsRegistry
         'shifts' => 'Open shifts', 'tills' => 'Tills connected', 'catalogue' => 'Items on sale',
         'low_stock' => 'Low stock', 'stock_value' => 'Stock value', 'losses' => 'Breakage and losses', 'price_changes' => 'Price changes waiting',
         'exceptions' => 'Discounts, voids and refunds', 'cash_variance' => 'Cash variance by cashier', 'movers' => 'Best sellers and slow movers',
-        'etims' => 'eTIMS status', 'branches' => 'Branch comparison',
+        'etims' => 'eTIMS status', 'branches' => 'Branch comparison', 'receivables' => 'Owed by customers', 'payables' => 'Owed to suppliers',
     ];
 
     /** @return array<string, array<string, mixed>> */
@@ -147,8 +147,8 @@ final class SettingsRegistry
 
             // ------------------------------------------------------------------ Payments
             'payments.accepted_methods' => self::f('payments', 'Accepted methods', 'multiselect', ['cash', 'mpesa', 'card', 'split'], 'O',
-                options: ['cash' => 'Cash', 'mpesa' => 'M-PESA', 'card' => 'Card', 'split' => 'Split payment', 'bank' => 'Bank transfer', 'credit' => 'Customer credit'],
-                help: 'Bank transfer and customer credit arrive later.'),
+                options: ['cash' => 'Cash', 'mpesa' => 'M-PESA', 'card' => 'Card', 'split' => 'Split payment', 'bank' => 'Bank transfer'],
+                help: 'Bank transfer at the till arrives later. Sales on account follow "Customer credit" below.'),
             'payments.stk_push' => self::f('payments', 'M-PESA STK Push (payment request to the phone)', 'boolean', true, 'O'),
             'payments.mpesa_type' => self::f('payments', 'M-PESA account type', 'select', 'till', 'O', group: 'M-PESA account', options: ['till' => 'Buy Goods (Till)', 'paybill' => 'Paybill']),
             'payments.mpesa_number' => self::f('payments', 'Till or Paybill number', 'text', null, 'O', group: 'M-PESA account', pattern: '/^\d{5,7}$/'),
@@ -159,9 +159,9 @@ final class SettingsRegistry
             'payments.mpesa_verified' => self::f('payments', 'Verified by Tessera', 'boolean', false, 'T', group: 'M-PESA account',
                 help: 'The owner enters the details; Tessera checks them with Safaricom before they are used.'),
             'payments.customer_credit' => self::f('payments', 'Customer credit', 'select', 'off', 'O', options: ['off' => 'Off', 'on' => 'On, with a limit per customer'],
-                available: false, note: 'Customer credit accounts arrive later.'),
-            'payments.credit_approval' => self::f('payments', 'Credit sale approval', 'select', 'manager', 'O', options: ['any' => 'Any cashier', 'manager' => 'Manager only'],
-                available: false, note: 'Arrives with customer credit.'),
+                help: 'Sales "on account" for customers with a credit limit (Customers → customer → Credit account).'),
+            'payments.credit_approval' => self::f('payments', 'Credit sale approval', 'select', 'manager', 'O', options: ['any' => 'Any cashier (within the limit)', 'manager' => 'Manager every time'],
+                help: 'Over the customer\'s limit a manager always approves.'),
             'payments.cash_rounding' => self::f('payments', 'Cash rounding', 'select', 0, 'O',
                 options: [0 => 'None', 1 => 'Nearest KSh 1', 5 => 'Nearest KSh 5', 10 => 'Nearest KSh 10'], help: 'Cash payments only; the difference is shown on the receipt.'),
 

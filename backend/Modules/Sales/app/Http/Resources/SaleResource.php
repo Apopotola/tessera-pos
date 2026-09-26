@@ -76,6 +76,8 @@ class SaleResource extends JsonResource
                 'totalCents' => $r->total_cents,
                 'reason' => $r->reason,
                 'etimsStatus' => $r->etims_status,
+                // Refunded to the customer's credit account (the rest was cash).
+                'toAccountCents' => -(int) $r->tenders->where('method', 'credit')->sum('amount_cents'),
                 'createdAt' => $r->created_at?->toIso8601String(),
             ])->values(),
             // Receipt layout for this branch and till (Settings → Receipts), so reprints match.

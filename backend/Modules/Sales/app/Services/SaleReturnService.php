@@ -119,13 +119,21 @@ class SaleReturnService
 
             $this->ledger->post($entries, SaleReturn::DOCUMENT_TYPE, $return->id, $number, $cashier->id, $approverId);
 
-            SaleTender::query()->create([
-                'shift_id' => $shift->id,
-                'sale_return_id' => $return->id,
-                'method' => SaleTender::CASH,
-                'amount_cents' => -$total,
-                'status' => SaleTender::CONFIRMED,
-            ]);
+            // A sale put on account is refunded to the account first; the rest in cash.
+            $onAccount = (int) SaleTender::query()->where('sale_id', $sale->id)->where('method', SaleTender::CREDIT)->sum('amount_cents');
+            $alreadyBack = -(int) SaleTender::query()->where('method', SaleTender::CREDIT)
+                ->whereIn('sale_return_id', SaleReturn::query()->where('sale_id', $sale->id)->select('id'))->sum('amount_cents');
+            $toAccount = min($total, max(0, $onAccount - $alreadyBack));
+            $refunds = array_filter([SaleTender::CREDIT => $toAccount, SaleTender::CASH => $total - $toAccount]);
+            foreach ($refunds as $method => $amount) {
+                SaleTender::query()->create([
+                    'shift_id' => $shift->id,
+                    'sale_return_id' => $return->id,
+                    'method' => $method,
+                    'amount_cents' => -$amount,
+                    'status' => SaleTender::CONFIRMED,
+                ]);
+            }
 
             $fullyReturned = $sale->lines->every(fn ($l) => $l->refresh()->returnable() === 0);
             $sale->forceFill(['status' => $fullyReturned ? 'returned' : 'partially_returned'])->save();

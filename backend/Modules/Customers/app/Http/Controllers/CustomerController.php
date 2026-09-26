@@ -10,6 +10,7 @@ use Modules\Authorization\Support\Permissions;
 use Modules\Customers\Http\Requests\CustomerRequest;
 use Modules\Customers\Http\Resources\CustomerResource;
 use Modules\Customers\Models\Customer;
+use Modules\Customers\Services\CustomerAccountService;
 use Modules\Customers\Services\CustomerService;
 use Modules\Inventory\Services\StockQueryService;
 use Modules\Sales\Http\Controllers\TillSaleController;
@@ -23,6 +24,7 @@ class CustomerController extends Controller
     public function __construct(
         private readonly CustomerService $customers,
         private readonly StockQueryService $stock,
+        private readonly CustomerAccountService $accounts,
     ) {}
 
     #[OA\Get(path: '/api/v1/customers', summary: 'Registered customers (search by name or KRA PIN)', tags: ['Customers'], responses: [new OA\Response(response: 200, description: 'Paginated')])]
@@ -115,8 +117,13 @@ class CustomerController extends Controller
         $customers = $this->search(Customer::query()->where('is_active', true), $term)
             ->orderBy('name')
             ->limit(15)
-            ->get()
-            ->map(fn (Customer $c) => ['id' => $c->id, 'name' => $c->name, 'kraPin' => $c->kra_pin, 'isWholesale' => $c->is_wholesale]);
+            ->get();
+        $balances = $this->accounts->balances($customers->modelKeys());
+        $customers = $customers->map(fn (Customer $c) => [
+            'id' => $c->id, 'name' => $c->name, 'kraPin' => $c->kra_pin, 'isWholesale' => $c->is_wholesale,
+            // Credit account: how much more can go on account before a manager must approve.
+            'creditAvailableCents' => $c->credit_limit_cents === null ? null : max(0, $c->credit_limit_cents - ($balances[$c->id] ?? 0)),
+        ]);
 
         return $this->success('Customers.', $customers);
     }

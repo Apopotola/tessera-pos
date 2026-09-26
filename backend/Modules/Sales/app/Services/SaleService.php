@@ -15,6 +15,7 @@ use Modules\Catalogue\Models\ProductVariant;
 use Modules\Catalogue\Services\PriceResolver;
 use Modules\Compliance\Services\EtimsOutbox;
 use Modules\Customers\Models\Customer;
+use Modules\Customers\Services\CustomerAccountService;
 use Modules\Inventory\Enums\MovementType;
 use Modules\Inventory\Services\StockEntry;
 use Modules\Inventory\Services\StockLedger;
@@ -46,6 +47,7 @@ class SaleService
         private readonly MpesaAllocator $mpesa,
         private readonly EtimsOutbox $etims,
         private readonly TillPolicy $policy,
+        private readonly CustomerAccountService $accounts,
     ) {}
 
     /**
@@ -78,9 +80,10 @@ class SaleService
         $lines = $this->priceLines($till, $cashier, $data['lines'], (bool) $customer?->is_wholesale, $occurredAt);
         $total = array_sum(array_column($lines, 'line_total_cents'));
         ['tenders' => $tenders, 'rounding' => $rounding] = $this->settle($till, $data['tenders'], $total);
+        $creditApprovedBy = $this->checkCredit($till, $cashier, $customer, $tenders, $data['creditApprovalToken'] ?? null);
         $etims = $this->policy->etimsEnabled($till);
 
-        return DB::transaction(function () use ($till, $cashier, $data, $shift, $location, $lines, $total, $tenders, $rounding, $customer, $occurredAt, $offline, $etims) {
+        return DB::transaction(function () use ($till, $cashier, $data, $shift, $location, $lines, $total, $tenders, $rounding, $customer, $occurredAt, $offline, $etims, $creditApprovedBy) {
             // Offline sales already happened: they are always recorded and the next count catches any gap.
             $stockApprovedBy = $offline ? null : $this->checkStock($till, $cashier, $location, $lines, $data['stockApprovalToken'] ?? null);
             // Reserve the id first so the ledger can reference the sale and give us exact costs.
@@ -153,6 +156,7 @@ class SaleService
                 'captured_offline' => $offline,
                 'rounding_cents' => $rounding,
                 'below_zero_approved_by' => $stockApprovedBy,
+                'credit_approved_by' => $creditApprovedBy,
             ], userId: $cashier->id, branchId: $till->branch_id, reference: "till:{$till->id}");
 
             return ['sale' => $sale, 'replayed' => false];
@@ -207,6 +211,37 @@ class SaleService
         }
 
         return $customer;
+    }
+
+    /**
+     * A sale on the customer's credit account (Settings → Payments → Customer credit): only for
+     * account customers; a manager approves when it goes over the limit, or every time when the
+     * owner says so. Returns the approving manager. Offline tills never take credit.
+     *
+     * @param  list<array<string, mixed>>  $tenders
+     */
+    private function checkCredit(Till $till, User $cashier, ?Customer $customer, array $tenders, ?string $approvalToken): ?int
+    {
+        $onAccount = array_sum(array_map(fn ($t) => $t['method'] === SaleTender::CREDIT ? $t['amount_cents'] : 0, $tenders));
+        if ($onAccount === 0) {
+            return null;
+        }
+        if (! $customer) {
+            throw ValidationException::withMessages(['tenders' => 'Pick the account customer before putting a sale on account.']);
+        }
+
+        $check = $this->accounts->creditCheck($customer, $onAccount);
+        if (! $check['overLimit'] && ! $this->policy->creditNeedsManager($till)) {
+            return null;
+        }
+        if ($approvalToken === null) {
+            $why = $check['overLimit']
+                ? "{$customer->name} would owe KES ".number_format(($check['balanceCents'] + $onAccount) / 100, 2).', over the KES '.number_format($check['limitCents'] / 100, 2).' limit.'
+                : 'Sales on account need a manager.';
+            throw ValidationException::withMessages(['creditApproval' => "{$why} A manager must approve."]);
+        }
+
+        return $this->approvals->consume($approvalToken, 'credit', $till, $cashier);
     }
 
     /**
@@ -381,7 +416,7 @@ class SaleService
         $nonCashTotal = array_sum(array_column($nonCash, 'amountCents'));
 
         if ($nonCashTotal > $total) {
-            throw ValidationException::withMessages(['tenders' => 'M-PESA and card payments cannot be more than the total.']);
+            throw ValidationException::withMessages(['tenders' => 'M-PESA, card and on-account amounts cannot be more than the total.']);
         }
         $exactCashDue = $total - $nonCashTotal;
         $cashDue = Money::roundTo($exactCashDue, $this->policy->cashRoundingCents($till));
@@ -392,6 +427,12 @@ class SaleService
         $manualMpesa = config('payments.mpesa.driver') === 'manual';
         $tenders = [];
         foreach (array_values($nonCash) as $i => $t) {
+            // On account: no money changes hands; the receivable is the customer's.
+            if ($t['method'] === SaleTender::CREDIT) {
+                $tenders[] = ['method' => SaleTender::CREDIT, 'amount_cents' => $t['amountCents'], 'reference' => null, 'card_last4' => null, 'status' => SaleTender::CONFIRMED, 'confirmation_id' => null];
+
+                continue;
+            }
             $reference = isset($t['reference']) ? mb_strtoupper(trim($t['reference'])) : null;
             $confirmation = null;
 

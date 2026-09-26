@@ -127,6 +127,9 @@ export interface SupplierReturn {
   location: { id: number; name: string };
   reason: string;
   creditNoteRef: string | null;
+  /** The supplier's credit note value; lowers what we owe them. */
+  creditNoteCents: number | null;
+  creditNoteDate: string | null;
   requestedBy: UserRef | null;
   reviewedBy: UserRef | null;
   reviewNote: string | null;

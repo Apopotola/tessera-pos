@@ -1,6 +1,7 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
+use Modules\Customers\Http\Controllers\CustomerAccountController;
 use Modules\Customers\Http\Controllers\CustomerController;
 
 /*
@@ -16,6 +17,15 @@ Route::middleware(['auth:sanctum', 'till.device'])->prefix('customers/till')->na
 });
 
 Route::middleware('auth:sanctum')->prefix('customers')->name('customers.')->group(function () {
+    // Credit accounts (receivables).
+    Route::get('accounts', [CustomerAccountController::class, 'index'])->name('accounts.index');
+    Route::post('payments/{payment}/reverse', [CustomerAccountController::class, 'reverse'])->whereNumber('payment')->name('payments.reverse');
+    Route::get('{customer}/account', [CustomerAccountController::class, 'show'])->whereNumber('customer')->name('account');
+    Route::put('{customer}/credit', [CustomerAccountController::class, 'updateCredit'])->whereNumber('customer')->name('credit');
+    Route::get('{customer}/statement', [CustomerAccountController::class, 'statement'])->whereNumber('customer')->name('statement');
+    Route::get('{customer}/payments', [CustomerAccountController::class, 'payments'])->whereNumber('customer')->name('payments.index');
+    Route::post('{customer}/payments', [CustomerAccountController::class, 'receive'])->whereNumber('customer')->name('payments.store');
+
     Route::get('/', [CustomerController::class, 'index'])->name('index');
     Route::post('/', [CustomerController::class, 'store'])->name('store');
     Route::get('{customer}', [CustomerController::class, 'show'])->whereNumber('customer')->name('show');

@@ -14,7 +14,7 @@ import WorkspacePage from "@/components/shared/WorkspacePage";
 import type { WorkspaceViewProps } from "@/components/workspace/types";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import Receipt, { ReceiptPrint } from "@/modules/sales/components/Receipt";
-import type { Sale } from "@/types/sales";
+import { type Sale, TENDER_LABELS } from "@/types/sales";
 import { formatKes } from "@/utils/money";
 
 const STATUS = {
@@ -30,8 +30,6 @@ const ETIMS = {
   rejected: { label: "Needs fixing", color: "red" },
   not_required: { label: "Not required", color: "gray" },
 } as const;
-
-const METHOD = { cash: "Cash", mpesa: "M-PESA", card: "Card" } as const;
 
 /** Every till sale, newest first. Cost and profit show only to roles that may see them. */
 export default function SalesListView({ title, section }: WorkspaceViewProps) {
@@ -98,7 +96,7 @@ export default function SalesListView({ title, section }: WorkspaceViewProps) {
                     </Text>
                   </Table.Td>
                   <Table.Td>
-                    <Text size="sm">{[...new Set(sale.tenders.filter((t) => t.amountCents > 0).map((t) => METHOD[t.method]))].join(" + ")}</Text>
+                    <Text size="sm">{[...new Set(sale.tenders.filter((t) => t.amountCents > 0).map((t) => TENDER_LABELS[t.method]))].join(" + ")}</Text>
                   </Table.Td>
                   <Table.Td ta="right">
                     <Text size="sm" fw={600}>

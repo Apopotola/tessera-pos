@@ -6,8 +6,12 @@ use Carbon\CarbonInterface;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Modules\Compliance\Models\EtimsSubmission;
+use Modules\Customers\Models\Customer;
+use Modules\Customers\Services\CustomerAccountService;
 use Modules\Inventory\Services\StockQueryService;
 use Modules\Organisation\Models\Branch;
+use Modules\Purchasing\Models\Supplier;
+use Modules\Purchasing\Services\SupplierAccountService;
 use Modules\Settings\Services\SettingsService;
 
 /**
@@ -20,7 +24,45 @@ class KpiService
     public function __construct(
         private readonly StockQueryService $stock,
         private readonly SettingsService $settings,
+        private readonly CustomerAccountService $customers,
+        private readonly SupplierAccountService $suppliers,
     ) {}
+
+    /**
+     * What account customers owe (Phase 2 KPI "receivables"): total, overdue, over 90 days.
+     *
+     * @return array{balanceCents: int, overdueCents: int, over90Cents: int, customers: int}
+     */
+    public function receivables(): array
+    {
+        $owing = array_filter($this->customers->balances(), fn ($b) => $b > 0);
+        $accounts = Customer::query()->whereIn('id', array_keys($owing))->get()->map(fn (Customer $c) => $this->customers->aging($c));
+
+        return [
+            'balanceCents' => array_sum($owing),
+            'overdueCents' => (int) $accounts->sum('overdueCents'),
+            'over90Cents' => (int) $accounts->sum('buckets.over_90'),
+            'customers' => count($owing),
+        ];
+    }
+
+    /**
+     * What we owe suppliers: total, past the due date, and invoices on query.
+     *
+     * @return array{balanceCents: int, dueCents: int, onQueryCents: int, suppliers: int}
+     */
+    public function payables(): array
+    {
+        $owed = array_filter($this->suppliers->balances(), fn ($b) => $b > 0);
+        $accounts = Supplier::query()->whereIn('id', array_keys($owed))->get()->map(fn (Supplier $s) => $this->suppliers->account($s));
+
+        return [
+            'balanceCents' => array_sum($owed),
+            'dueCents' => (int) $accounts->sum('dueCents'),
+            'onQueryCents' => (int) $accounts->sum('onQueryCents'),
+            'suppliers' => count($owed),
+        ];
+    }
 
     /**
      * Net sales (sales − refunds, VAT incl.), VAT and cost of goods in a period.

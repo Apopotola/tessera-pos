@@ -77,7 +77,7 @@ class ReportsTest extends InventoryTestCase
     public function test_every_report_runs_for_the_owner_and_is_refused_to_a_cashier(): void
     {
         $keys = collect(app(ReportRegistry::class)->catalogue($this->owner))->whereNull('link')->pluck('key');
-        $this->assertCount(14, $keys);
+        $this->assertCount(16, $keys); // incl. receivables and payables aging
 
         foreach ($keys as $key) {
             $data = $this->report($key);

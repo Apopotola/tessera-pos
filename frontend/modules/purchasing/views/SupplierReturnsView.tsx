@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Group, Modal, Pagination, SegmentedControl, Select, SimpleGrid, Stack, Table, Text, TextInput, Textarea } from "@mantine/core";
+import { Button, Group, Modal, NumberInput, Pagination, SegmentedControl, Select, SimpleGrid, Stack, Table, Text, TextInput, Textarea } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import { IconPlus } from "@tabler/icons-react";
 import dayjs from "dayjs";
@@ -23,6 +23,7 @@ import { useAppSelector } from "@/store/hooks";
 import type { DocumentStatus } from "@/types/inventory";
 import { PERMISSIONS } from "@/types/permissions";
 import type { SupplierReturn } from "@/types/purchasing";
+import { formatKes, optionalKesToCents } from "@/utils/money";
 
 type Dialog = { kind: "create" } | { kind: "reject" | "credit"; ret: SupplierReturn };
 
@@ -109,10 +110,15 @@ export default function SupplierReturnsView({ title, section }: WorkspaceViewPro
                       </Text>
                     </Table.Td>
                     <Table.Td>
-                      {r.creditNoteRef ? (
-                        <Text size="sm" ff="monospace">
-                          {r.creditNoteRef}
-                        </Text>
+                      {r.creditNoteCents !== null ? (
+                        <>
+                          <Text size="sm" ff="monospace">
+                            {r.creditNoteRef}
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            {formatKes(r.creditNoteCents)}
+                          </Text>
+                        </>
                       ) : r.status === "approved" && can(PERMISSIONS.PURCHASING_MANAGE) ? (
                         <Button size="xs" variant="light" onClick={() => setDialog({ kind: "credit", ret: r })}>
                           Record
@@ -216,17 +222,26 @@ function ReturnFormModal({ onClose, onSaved }: { onClose: () => void; onSaved: (
 
 function CreditNoteModal({ ret, onClose, onDone }: { ret: SupplierReturn; onClose: () => void; onDone: () => void }) {
   const [reference, setReference] = useState("");
-  const { mutate, pending } = useApiMutation(() => purchasingApi.recordCreditNote(ret.id, reference.trim()), { successMessage: "Credit note recorded.", onSuccess: onDone });
+  const [amount, setAmount] = useState<number | string>("");
+  const [date, setDate] = useState(dayjs().format("YYYY-MM-DD"));
+  const cents = optionalKesToCents(amount);
+  // The credit note's value lowers what we owe the supplier (Purchasing → Supplier accounts).
+  const { mutate, pending } = useApiMutation(() => purchasingApi.recordCreditNote(ret.id, reference.trim(), cents ?? 0, date), { successMessage: "Credit note recorded.", onSuccess: onDone });
 
   return (
     <Modal opened onClose={onClose} title={`Credit note for ${ret.number}`} centered>
       <Stack>
         <TextInput label="Supplier credit note number" data-autofocus value={reference} onChange={(e) => setReference(e.currentTarget.value)} />
+        <NumberInput label="Credit note amount (KES, VAT incl.)" min={0} decimalScale={2} thousandSeparator="," value={amount} onChange={setAmount} />
+        <TextInput label="Credit note date" type="date" value={date} max={dayjs().format("YYYY-MM-DD")} onChange={(e) => setDate(e.currentTarget.value)} />
+        <Text size="xs" c="dimmed">
+          This lowers what you owe {ret.supplier.name}. It can be recorded once.
+        </Text>
         <Group justify="flex-end">
           <Button variant="default" onClick={onClose} disabled={pending}>
             Cancel
           </Button>
-          <Button disabled={!reference.trim()} loading={pending} onClick={() => void mutate()}>
+          <Button disabled={!reference.trim() || !cents || !date} loading={pending} onClick={() => void mutate()}>
             Save
           </Button>
         </Group>

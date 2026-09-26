@@ -27,6 +27,8 @@ export interface DashboardSummary {
     cashCents: number;
     mpesaCents: number;
     cardCents: number;
+    /** Sales put on customer credit accounts. */
+    creditCents: number;
     grossProfitCents: number | null;
   } | null;
   inventory: {
@@ -68,6 +70,8 @@ export interface DashboardSummary {
   } | null;
   purchasing: { ordersAwaitingApproval: number; ordersAwaitingDelivery: number; invoicesWithVariance: number } | null;
   staff: { active: number; cashiersWithoutPin: number } | null;
+  receivables: { balanceCents: number; overdueCents: number; over90Cents: number; customers: number } | null;
+  payables: { balanceCents: number; dueCents: number; onQueryCents: number; suppliers: number } | null;
 }
 
 export type ExceptionKind = "discounts" | "voids" | "refunds";

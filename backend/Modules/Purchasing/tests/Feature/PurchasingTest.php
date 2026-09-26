@@ -190,8 +190,8 @@ class PurchasingTest extends InventoryTestCase
         $this->assertSame(18, $this->onHand($this->store));
         $this->assertDatabaseHas('stock_movements', ['movement_type' => 'supplier_return', 'quantity' => -2]);
 
-        $this->actingAs($this->accountant)->postJson("/api/v1/purchasing/returns/{$id}/credit-note", ['reference' => 'CN-77'])
-            ->assertOk()->assertJsonPath('data.creditNoteRef', 'CN-77');
+        $this->actingAs($this->accountant)->postJson("/api/v1/purchasing/returns/{$id}/credit-note", ['reference' => 'CN-77', 'amountCents' => 580000, 'date' => now()->toDateString()])
+            ->assertOk()->assertJsonPath('data.creditNoteRef', 'CN-77')->assertJsonPath('data.creditNoteCents', 580000);
     }
 
     public function test_dashboard_counts_purchasing_work(): void

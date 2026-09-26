@@ -13,6 +13,7 @@ const ACTION_LABEL: Record<ApprovalAction, string> = {
   refund: "a customer refund",
   cash_drop: "moving cash to the safe (witness)",
   below_zero: "selling more than the shelf holds",
+  credit: "a sale on the customer's account",
 };
 
 interface Request {

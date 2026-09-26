@@ -5,8 +5,10 @@ namespace Modules\Reports;
 use Modules\Auth\Models\User;
 use Modules\Authorization\Support\Permissions;
 use Modules\Reports\Reports\Financial\CashUpReport;
+use Modules\Reports\Reports\Financial\PayablesAgingReport;
 use Modules\Reports\Reports\Financial\ProfitReport;
 use Modules\Reports\Reports\Financial\PurchasesBySupplierReport;
+use Modules\Reports\Reports\Financial\ReceivablesAgingReport;
 use Modules\Reports\Reports\Inventory\CountVarianceReport;
 use Modules\Reports\Reports\Inventory\LossesReport;
 use Modules\Reports\Reports\Inventory\LowStockReport;
@@ -39,6 +41,8 @@ final class ReportRegistry
         ProfitReport::class,
         CashUpReport::class,
         PurchasesBySupplierReport::class,
+        ReceivablesAgingReport::class,
+        PayablesAgingReport::class,
     ];
 
     /** Screens elsewhere in the app that already serve as these reports. */

@@ -51,6 +51,8 @@ const ViewRegistry: Record<string, ComponentType<WorkspaceViewProps>> = {
   mpesaReconciliation: lazyView(() => import("@/modules/payments/views/MpesaReconciliationView")),
   customersList: lazyView(() => import("@/modules/customers/views/CustomersView")),
   customerDetail: lazyView(() => import("@/modules/customers/views/CustomerDetailView")), // record tab, not a menu item
+  receivables: lazyView(() => import("@/modules/accounts/views/ReceivablesView")),
+  payables: lazyView(() => import("@/modules/accounts/views/PayablesView")),
 
   // Compliance / eTIMS (not built yet)
   etimsMonitor: lazyView(() => import("@/modules/compliance/views/EtimsMonitorView")),

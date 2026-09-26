@@ -97,7 +97,7 @@ class EtimsPayloadBuilder
         ];
     }
 
-    /** eTIMS payment type codes (REQUIRES VALIDATION): 01 cash, 06 mobile money, 05 card, 07 mixed. */
+    /** eTIMS payment type codes (REQUIRES VALIDATION): 01 cash, 02 credit, 06 mobile money, 05 card, 07 mixed. */
     private function paymentType(Sale $sale): string
     {
         $methods = $sale->tenders->where('amount_cents', '>', 0)->pluck('method')->unique();
@@ -106,6 +106,7 @@ class EtimsPayloadBuilder
             $methods->count() > 1 => '07',
             $methods->first() === 'mpesa' => '06',
             $methods->first() === 'card' => '05',
+            $methods->first() === 'credit' => '02',
             default => '01',
         };
     }

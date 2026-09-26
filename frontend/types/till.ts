@@ -43,6 +43,8 @@ export interface TillContext {
     /** Accepted methods in button order. */
     paymentMethods: TenderMethod[];
     splitAllowed: boolean;
+    /** Every sale on account needs a manager (otherwise only over the limit). */
+    creditNeedsManager: boolean;
     /** Cash is rounded to this step in cents (0 = none). */
     cashRoundingCents: number;
     /** Send payment requests to the customer's phone (off: pick their payment only). */

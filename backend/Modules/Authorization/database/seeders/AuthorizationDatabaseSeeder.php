@@ -62,11 +62,15 @@ class AuthorizationDatabaseSeeder extends Seeder
                 ['key' => 'purchasing.invoices', 'title' => 'Supplier invoices', 'view_type' => 'supplierInvoices', 'path' => '/purchasing/invoices', 'permission' => P::PURCHASING_VIEW],
                 ['key' => 'purchasing.returns', 'title' => 'Returns to supplier', 'view_type' => 'supplierReturns', 'path' => '/purchasing/returns', 'permission' => P::PURCHASING_VIEW],
                 ['key' => 'purchasing.suppliers', 'title' => 'Suppliers', 'view_type' => 'suppliersList', 'path' => '/purchasing/suppliers', 'permission' => P::PURCHASING_VIEW],
+                ['key' => 'purchasing.payables', 'title' => 'Supplier accounts', 'view_type' => 'payables', 'path' => '/purchasing/accounts', 'permission' => P::REPORTS_FINANCIAL_VIEW],
             ]],
             ['key' => 'payments', 'title' => 'Payments', 'icon' => 'IconDeviceMobile', 'children' => [
                 ['key' => 'payments.mpesa', 'title' => 'M-PESA reconciliation', 'view_type' => 'mpesaReconciliation', 'path' => '/payments/mpesa', 'permission' => P::PAYMENTS_VIEW],
             ]],
-            ['key' => 'customers', 'title' => 'Customers', 'icon' => 'IconUsers', 'view_type' => 'customersList', 'path' => '/customers', 'permission' => P::CUSTOMERS_VIEW],
+            ['key' => 'customers', 'title' => 'Customers', 'icon' => 'IconUsers', 'children' => [
+                ['key' => 'customers.list', 'title' => 'Customers', 'view_type' => 'customersList', 'path' => '/customers', 'permission' => P::CUSTOMERS_VIEW],
+                ['key' => 'customers.accounts', 'title' => 'Customer accounts', 'view_type' => 'receivables', 'path' => '/customers/accounts', 'permission' => P::REPORTS_FINANCIAL_VIEW],
+            ]],
             ['key' => 'compliance', 'title' => 'Compliance', 'icon' => 'IconShieldCheck', 'children' => [
                 ['key' => 'compliance.etims', 'title' => 'eTIMS monitor', 'view_type' => 'etimsMonitor', 'path' => '/compliance/etims', 'permission' => P::COMPLIANCE_VIEW],
             ]],

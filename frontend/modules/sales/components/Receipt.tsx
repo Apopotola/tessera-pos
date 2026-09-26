@@ -3,11 +3,10 @@
 import dayjs from "dayjs";
 import { QRCodeSVG } from "qrcode.react";
 import { createPortal } from "react-dom";
-import type { Sale } from "@/types/sales";
+import { type Sale, TENDER_LABELS } from "@/types/sales";
 import { formatKes } from "@/utils/money";
 import classes from "./Receipt.module.css";
 
-const METHOD_LABEL = { cash: "Cash", mpesa: "M-PESA", card: "Card" } as const;
 
 const PAPER = { "58mm": classes.paper58, "80mm": "", a4: classes.paperA4 } as const;
 
@@ -102,7 +101,7 @@ export default function Receipt({ sale, copy = false }: { sale: Sale; copy?: boo
         .map((t, i) => (
           <div key={i} className={classes.row}>
             <span>
-              {METHOD_LABEL[t.method]}
+              {TENDER_LABELS[t.method]}
               {t.reference ? ` ${t.reference}` : ""}
             </span>
             <span>{formatKes(t.method === "cash" ? (t.tenderedCents ?? t.amountCents) : t.amountCents)}</span>

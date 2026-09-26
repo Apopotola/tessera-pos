@@ -343,7 +343,8 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     finishSale(buildOfflineReceipt({ localNumber, occurredAt, context, user, lines, tenders, customer, customerPin, snapshot: offline.snapshot }));
   };
 
-  const pay = async (tenders: TenderPayload[], customerPin: string | null, stockApprovalToken: string | null = null) => {
+  /** Manager approvals the server asked for, gathered one at a time before sending again. */
+  const pay = async (tenders: TenderPayload[], customerPin: string | null, approvals: { stock?: string; credit?: string } = {}) => {
     setPayPending(true);
     setPayError(null);
     try {
@@ -351,14 +352,25 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
         await payOffline(tenders, customerPin);
         return;
       }
-      finishSale(await salesApi.completeSale({ clientId, customerId: customer?.id ?? null, customerPin, stockApprovalToken, lines: lines.map(toPayload), tenders }));
+      finishSale(
+        await salesApi.completeSale({
+          clientId,
+          customerId: customer?.id ?? null,
+          customerPin,
+          stockApprovalToken: approvals.stock ?? null,
+          creditApprovalToken: approvals.credit ?? null,
+          lines: lines.map(toPayload),
+          tenders,
+        }),
+      );
     } catch (e) {
-      // Settings → stock: selling more than the shelf holds needs a manager; then send it again.
-      if (e instanceof ApiError && e.formErrors.stockApproval && !stockApprovalToken) {
+      // Settings: selling more than the shelf holds, or on account over the limit, needs a manager; then send it again.
+      const needed = approvalNeeded(e, approvals);
+      if (needed) {
         setPayPending(false);
-        const approval = await requestApproval("below_zero", e.formErrors.stockApproval);
-        if (approval) await pay(tenders, customerPin, approval.token);
-        else setPayError(e.formErrors.stockApproval);
+        const approval = await requestApproval(needed.action, needed.message);
+        if (approval) await pay(tenders, customerPin, { ...approvals, [needed.key]: approval.token });
+        else setPayError(needed.message);
         return;
       }
       if (e instanceof ApiError && e.status === 0) {
@@ -751,7 +763,11 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
           onReprint={(sale) => setPrinting({ sale, copy: true })}
           onReturned={(sale, refund) => {
             setReturning(false);
-            notifications.show({ color: "green", title: `Return on ${sale.number} recorded`, message: `Give the customer ${formatKes(refund)} from the drawer.`, autoClose: false });
+            // A sale on account is refunded to the account first; only the rest comes from the drawer.
+            const toAccount = sale.returns.at(-1)?.toAccountCents ?? 0;
+            const cash = refund - toAccount;
+            const message = [cash > 0 ? `Give the customer ${formatKes(cash)} from the drawer.` : null, toAccount > 0 ? `${formatKes(toAccount)} went back to their account.` : null].filter(Boolean).join(" ");
+            notifications.show({ color: "green", title: `Return on ${sale.number} recorded`, message, autoClose: false });
             refocus();
           }}
         />
@@ -797,6 +813,14 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
       {printing && <ReceiptPrint sale={printing.sale} copy={printing.copy} />}
     </div>
   );
+}
+
+/** Which manager approval the server asked for (and has not had yet), if any. */
+function approvalNeeded(e: unknown, approvals: { stock?: string; credit?: string }): { key: "stock" | "credit"; action: "below_zero" | "credit"; message: string } | null {
+  if (!(e instanceof ApiError)) return null;
+  if (e.formErrors.stockApproval && !approvals.stock) return { key: "stock", action: "below_zero", message: e.formErrors.stockApproval };
+  if (e.formErrors.creditApproval && !approvals.credit) return { key: "credit", action: "credit", message: e.formErrors.creditApproval };
+  return null;
 }
 
 function ChangeDue({ sale }: { sale: Sale }) {

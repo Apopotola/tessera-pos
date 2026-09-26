@@ -74,8 +74,22 @@ class TillPolicy
         $order = (array) $this->value('sales.payment_methods_order', $till);
         $methods = [SaleTender::MPESA, SaleTender::CASH, SaleTender::CARD];
         $ordered = array_values(array_unique([...array_intersect($order, $methods), ...$methods]));
+        $ordered = array_values(array_filter($ordered, fn ($m) => in_array($m, $accepted, true)));
 
-        return array_values(array_filter($ordered, fn ($m) => in_array($m, $accepted, true)));
+        // Customer credit is switched on by its own setting and always comes last.
+        return $this->creditSales($till) ? [...$ordered, SaleTender::CREDIT] : $ordered;
+    }
+
+    /** Settings → Payments → Customer credit. */
+    public function creditSales(Till $till): bool
+    {
+        return $this->value('payments.customer_credit', $till) === 'on';
+    }
+
+    /** Every sale on account needs a manager (otherwise only those over the limit). */
+    public function creditNeedsManager(Till $till): bool
+    {
+        return $this->value('payments.credit_approval', $till) === 'manager';
     }
 
     public function splitAllowed(Till $till): bool
@@ -133,6 +147,7 @@ class TillPolicy
             'belowZero' => $this->belowZero($till),
             'paymentMethods' => $this->paymentMethods($till),
             'splitAllowed' => $this->splitAllowed($till),
+            'creditNeedsManager' => $this->creditNeedsManager($till),
             'cashRoundingCents' => $this->cashRoundingCents($till),
             'stkPush' => $this->stkPush($till),
             'etimsEnabled' => $this->etimsEnabled($till),

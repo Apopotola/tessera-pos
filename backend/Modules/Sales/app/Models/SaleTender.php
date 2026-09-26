@@ -16,7 +16,10 @@ class SaleTender extends Model
 
     public const CARD = 'card';
 
-    public const LABELS = [self::CASH => 'cash', self::MPESA => 'M-PESA', self::CARD => 'card'];
+    /** On the customer's credit account (a receivable, no money changes hands). */
+    public const CREDIT = 'credit';
+
+    public const LABELS = [self::CASH => 'cash', self::MPESA => 'M-PESA', self::CARD => 'card', self::CREDIT => 'on-account'];
 
     public const CONFIRMED = 'confirmed';
 

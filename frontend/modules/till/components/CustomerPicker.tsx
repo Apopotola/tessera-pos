@@ -6,6 +6,7 @@ import { IconSearch } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { customersApi } from "@/api";
 import type { TillCustomer } from "@/types/customers";
+import { formatKes } from "@/utils/money";
 
 interface CustomerPickerProps {
   current: TillCustomer | null;
@@ -71,7 +72,14 @@ export default function CustomerPicker({ current, localCustomers = null, onClose
                   {c.kraPin ?? "No KRA PIN"}
                 </Text>
               </div>
-              {c.isWholesale && <Badge color="tessera">Wholesale</Badge>}
+              <Group gap={6} wrap="nowrap">
+                {c.isWholesale && <Badge color="tessera">Wholesale</Badge>}
+                {c.creditAvailableCents != null && (
+                  <Badge color={c.creditAvailableCents > 0 ? "green" : "red"} variant="light">
+                    Account · {formatKes(c.creditAvailableCents)} left
+                  </Badge>
+                )}
+              </Group>
             </Group>
           </UnstyledButton>
         ))}

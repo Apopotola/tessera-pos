@@ -27,7 +27,7 @@ use OpenApi\Attributes as OA;
 /** Everything the selling screen calls. Requires a signed-in cashier on a paired till. */
 class TillSaleController extends Controller
 {
-    public const RELATIONS = ['lines.variant.product', 'lines.approver', 'tenders.confirmation', 'returns', 'branch.business', 'till', 'cashier', 'etimsSubmission', 'customer'];
+    public const RELATIONS = ['lines.variant.product', 'lines.approver', 'tenders.confirmation', 'returns.tenders', 'branch.business', 'till', 'cashier', 'etimsSubmission', 'customer'];
 
     public function __construct(
         private readonly TillCatalogueService $catalogue,
@@ -123,8 +123,10 @@ class TillSaleController extends Controller
             'lines.*.approvalToken' => ['nullable', 'string', 'max:60'],
             // Manager approval to sell more than the shop floor holds (Settings → stock.below_zero).
             'stockApprovalToken' => ['nullable', 'string', 'max:60'],
+            // Manager approval for a sale on account over the limit (or any, per Settings).
+            'creditApprovalToken' => ['nullable', 'string', 'max:60'],
             'tenders' => ['required', 'array', 'min:1', 'max:5'],
-            'tenders.*.method' => ['required', Rule::in([SaleTender::CASH, SaleTender::MPESA, SaleTender::CARD])],
+            'tenders.*.method' => ['required', Rule::in([SaleTender::CASH, SaleTender::MPESA, SaleTender::CARD, SaleTender::CREDIT])],
             'tenders.*.amountCents' => ['required', 'integer', 'min:1', 'max:1000000000'],
             'tenders.*.reference' => ['nullable', 'string', 'alpha_num', 'max:30'],
             'tenders.*.confirmationId' => ['nullable', 'integer'],
@@ -170,7 +172,11 @@ class TillSaleController extends Controller
 
         $return = $this->returns->create($this->till($request), $request->user(), $data);
 
-        return $this->success("Return {$return->number}: refund ".number_format($return->total_cents / 100, 2).' in cash.', new SaleResource($return->sale->load(self::RELATIONS)), 201);
+        $toAccount = -(int) SaleTender::query()->where('sale_return_id', $return->id)->where('method', SaleTender::CREDIT)->sum('amount_cents');
+        $message = "Return {$return->number}: refund ".number_format(($return->total_cents - $toAccount) / 100, 2).' in cash'
+            .($toAccount ? ', '.number_format($toAccount / 100, 2).' back to the account.' : '.');
+
+        return $this->success($message, new SaleResource($return->sale->load(self::RELATIONS)), 201);
     }
 
     #[OA\Post(path: '/api/v1/sales/till/voids', summary: 'Log a line removed from the cart (manager token needed above the threshold)', tags: ['Till'], responses: [new OA\Response(response: 200, description: 'Logged')])]

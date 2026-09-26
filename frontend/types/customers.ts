@@ -33,6 +33,8 @@ export interface TillCustomer {
   name: string;
   kraPin: string | null;
   isWholesale: boolean;
+  /** Credit account: how much more can go on account without a manager; null = no account. */
+  creditAvailableCents?: number | null;
 }
 
 export type CustomerType = "all" | "wholesale" | "business";

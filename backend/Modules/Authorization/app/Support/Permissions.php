@@ -72,6 +72,9 @@ final class Permissions
 
     public const PURCHASING_APPROVE = 'purchasing.approve';
 
+    /** Record (and reverse) payments to suppliers. */
+    public const PURCHASING_PAY = 'purchasing.pay';
+
     // Customers
     /** M-PESA reconciliation screen. */
     public const PAYMENTS_VIEW = 'payments.view';
@@ -85,6 +88,12 @@ final class Permissions
 
     /** Export or anonymise one customer's personal data (data subject requests). */
     public const CUSTOMERS_PRIVACY = 'customers.privacy';
+
+    /** Open credit accounts, set limits and payment terms. */
+    public const CUSTOMERS_CREDIT = 'customers.credit';
+
+    /** Receive (and reverse) payments on customer accounts. */
+    public const CUSTOMERS_PAYMENTS = 'customers.payments';
 
     // Reports
     public const REPORTS_VIEW = 'reports.view';

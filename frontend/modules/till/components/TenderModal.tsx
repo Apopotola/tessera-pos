@@ -1,7 +1,7 @@
 "use client";
 
 import { Alert, Button, Group, Modal, NumberInput, SegmentedControl, SimpleGrid, Stack, Text, TextInput } from "@mantine/core";
-import { IconCash, IconCreditCard, IconDeviceMobile, IconArrowsSplit } from "@tabler/icons-react";
+import { IconCash, IconCreditCard, IconDeviceMobile, IconArrowsSplit, IconFileInvoice } from "@tabler/icons-react";
 import { notifications } from "@mantine/notifications";
 import { useState } from "react";
 import MpesaPanel, { type MpesaPaid } from "@/modules/till/components/MpesaPanel";
@@ -9,7 +9,7 @@ import type { TillCustomer } from "@/types/customers";
 import type { TenderMethod, TenderPayload } from "@/types/sales";
 import { formatKes, optionalKesToCents, roundTo } from "@/utils/money";
 
-type Mode = "cash" | "mpesa" | "card" | "split";
+type Mode = "cash" | "mpesa" | "card" | "credit" | "split";
 
 interface TenderModalProps {
   totalCents: number;
@@ -35,6 +35,7 @@ const MODE_LABEL: Record<Mode, { text: string; icon: React.ReactNode }> = {
   cash: { text: "Cash", icon: <IconCash size={18} /> },
   mpesa: { text: "M-PESA", icon: <IconDeviceMobile size={18} /> },
   card: { text: "Card", icon: <IconCreditCard size={18} /> },
+  credit: { text: "On account", icon: <IconFileInvoice size={18} /> },
   split: { text: "Split", icon: <IconArrowsSplit size={18} /> },
 };
 
@@ -52,12 +53,15 @@ function quickCash(totalCents: number): number[] {
  */
 export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, methods, splitAllowed, cashRoundingCents, stkPush, customer, offline = false, pending, serverError, onClose, onPay }: TenderModalProps) {
   const modes: Mode[] = [...methods, ...(splitAllowed && methods.length > 1 ? (["split"] as const) : [])];
-  const usable = (m: Mode) => !(offline && m === "mpesa");
+  // On account: only for a picked account customer, and never offline (the limit cannot be checked).
+  const creditAvailable = customer?.creditAvailableCents ?? null;
+  const usable = (m: Mode) => !(offline && (m === "mpesa" || m === "credit")) && !(m === "credit" && creditAvailable === null);
   const [mode, setMode] = useState<Mode>(() => modes.find(usable) ?? "cash");
   const [cashKes, setCashKes] = useState<number | string>(roundTo(totalCents, cashRoundingCents) / 100);
   const [mpesaKes, setMpesaKes] = useState<number | string>("");
   const [mpesaCode, setMpesaCode] = useState("");
   const [cardKes, setCardKes] = useState<number | string>("");
+  const [creditKes, setCreditKes] = useState<number | string>("");
   const [cardRef, setCardRef] = useState("");
   const [cardLast4, setCardLast4] = useState("");
   const [customerPin, setCustomerPin] = useState("");
@@ -66,8 +70,9 @@ export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, methods,
 
   const mpesaCents = mode === "mpesa" ? totalCents : mode === "split" ? (optionalKesToCents(mpesaKes) ?? 0) : 0;
   const cardCents = mode === "card" ? totalCents : mode === "split" ? (optionalKesToCents(cardKes) ?? 0) : 0;
+  const creditCents = mode === "credit" ? totalCents : mode === "split" && usable("credit") ? (optionalKesToCents(creditKes) ?? 0) : 0;
   const cashCents = mode === "cash" || mode === "split" ? (optionalKesToCents(cashKes) ?? 0) : 0;
-  const exactCashDue = totalCents - mpesaCents - cardCents;
+  const exactCashDue = totalCents - mpesaCents - cardCents - creditCents;
   // Cash is rounded to the owner's step; M-PESA and card are exact.
   const cashDue = exactCashDue > 0 ? roundTo(exactCashDue, cashRoundingCents) : exactCashDue;
   // M-PESA only counts as paid once Safaricom confirms it.
@@ -76,7 +81,7 @@ export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, methods,
   const change = cashDue >= 0 ? Math.max(0, cashCents - cashDue) : 0;
 
   const problems: string[] = [];
-  if (cashDue < 0) problems.push("M-PESA and card cannot be more than the total.");
+  if (cashDue < 0) problems.push("M-PESA, card and on-account amounts cannot be more than the total.");
   if (mpesaCents > 0 && stk && mpesaPaid?.amountCents !== mpesaCents) problems.push("Waiting for M-PESA: send the request or pick the customer's payment.");
   if (mpesaCents > 0 && !stk && !/^[A-Za-z0-9]{8,12}$/.test(mpesaCode.trim())) problems.push("Enter the M-PESA code from the customer's message.");
   if (cardCents > 0 && !/^[A-Za-z0-9]{4,30}$/.test(cardRef.trim())) problems.push("Enter the card approval code from the terminal slip.");
@@ -104,6 +109,7 @@ export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, methods,
       );
     }
     if (cardCents > 0) tenders.push({ method: "card", amountCents: cardCents, reference: cardRef.trim(), cardLast4: cardLast4 || null });
+    if (creditCents > 0) tenders.push({ method: "credit", amountCents: creditCents });
     if (cashCents > 0) tenders.push({ method: "cash", amountCents: cashCents });
     onPay(tenders, customerPin.trim() || null);
   };
@@ -177,6 +183,7 @@ export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, methods,
           data={modes.map((m) => ({ value: m, label: <Label icon={MODE_LABEL[m].icon} text={MODE_LABEL[m].text} />, disabled: !usable(m) }))}
         />
 
+        {mode === "credit" && customer && <CreditNote name={customer.name} available={creditAvailable} amount={creditCents} />}
         {mode === "cash" && cashInput}
         {mode === "mpesa" && mpesaInputs}
         {mode === "card" && cardInputs}
@@ -189,6 +196,12 @@ export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, methods,
           <Stack gap="sm">
             {!offline && methods.includes("mpesa") && mpesaInputs}
             {methods.includes("card") && cardInputs}
+            {methods.includes("credit") && usable("credit") && customer && (
+              <Stack gap={4}>
+                <NumberInput label="On account" min={0} decimalScale={2} thousandSeparator="," value={creditKes} onChange={setCreditKes} />
+                <CreditNote name={customer.name} available={creditAvailable} amount={creditCents} />
+              </Stack>
+            )}
             {methods.includes("cash") && cashInput}
           </Stack>
         )}
@@ -242,5 +255,17 @@ function Label({ icon, text }: { icon: React.ReactNode; text: string }) {
       {icon}
       <span>{text}</span>
     </Group>
+  );
+}
+
+/** Who the sale goes on account to and how much credit is left; over it, a manager approves. */
+function CreditNote({ name, available, amount }: { name: string; available: number | null; amount: number }) {
+  const over = available !== null && amount > available;
+
+  return (
+    <Alert color={over ? "yellow" : "tessera"} variant="light">
+      On <b>{name}</b>&apos;s account · {formatKes(available)} available
+      {over && ". This is over the limit: a manager approves when you complete the sale."}
+    </Alert>
   );
 }

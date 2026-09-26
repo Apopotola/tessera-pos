@@ -97,15 +97,18 @@ class SupplierReturnService
         });
     }
 
-    /** Record the supplier's credit note reference once it arrives. */
-    public function recordCreditNote(SupplierReturn $return, User $user, string $reference): SupplierReturn
+    /** Record the supplier's credit note once it arrives: its value lowers what we owe them (once only). */
+    public function recordCreditNote(SupplierReturn $return, User $user, string $reference, int $amountCents, string $date): SupplierReturn
     {
         $this->guard->requireAny($user, [Permissions::PURCHASING_MANAGE]);
         $this->guard->requireStatus($return->status, DocumentStatus::Approved);
+        if ($return->credit_note_cents !== null) {
+            throw ValidationException::withMessages(['reference' => 'The credit note for this return is already recorded.']);
+        }
 
-        return DB::transaction(function () use ($return, $user, $reference) {
-            $return->forceFill(['credit_note_ref' => $reference])->save();
-            $this->audit->log('purchasing.return.credited', $return, after: ['credit_note_ref' => $reference], userId: $user->id, branchId: $return->branch_id);
+        return DB::transaction(function () use ($return, $user, $reference, $amountCents, $date) {
+            $return->forceFill(['credit_note_ref' => $reference, 'credit_note_cents' => $amountCents, 'credit_note_date' => $date, 'credit_noted_by' => $user->id])->save();
+            $this->audit->log('purchasing.return.credited', $return, after: ['credit_note_ref' => $reference, 'credit_note_cents' => $amountCents], userId: $user->id, branchId: $return->branch_id);
 
             return $return;
         });

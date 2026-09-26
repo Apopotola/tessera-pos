@@ -21,6 +21,12 @@ class SaleReturn extends Model
         return ['total_cents' => 'integer', 'vat_cents' => 'integer'];
     }
 
+    /** Refund tenders: cash from the drawer and/or back to the customer's credit account. @return HasMany<SaleTender, $this> */
+    public function tenders(): HasMany
+    {
+        return $this->hasMany(SaleTender::class);
+    }
+
     /** @return HasMany<SaleReturnLine, $this> */
     public function lines(): HasMany
     {

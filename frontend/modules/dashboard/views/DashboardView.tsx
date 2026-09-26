@@ -30,6 +30,8 @@ const SHIFTS_TAB: OpenTabConfig = { title: "Shifts & cash-ups", path: "/sales/sh
 const ETIMS_TAB: OpenTabConfig = { title: "eTIMS monitor", path: "/compliance/etims", view: "etimsMonitor" };
 const ORDERS_TAB: OpenTabConfig = { title: "Purchase orders", path: "/purchasing/orders", view: "purchaseOrders" };
 const INVOICES_TAB: OpenTabConfig = { title: "Supplier invoices", path: "/purchasing/invoices", view: "supplierInvoices" };
+const RECEIVABLES_TAB: OpenTabConfig = { title: "Customer accounts", path: "/customers/accounts", view: "receivables" };
+const PAYABLES_TAB: OpenTabConfig = { title: "Supplier accounts", path: "/purchasing/accounts", view: "payables" };
 const ADJUSTMENTS_TAB: OpenTabConfig = { title: "Breakages & adjustments", path: "/inventory/adjustments", view: "stockAdjustments" };
 
 /** "▲ 12% vs last Saturday" — same weekday, same time of day. */
@@ -101,7 +103,12 @@ export default function DashboardView() {
                   )}
                   {tile("takings") && <StatTile tone="dark" label="Cash" value={formatKes(data.salesToday.cashCents)} />}
                   {tile("takings") && (
-                    <StatTile tone="dark" label="M-PESA · card" value={formatKes(data.salesToday.mpesaCents + data.salesToday.cardCents)} hint={`Card ${formatKes(data.salesToday.cardCents)}`} />
+                    <StatTile
+                      tone="dark"
+                      label="M-PESA · card"
+                      value={formatKes(data.salesToday.mpesaCents + data.salesToday.cardCents)}
+                      hint={`Card ${formatKes(data.salesToday.cardCents)}${data.salesToday.creditCents ? ` · on account ${formatKes(data.salesToday.creditCents)}` : ""}`}
+                    />
                   )}
                   {tile("gross_profit") && data.salesToday.grossProfitCents !== null && (
                     <StatTile
@@ -136,6 +143,25 @@ export default function DashboardView() {
                     value={formatKes(data.inventory.lossesThisMonthCents)}
                     hint={data.shrinkage?.percentOfCogs != null ? `${data.shrinkage.percentOfCogs}% of cost of goods sold · breakage and missing` : "Breakage and missing stock at cost"}
                     onClick={() => dispatch(openTab(reportTab({ key: "losses-by-reason", title: "Losses by reason" })))}
+                  />
+                )}
+                {tile("receivables") && data.receivables && data.receivables.customers > 0 && (
+                  <StatTile
+                    tone="dark"
+                    highlight={data.receivables.over90Cents > 0}
+                    label="Owed by customers"
+                    value={formatKes(data.receivables.balanceCents)}
+                    hint={`${data.receivables.customers} account${data.receivables.customers === 1 ? "" : "s"} · ${formatKes(data.receivables.overdueCents)} past due${data.receivables.over90Cents ? ` · ${formatKes(data.receivables.over90Cents)} over 90 days` : ""}`}
+                    onClick={() => dispatch(openTab(RECEIVABLES_TAB))}
+                  />
+                )}
+                {tile("payables") && data.payables && data.payables.suppliers > 0 && (
+                  <StatTile
+                    tone="dark"
+                    label="Owed to suppliers"
+                    value={formatKes(data.payables.balanceCents)}
+                    hint={`${formatKes(data.payables.dueCents)} past due${data.payables.onQueryCents ? ` · ${formatKes(data.payables.onQueryCents)} on query` : ""}`}
+                    onClick={() => dispatch(openTab(PAYABLES_TAB))}
                   />
                 )}
                 {tile("etims") && data.compliance && (

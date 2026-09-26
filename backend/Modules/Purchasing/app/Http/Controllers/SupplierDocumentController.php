@@ -120,8 +120,12 @@ class SupplierDocumentController extends Controller
     #[OA\Post(path: '/api/v1/purchasing/returns/{supplierReturn}/credit-note', summary: 'Record the supplier credit note reference', tags: ['Purchasing'], responses: [new OA\Response(response: 200, description: 'Saved')])]
     public function creditNote(Request $request, SupplierReturn $supplierReturn): JsonResponse
     {
-        $reference = $request->validate(['reference' => ['required', 'string', 'max:60']])['reference'];
-        $return = $this->returns->recordCreditNote($supplierReturn, $request->user(), $reference);
+        $data = $request->validate([
+            'reference' => ['required', 'string', 'max:60'],
+            'amountCents' => ['required', 'integer', 'min:1', 'max:100000000000'],
+            'date' => ['required', 'date', 'before_or_equal:today'],
+        ]);
+        $return = $this->returns->recordCreditNote($supplierReturn, $request->user(), $data['reference'], (int) $data['amountCents'], $data['date']);
 
         return $this->success('Credit note recorded.', PurchasingResources::supplierReturn($return->load(self::RETURN_RELATIONS)));
     }
