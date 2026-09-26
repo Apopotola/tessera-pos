@@ -11,6 +11,7 @@ const ACTION_LABEL: Record<ApprovalAction, string> = {
   override: "a price change",
   void: "removing a high-value item",
   refund: "a customer refund",
+  cash_drop: "moving cash to the safe (witness)",
 };
 
 interface Request {

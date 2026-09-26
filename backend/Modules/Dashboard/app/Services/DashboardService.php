@@ -74,6 +74,12 @@ class DashboardService
                     ])->values()
                 : null,
 
+            // Closed cash-ups a manager has not signed off yet, and how many had a difference.
+            'cashUps' => $user->can(Permissions::SHIFTS_CASHUP_APPROVE) ? [
+                'toReview' => Shift::query()->whereIn('branch_id', $branchIds)->whereNotNull('closed_at')->whereNull('reviewed_at')->count(),
+                'withDifference' => Shift::query()->whereIn('branch_id', $branchIds)->whereNotNull('closed_at')->whereNull('reviewed_at')->where('variance_cents', '<>', 0)->count(),
+            ] : null,
+
             'salesToday' => $user->can(Permissions::SALES_VIEW) ? $this->salesToday($user, $branchIds) : null,
 
             'inventory' => $user->can(Permissions::INVENTORY_VIEW) ? [

@@ -20,6 +20,9 @@ class Shift extends Model
             'expected_cash_cents' => 'integer',
             'counted_cash_cents' => 'integer',
             'variance_cents' => 'integer',
+            'drops_cents' => 'integer',
+            'count_breakdown' => 'array',
+            'reviewed_at' => 'immutable_datetime',
             'opened_at' => 'immutable_datetime',
             'closed_at' => 'immutable_datetime',
         ];
@@ -40,6 +43,18 @@ class Shift extends Model
     public function tenders(): HasMany
     {
         return $this->hasMany(SaleTender::class);
+    }
+
+    /** @return HasMany<CashDrop, $this> */
+    public function drops(): HasMany
+    {
+        return $this->hasMany(CashDrop::class);
+    }
+
+    /** @return BelongsTo<User, $this> */
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
     }
 
     /** @return BelongsTo<User, $this> */

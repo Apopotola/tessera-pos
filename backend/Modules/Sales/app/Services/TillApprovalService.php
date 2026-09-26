@@ -27,6 +27,8 @@ class TillApprovalService
         'override' => Permissions::SALES_OVERRIDE_APPROVE,
         'void' => Permissions::SALES_VOID_APPROVE,
         'refund' => Permissions::SALES_REFUND_APPROVE,
+        // Manager witnesses cash leaving the drawer for the safe.
+        'cash_drop' => Permissions::SHIFTS_CASHUP_APPROVE,
     ];
 
     public function __construct(private readonly BranchAccessService $branches, private readonly AuditLogger $audit) {}

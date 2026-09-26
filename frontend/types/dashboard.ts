@@ -14,6 +14,7 @@ export interface DashboardSummary {
         openingFloatCents: number;
       }[]
     | null;
+  cashUps: { toReview: number; withDifference: number } | null;
   salesToday: {
     transactions: number;
     grossCents: number;

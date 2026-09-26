@@ -25,18 +25,23 @@ class TillCatalogueService
     /** @return list<array<string, mixed>> */
     public function search(Till $till, string $term): array
     {
-        $like = '%'.mb_strtolower(trim($term)).'%';
+        // Every word must match the product, brand or SKU: "jameson 750" finds JAM-750.
+        $words = array_filter(preg_split('/\s+/', mb_strtolower(trim($term))) ?: []);
 
-        $variants = ProductVariant::query()
+        $query = ProductVariant::query()
             ->with(['product.brand', 'taxRate'])
             ->where('is_active', true)
-            ->whereHas('product', fn ($p) => $p->where('is_active', true))
-            ->where(fn ($q) => $q
+            ->whereHas('product', fn ($p) => $p->where('is_active', true));
+
+        foreach ($words as $word) {
+            $like = '%'.$word.'%';
+            $query->where(fn ($q) => $q
                 ->whereHas('product', fn ($p) => $p->whereRaw('lower(name) like ?', [$like])
                     ->orWhereHas('brand', fn ($b) => $b->whereRaw('lower(name) like ?', [$like])))
-                ->orWhereRaw('lower(sku) like ?', [$like]))
-            ->limit(24)
-            ->get();
+                ->orWhereRaw('lower(sku) like ?', [$like]));
+        }
+
+        $variants = $query->limit(24)->get();
 
         return $this->present($till, $variants->all());
     }

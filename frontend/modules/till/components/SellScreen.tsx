@@ -2,7 +2,7 @@
 
 import { ActionIcon, Badge, Button, Group, Loader, Menu, Modal, ScrollArea, Stack, Text, TextInput, UnstyledButton } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconBarcode, IconDots, IconUser, IconGlassFull, IconLock, IconLogout, IconMinus, IconPlayerPause, IconPlus, IconPrinter, IconReceiptRefund, IconSearch, IconTrash } from "@tabler/icons-react";
+import { IconBarcode, IconBuildingBank, IconDots, IconUser, IconGlassFull, IconLock, IconLogout, IconMinus, IconPlayerPause, IconPlus, IconPrinter, IconReceiptRefund, IconSearch, IconTrash } from "@tabler/icons-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ApiError, salesApi } from "@/api";
 import { brand } from "@/app/theme";
@@ -11,7 +11,7 @@ import { type CartLine, cartTotals, fromParked, lineKey, lineName, lineTotal, lo
 import CustomerPicker from "@/modules/till/components/CustomerPicker";
 import type { TillCustomer } from "@/types/customers";
 import { useApprovalPrompt } from "@/modules/till/components/ApprovalModal";
-import { EndShiftModal, ShiftSummaryModal } from "@/modules/till/components/EndShift";
+import { CashDropModal, EndShiftModal, ShiftSummaryModal } from "@/modules/till/components/EndShift";
 import LineEditModal from "@/modules/till/components/LineEditModal";
 import { ParkModal, RecallModal } from "@/modules/till/components/ParkedSales";
 import ReturnModal from "@/modules/till/components/ReturnModal";
@@ -65,6 +65,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   const [returning, setReturning] = useState(false);
   const [ending, setEnding] = useState(false);
   const [closed, setClosed] = useState<Shift | null>(null);
+  const [dropping, setDropping] = useState(false);
   const [parked, setParked] = useState<ParkedSale[]>([]);
   const [parking, setParking] = useState(false);
   const [recalling, setRecalling] = useState(false);
@@ -444,6 +445,9 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
                 Clear sale
               </Menu.Item>
               <Menu.Divider />
+              <Menu.Item leftSection={<IconBuildingBank size={16} />} disabled={!isOnline} onClick={() => setDropping(true)}>
+                Cash drop to safe{!isOnline && " (needs connection)"}
+              </Menu.Item>
               <Menu.Item leftSection={<IconLock size={16} />} disabled={lines.length > 0 || !isOnline} onClick={() => void lock()}>
                 Lock till
               </Menu.Item>
@@ -610,6 +614,17 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
 
       {parking && <ParkModal totalCents={totals.total} onClose={() => setParking(false)} onPark={park} />}
       {recalling && <RecallModal parked={parked} cartHasItems={lines.length > 0} onClose={() => setRecalling(false)} onRecall={recall} />}
+      {dropping && (
+        <CashDropModal
+          shift={shift}
+          requestApproval={requestApproval}
+          onClose={() => setDropping(false)}
+          onDropped={() => {
+            setDropping(false);
+            refocus();
+          }}
+        />
+      )}
       {ending && !closed && <EndShiftModal shift={shift} onClose={() => setEnding(false)} onClosed={setClosed} />}
       {closed && <ShiftSummaryModal shift={closed} onDone={() => void lock()} />}
       {pickingCustomer && (

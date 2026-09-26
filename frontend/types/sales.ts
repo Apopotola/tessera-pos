@@ -2,7 +2,7 @@
 import type { EtimsReceipt, EtimsStatus } from "@/types/compliance";
 
 export type TenderMethod = "cash" | "mpesa" | "card";
-export type ApprovalAction = "discount" | "override" | "void" | "refund";
+export type ApprovalAction = "discount" | "override" | "void" | "refund" | "cash_drop";
 /** A bottle off the shelf, or a tot poured from the open bottle. */
 export type SaleUnit = "bottle" | "tot";
 
@@ -139,6 +139,19 @@ export interface ShiftRow {
   salesCount: number;
   takings: { cashCents: number; mpesaCents: number; cardCents: number };
   closeNote: string | null;
+  /** Cash moved to the safe during the shift. */
+  dropsCents: number;
+  /** Count by denomination, after closing. */
+  countBreakdown: { denominationCents: number; count: number }[] | null;
+  varianceReason: string | null;
+  reviewedBy?: { id: number; name: string } | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+}
+
+/** GET /sales/shifts/{id}/detail */
+export interface ShiftDetail extends ShiftRow {
+  drops: { id: number; amountCents: number; note: string | null; witness: string; at: string }[];
 }
 
 /** A cart put aside at the till (GET/POST /sales/till/parked). */

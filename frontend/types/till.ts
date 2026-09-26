@@ -60,6 +60,14 @@ export interface Shift {
   expectedCashCents: number | null;
   countedCashCents: number | null;
   varianceCents: number | null;
+  /** Cash moved to the safe during the shift. */
+  dropsCents: number;
+  /** Count by denomination, after closing. */
+  countBreakdown: { denominationCents: number; count: number }[] | null;
+  varianceReason: string | null;
+  reviewedBy?: { id: number; name: string } | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
 }
 
 /** GET /sales/till/catalogue — what the till keeps on the device to sell offline. */

@@ -18,6 +18,8 @@ Route::middleware(['auth:sanctum', 'till.device'])->prefix('sales')->name('sales
     Route::get('shifts/current', [ShiftController::class, 'current'])->name('shifts.current');
     Route::post('shifts', [ShiftController::class, 'start'])->name('shifts.start');
     Route::post('shifts/{shift}/close', [ShiftController::class, 'close'])->name('shifts.close');
+    Route::post('shifts/{shift}/cash-drops', [ShiftController::class, 'cashDrop'])->name('shifts.cash-drops');
+    Route::post('shifts/{shift}/variance-reason', [ShiftController::class, 'varianceReason'])->name('shifts.variance-reason');
 
     Route::prefix('till')->name('till.')->group(function () {
         Route::get('items', [TillSaleController::class, 'items'])->name('items');
@@ -39,6 +41,8 @@ Route::middleware(['auth:sanctum', 'till.device'])->prefix('sales')->name('sales
 Route::middleware('auth:sanctum')->prefix('sales')->name('sales.')->group(function () {
     Route::get('sales', [SalesController::class, 'index'])->name('sales.index');
     Route::get('shifts', [SalesController::class, 'shifts'])->name('shifts.index');
+    Route::get('shifts/{shift}/detail', [SalesController::class, 'shiftDetail'])->name('shifts.detail');
+    Route::post('shifts/{shift}/review', [SalesController::class, 'reviewShift'])->name('shifts.review');
     Route::get('open-bottles', [OpenBottleController::class, 'index'])->name('open-bottles.index');
     Route::post('open-bottles/{openBottle}/write-off', [OpenBottleController::class, 'writeOff'])->name('open-bottles.write-off');
 });

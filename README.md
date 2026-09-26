@@ -155,3 +155,10 @@ When the connection drops the till keeps selling **cash and card** from a copy o
 - Offline, these wait for the connection: M-PESA, manager approvals (overrides, big discounts, large voids, refunds), returns, parking, locking and ending the shift. A shift cannot end while its offline sales are still sending.
 - A cashier already signed in when the connection dropped can keep selling, even after reloading the page (production builds cache the till page with `public/sw.js`). Signing in a new cashier needs the connection.
 - Offline sales older than `SALES_OFFLINE_MAX_HOURS` (default 72, REQUIRES VALIDATION against KRA/VSCU rules) are refused on sync.
+
+## Cash control
+
+- **Cash drops:** during a shift the cashier moves excess notes to the safe from the till menu (*Cash drop to safe*); a manager witnesses it with their PIN. A drop can never exceed what the drawer should hold, and drops are append-only.
+- **Closing:** a blind count by note and coin (KES 1,000 … KES 1). Expected cash = opening float + cash sales − cash refunds − drops to the safe.
+- **Differences:** if the count is over or short, the cashier must say why before signing out.
+- **Sign-off:** every closed cash-up waits for a manager in *Sales & Shifts → Shifts & cash-ups* (the dashboard shows how many). A difference needs the manager's note, and nobody can sign off their own cash-up.

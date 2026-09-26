@@ -24,6 +24,7 @@ const USERS_TAB: OpenTabConfig = { title: "Users & roles", path: "/admin/users",
 const BRANCHES_TAB: OpenTabConfig = { title: "Branches", path: "/admin/branches", view: "branchesList" };
 const STOCK_TAB: OpenTabConfig = { title: "Stock on hand", path: "/inventory/stock", view: "stockOnHand" };
 const SALES_TAB: OpenTabConfig = { title: "Sales", path: "/sales", view: "salesList" };
+const SHIFTS_TAB: OpenTabConfig = { title: "Shifts & cash-ups", path: "/sales/shifts", view: "shiftsList" };
 const ETIMS_TAB: OpenTabConfig = { title: "eTIMS monitor", path: "/compliance/etims", view: "etimsMonitor" };
 const ORDERS_TAB: OpenTabConfig = { title: "Purchase orders", path: "/purchasing/orders", view: "purchaseOrders" };
 const INVOICES_TAB: OpenTabConfig = { title: "Supplier invoices", path: "/purchasing/invoices", view: "supplierInvoices" };
@@ -189,6 +190,10 @@ function AttentionCard({ data, onOpen }: { data: DashboardSummary; onOpen: (tab:
   }
   if (data.purchasing?.invoicesWithVariance) {
     items.push({ text: `${data.purchasing.invoicesWithVariance} supplier invoice(s) don't match the goods received`, tab: INVOICES_TAB });
+  }
+  if (data.cashUps?.toReview) {
+    const diff = data.cashUps.withDifference ? `, ${data.cashUps.withDifference} with a difference` : "";
+    items.push({ text: `${data.cashUps.toReview} cash-up(s) waiting for your sign-off${diff}`, tab: SHIFTS_TAB });
   }
   if (data.compliance?.rejected) {
     items.push({ text: `${data.compliance.rejected} eTIMS invoice(s) refused by KRA — fix the item data and retry`, tab: ETIMS_TAB });

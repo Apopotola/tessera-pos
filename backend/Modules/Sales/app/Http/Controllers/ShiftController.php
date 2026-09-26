@@ -46,13 +46,39 @@ class ShiftController extends Controller
         abort_unless($shift->till_id === $this->till($request)->id, 404);
 
         $data = $request->validate([
-            'countedCashCents' => ['required', 'integer', 'min:0', 'max:100000000'],
+            'countedCashCents' => ['required_without:denominations', 'integer', 'min:0', 'max:100000000'],
+            // Count by denomination: {"100000": 3, "50000": 1, …} (cents => pieces).
+            'denominations' => ['nullable', 'array'],
+            'denominations.*' => ['integer', 'min:0', 'max:100000'],
             'note' => ['nullable', 'string', 'max:500'],
         ]);
 
-        $shift = $this->shifts->close($shift, $request->user(), $data['countedCashCents'], $data['note'] ?? null);
+        $shift = $this->shifts->close($shift, $request->user(), (int) ($data['countedCashCents'] ?? 0), $data['note'] ?? null, $data['denominations'] ?? null);
 
         return $this->success('Shift ended.', new ShiftResource($shift->load('user')));
+    }
+
+    #[OA\Post(path: '/api/v1/sales/shifts/{shift}/cash-drops', summary: 'Move excess cash to the safe (manager PIN witness)', tags: ['Sales'], responses: [new OA\Response(response: 201, description: 'Recorded')])]
+    public function cashDrop(Request $request, Shift $shift): JsonResponse
+    {
+        $data = $request->validate([
+            'amountCents' => ['required', 'integer', 'min:100', 'max:100000000'],
+            'note' => ['nullable', 'string', 'max:300'],
+            'approvalToken' => ['required', 'string', 'max:60'],
+        ]);
+
+        $drop = $this->shifts->cashDrop($shift, $this->till($request), $request->user(), $data['amountCents'], $data['note'] ?? null, $data['approvalToken']);
+
+        return $this->success('Cash drop recorded.', ['id' => $drop->id, 'amountCents' => $drop->amount_cents, 'dropsCents' => $shift->fresh()->drops_cents], 201);
+    }
+
+    #[OA\Post(path: '/api/v1/sales/shifts/{shift}/variance-reason', summary: 'Cashier explains a cash-up difference after closing', tags: ['Sales'], responses: [new OA\Response(response: 200, description: 'Saved')])]
+    public function varianceReason(Request $request, Shift $shift): JsonResponse
+    {
+        abort_unless($shift->till_id === $this->till($request)->id, 404);
+        $reason = $request->validate(['reason' => ['required', 'string', 'min:3', 'max:500']])['reason'];
+
+        return $this->success('Reason saved.', new ShiftResource($this->shifts->explainVariance($shift, $request->user(), $reason)));
     }
 
     private function till(Request $request): Till

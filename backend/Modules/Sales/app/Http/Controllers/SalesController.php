@@ -9,9 +9,11 @@ use Modules\Authorization\Support\Permissions;
 use Modules\Inventory\Services\StockQueryService;
 use Modules\Sales\Http\Resources\SaleResource;
 use Modules\Sales\Http\Resources\ShiftResource;
+use Modules\Sales\Models\CashDrop;
 use Modules\Sales\Models\Sale;
 use Modules\Sales\Models\SaleTender;
 use Modules\Sales\Models\Shift;
+use Modules\Sales\Services\ShiftService;
 use OpenApi\Attributes as OA;
 
 /** Back-office views of sales and shifts. */
@@ -45,13 +47,43 @@ class SalesController extends Controller
         return $this->success('Sales.', $this->paginated($page, SaleResource::class));
     }
 
+    #[OA\Get(path: '/api/v1/sales/shifts/{shift}/detail', summary: 'One cash-up: count by denomination, drops, reason, sign-off', tags: ['Sales'], responses: [new OA\Response(response: 200, description: 'Shift')])]
+    public function shiftDetail(Request $request, Shift $shift): JsonResponse
+    {
+        abort_unless($request->user()->canAny([Permissions::SHIFTS_CASHUP_APPROVE, Permissions::SALES_VIEW]), 403);
+        abort_unless(in_array($shift->branch_id, $this->stock->branchIds($request->user(), null), true), 403);
+        $shift->load(['user', 'till', 'reviewer', 'drops.witness']);
+
+        return $this->success('Shift.', [
+            ...(new ShiftResource($shift))->toArray($request),
+            'tillName' => $shift->till->name,
+            'drops' => $shift->drops->map(fn (CashDrop $d) => [
+                'id' => $d->id,
+                'amountCents' => $d->amount_cents,
+                'note' => $d->note,
+                'witness' => $d->witness->name,
+                'at' => $d->created_at->toIso8601String(),
+            ])->values(),
+        ]);
+    }
+
+    #[OA\Post(path: '/api/v1/sales/shifts/{shift}/review', summary: 'Manager signs off a closed cash-up', tags: ['Sales'], responses: [new OA\Response(response: 200, description: 'Signed off')])]
+    public function reviewShift(Request $request, Shift $shift, ShiftService $shifts): JsonResponse
+    {
+        abort_unless(in_array($shift->branch_id, $this->stock->branchIds($request->user(), null), true), 403);
+        $note = $request->validate(['note' => ['nullable', 'string', 'max:500']])['note'] ?? null;
+
+        return $this->success('Cash-up signed off.', new ShiftResource($shifts->review($shift, $request->user(), $note)->load(['user', 'reviewer'])));
+    }
+
     #[OA\Get(path: '/api/v1/sales/shifts', summary: 'Shifts with cash-up results (variance only after close)', tags: ['Sales'], responses: [new OA\Response(response: 200, description: 'Paginated')])]
     public function shifts(Request $request): JsonResponse
     {
         abort_unless($request->user()->canAny([Permissions::SHIFTS_CASHUP_APPROVE, Permissions::SALES_VIEW]), 403);
 
         $page = Shift::query()
-            ->with(['user', 'till'])
+            ->with(['user', 'till', 'reviewer'])
+            ->when($request->query('status') === 'to_review', fn ($q) => $q->whereNotNull('closed_at')->whereNull('reviewed_at'))
             ->withCount('sales')
             ->withSum(['tenders as cash_cents' => fn ($q) => $q->where('method', SaleTender::CASH)], 'amount_cents')
             ->withSum(['tenders as mpesa_cents' => fn ($q) => $q->where('method', SaleTender::MPESA)], 'amount_cents')

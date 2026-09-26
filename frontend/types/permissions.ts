@@ -6,6 +6,7 @@ export const PERMISSIONS = {
   DASHBOARD_VIEW: "dashboard.view",
   SALES_SELL: "sales.sell",
   SALES_VIEW: "sales.view",
+  SHIFTS_CASHUP_APPROVE: "shifts.cashup.approve",
   CATALOGUE_VIEW: "catalogue.view",
   CATALOGUE_MANAGE: "catalogue.manage",
   PRICES_MANAGE: "catalogue.prices.manage",
