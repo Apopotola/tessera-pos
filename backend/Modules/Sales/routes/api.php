@@ -21,6 +21,7 @@ Route::middleware(['auth:sanctum', 'till.device'])->prefix('sales')->name('sales
 
     Route::prefix('till')->name('till.')->group(function () {
         Route::get('items', [TillSaleController::class, 'items'])->name('items');
+        Route::get('catalogue', [TillSaleController::class, 'catalogue'])->name('catalogue');
         Route::get('scan/{code}', [TillSaleController::class, 'scan'])->where('code', '[A-Za-z0-9-]+')->name('scan');
         Route::get('approvers', [TillSaleController::class, 'approvers'])->name('approvers');
         Route::post('approvals', [TillSaleController::class, 'approve'])->middleware('throttle:30,1')->name('approvals');

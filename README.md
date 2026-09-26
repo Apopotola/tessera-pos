@@ -145,3 +145,13 @@ php artisan schedule:work
 `php artisan etims:process` sends everything due immediately. The real VSCU/OSCU driver implements `Modules\Compliance\Contracts\EtimsGateway` once the KRA v2.0 spec and sandbox access (etims-sbx.kra.go.ke) are available; KRA field names in `EtimsPayloadBuilder` are marked REQUIRES VALIDATION.
 
 The PostgreSQL session timezone is set to `APP_TIMEZONE` (config/database.php) so timestamps written by Laravel and by Postgres agree.
+
+## Offline till
+
+When the connection drops the till keeps selling **cash and card** from a copy of the catalogue saved on the device (IndexedDB): prices, barcodes, shelf stock and registered customers, refreshed every 10 minutes while online.
+
+- Offline sales print a receipt with a provisional number (`OFFLINE-<till>-0001`) marked *recorded offline*; the official number and the eTIMS invoice follow when the sale reaches the server.
+- Queued sales are sent in order as soon as the connection is back. The server keeps the time of sale, prices the sale as it was then, and records it once even if it is sent twice (`clientId`). Refused sales stay on the till as *needs attention* for a manager.
+- Offline, these wait for the connection: M-PESA, manager approvals (overrides, big discounts, large voids, refunds), returns, parking, locking and ending the shift. A shift cannot end while its offline sales are still sending.
+- A cashier already signed in when the connection dropped can keep selling, even after reloading the page (production builds cache the till page with `public/sw.js`). Signing in a new cashier needs the connection.
+- Offline sales older than `SALES_OFFLINE_MAX_HOURS` (default 72, REQUIRES VALIDATION against KRA/VSCU rules) are refused on sync.

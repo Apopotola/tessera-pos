@@ -102,6 +102,8 @@ class TillSaleController extends Controller
             'clientId' => ['required', 'uuid'],
             'customerPin' => ['nullable', 'string', 'regex:/^[A-Za-z]\d{9}[A-Za-z]$/'],
             'customerId' => ['nullable', 'integer'],
+            // Offline till: when the sale actually happened (ISO 8601 with offset).
+            'occurredAt' => ['nullable', 'date'],
             'lines' => ['required', 'array', 'min:1', 'max:200'],
             'lines.*.variantId' => ['required', 'integer'],
             'lines.*.unit' => ['nullable', Rule::in([SaleLine::UNIT_BOTTLE, SaleLine::UNIT_TOT])],
@@ -120,6 +122,14 @@ class TillSaleController extends Controller
         ['sale' => $sale, 'replayed' => $replayed] = $this->sales->complete($this->till($request), $request->user(), $data);
 
         return $this->success($replayed ? 'Sale already recorded.' : "Sale {$sale->number} complete.", new SaleResource($sale->load(self::RELATIONS)), $replayed ? 200 : 201);
+    }
+
+    #[OA\Get(path: '/api/v1/sales/till/catalogue', summary: 'Everything the till needs to keep selling offline: items, prices, barcodes, stock, customers', tags: ['Till'], responses: [new OA\Response(response: 200, description: 'Snapshot')])]
+    public function catalogue(Request $request): JsonResponse
+    {
+        $this->requireSeller($request);
+
+        return $this->success('Till catalogue.', $this->catalogue->snapshot($this->till($request)));
     }
 
     #[OA\Get(path: '/api/v1/sales/till/sales/{number}', summary: 'Find a sale at this branch by receipt number (for reprints and returns)', tags: ['Till'], responses: [new OA\Response(response: 200, description: 'Sale')])]

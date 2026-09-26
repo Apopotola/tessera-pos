@@ -41,6 +41,45 @@ class TillCatalogueService
         return $this->present($till, $variants->all());
     }
 
+    /**
+     * Offline snapshot: every sellable item with this branch's prices and floor stock, the
+     * barcodes (with case sizes) and the registered customers the till may pick.
+     *
+     * @return array<string, mixed>
+     */
+    public function snapshot(Till $till): array
+    {
+        $variants = ProductVariant::query()
+            ->with(['product.brand', 'taxRate', 'barcodes.pack'])
+            ->where('is_active', true)
+            ->whereHas('product', fn ($p) => $p->where('is_active', true))
+            ->get();
+
+        $barcodes = [];
+        foreach ($variants as $variant) {
+            foreach ($variant->barcodes as $barcode) {
+                $barcodes[] = ['code' => $barcode->code, 'variantId' => $variant->id, 'units' => $barcode->pack->units ?? 1, 'packName' => $barcode->pack?->name];
+            }
+        }
+
+        $byId = $variants->keyBy('id');
+
+        return [
+            'generatedAt' => now()->toIso8601String(),
+            'items' => array_map(fn (array $item) => [
+                ...$item,
+                // Searchable text, so the till can search offline the way the server does.
+                'search' => mb_strtolower(implode(' ', array_filter([
+                    $item['displayName'], $item['sku'], $byId[$item['variantId']]?->product?->brand?->name,
+                ]))),
+            ], $this->present($till, $variants->all())),
+            'barcodes' => $barcodes,
+            'customers' => DB::table('customers')->where('is_active', true)->whereNull('anonymised_at')->orderBy('name')
+                ->get(['id', 'name', 'kra_pin', 'is_wholesale'])
+                ->map(fn ($c) => ['id' => (int) $c->id, 'name' => $c->name, 'kraPin' => $c->kra_pin, 'isWholesale' => (bool) $c->is_wholesale])->all(),
+        ];
+    }
+
     /** @return array{item: array<string, mixed>, units: int, packName: string|null}|null */
     public function scan(Till $till, string $code): ?array
     {

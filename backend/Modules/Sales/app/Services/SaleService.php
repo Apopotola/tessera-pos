@@ -3,6 +3,7 @@
 namespace Modules\Sales\Services;
 
 use App\Services\DocumentNumberService;
+use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -67,11 +68,17 @@ class SaleService
         $shift = $this->openShift($till, $cashier);
         $location = $this->salesLocation($till);
         $customer = $this->customer($data['customerId'] ?? null);
-        $lines = $this->priceLines($till, $cashier, $data['lines'], (bool) $customer?->is_wholesale);
+        // Offline till: the sale happened earlier; price it as it was then.
+        $occurredAt = $this->occurredAt($data['occurredAt'] ?? null, $shift);
+        $offline = isset($data['occurredAt']);
+        if ($offline) {
+            $this->assertOfflineTenders($data['tenders']);
+        }
+        $lines = $this->priceLines($till, $cashier, $data['lines'], (bool) $customer?->is_wholesale, $occurredAt);
         $total = array_sum(array_column($lines, 'line_total_cents'));
         $tenders = $this->settle($data['tenders'], $total, $till->branch_id);
 
-        return DB::transaction(function () use ($till, $cashier, $data, $shift, $location, $lines, $total, $tenders, $customer) {
+        return DB::transaction(function () use ($till, $cashier, $data, $shift, $location, $lines, $total, $tenders, $customer, $occurredAt, $offline) {
             // Reserve the id first so the ledger can reference the sale and give us exact costs.
             $saleId = (int) DB::selectOne("SELECT nextval('sales_id_seq') AS id")->id;
             $number = $this->numbers->next($till->branch, Sale::NUMBER_PREFIX);
@@ -111,7 +118,8 @@ class SaleService
                 'cost_cents' => array_sum(array_map(fn ($l) => $l['quantity'] * $l['unit_cost_cents'], $lines)),
                 'status' => 'completed',
                 'etims_status' => 'pending',
-                'completed_at' => now(),
+                'completed_at' => $occurredAt,
+                'captured_offline' => $offline,
             ]);
 
             foreach ($lines as $line) {
@@ -134,10 +142,48 @@ class SaleService
                 'total_cents' => $total,
                 'tenders' => array_map(fn ($t) => [$t['method'], $t['amount_cents']], $tenders),
                 'approved_lines' => count(array_filter($lines, fn ($l) => $l['approved_by'] !== null)),
+                'captured_offline' => $offline,
             ], userId: $cashier->id, branchId: $till->branch_id, reference: "till:{$till->id}");
 
             return ['sale' => $sale, 'replayed' => false];
         });
+    }
+
+    /**
+     * When an offline sale really happened. It must fall inside the cashier's open shift,
+     * not in the future, and within the configured offline window.
+     */
+    private function occurredAt(?string $value, Shift $shift): CarbonImmutable
+    {
+        $now = CarbonImmutable::now();
+        if ($value === null) {
+            return $now;
+        }
+
+        $at = CarbonImmutable::parse($value)->setTimezone(config('app.timezone'));
+        $maxHours = (int) config('sales.offline_max_hours', 72);
+
+        if ($at->gt($now->addMinutes(5))) {
+            throw ValidationException::withMessages(['occurredAt' => 'The sale time is in the future. Check the till clock.']);
+        }
+        if ($at->lt($now->subHours($maxHours))) {
+            throw ValidationException::withMessages(['occurredAt' => "Offline sales must be sent within {$maxHours} hours."]);
+        }
+        if ($at->lt(CarbonImmutable::parse($shift->opened_at)->subMinutes(5))) {
+            throw ValidationException::withMessages(['occurredAt' => 'This sale was made before the current shift started.']);
+        }
+
+        return $at;
+    }
+
+    /** Offline there is no Safaricom confirmation: cash and card only. @param list<array<string, mixed>> $tenders */
+    private function assertOfflineTenders(array $tenders): void
+    {
+        foreach ($tenders as $tender) {
+            if (! in_array($tender['method'], [SaleTender::CASH, SaleTender::CARD], true)) {
+                throw ValidationException::withMessages(['tenders' => 'Offline sales can only be paid in cash or by card.']);
+            }
+        }
     }
 
     private function customer(?int $id): ?Customer
@@ -179,10 +225,10 @@ class SaleService
      * @param  list<array{variantId: int, quantity: int, unitPriceCents?: int|null, discountCents?: int|null, approvalToken?: string|null}>  $input
      * @return list<array<string, mixed>>
      */
-    private function priceLines(Till $till, User $cashier, array $input, bool $wholesale = false): array
+    private function priceLines(Till $till, User $cashier, array $input, bool $wholesale = false, ?CarbonImmutable $at = null): array
     {
         $variants = ProductVariant::query()->with(['taxRate', 'product'])->findMany(array_column($input, 'variantId'))->keyBy('id');
-        $current = $this->prices->currentForVariants($variants->modelKeys(), $till->branch_id);
+        $current = $this->prices->currentForVariants($variants->modelKeys(), $till->branch_id, $at);
         $limitPercent = (int) config('sales.discount_limit_percent', 5);
         $lines = [];
 

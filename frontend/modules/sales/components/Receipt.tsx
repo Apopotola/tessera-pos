@@ -111,7 +111,11 @@ export default function Receipt({ sale, copy = false }: { sale: Sale; copy?: boo
 
       <div className={classes.rule} />
       <div className={classes.center}>
-        {sale.etims?.status === "signed" ? (
+        {sale.pendingSync ? (
+          <div className={classes.copy}>
+            RECORDED OFFLINE — provisional number. The official receipt number and eTIMS invoice follow when the till reconnects.
+          </div>
+        ) : sale.etims?.status === "signed" ? (
           <div className={classes.etims}>
             <div className={classes.row}>
               <span>CU invoice no.</span>

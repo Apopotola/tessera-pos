@@ -62,6 +62,7 @@ export const SALES_URLS = {
   shifts: "/sales/shifts",
   closeShift: (id: number) => `/sales/shifts/${id}/close`,
   tillItems: "/sales/till/items",
+  tillCatalogue: "/sales/till/catalogue",
   tillScan: (code: string) => `/sales/till/scan/${encodeURIComponent(code)}`,
   tillApprovers: "/sales/till/approvers",
   tillApprovals: "/sales/till/approvals",
@@ -177,3 +178,6 @@ export const CUSTOMERS_URLS = {
   anonymise: (id: number) => `/customers/${id}/anonymise`,
   tillSearch: "/customers/till/search",
 } as const;
+
+/** Connectivity check for the offline till (public, never cached). */
+export const PING_URL = "/ping";

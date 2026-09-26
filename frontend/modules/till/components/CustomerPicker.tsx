@@ -9,6 +9,8 @@ import type { TillCustomer } from "@/types/customers";
 
 interface CustomerPickerProps {
   current: TillCustomer | null;
+  /** Offline: search this saved list instead of the server. */
+  localCustomers?: TillCustomer[] | null;
   onClose: () => void;
   onPick: (customer: TillCustomer | null) => void;
 }
@@ -17,7 +19,7 @@ interface CustomerPickerProps {
  * Attach a registered customer to the sale (wholesale prices, KRA PIN on the invoice).
  * Most sales stay walk-in. New customers are registered by a manager in the back office.
  */
-export default function CustomerPicker({ current, onClose, onPick }: CustomerPickerProps) {
+export default function CustomerPicker({ current, localCustomers = null, onClose, onPick }: CustomerPickerProps) {
   const [search, setSearch] = useState("");
   const [debounced] = useDebouncedValue(search.trim(), 250);
   const [results, setResults] = useState<TillCustomer[]>([]);
@@ -26,6 +28,11 @@ export default function CustomerPicker({ current, onClose, onPick }: CustomerPic
   useEffect(() => {
     if (debounced.length < 2) {
       setResults([]); // eslint-disable-line react-hooks/set-state-in-effect
+      return;
+    }
+    if (localCustomers) {
+      const term = debounced.toLowerCase();
+      setResults(localCustomers.filter((c) => c.name.toLowerCase().includes(term) || (c.kraPin ?? "").toLowerCase().includes(term)).slice(0, 15));
       return;
     }
     let active = true;
@@ -38,7 +45,7 @@ export default function CustomerPicker({ current, onClose, onPick }: CustomerPic
     return () => {
       active = false;
     };
-  }, [debounced]);
+  }, [debounced, localCustomers]);
 
   return (
     <Modal opened onClose={onClose} title="Customer" centered>

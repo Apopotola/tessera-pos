@@ -17,9 +17,12 @@ import { ParkModal, RecallModal } from "@/modules/till/components/ParkedSales";
 import ReturnModal from "@/modules/till/components/ReturnModal";
 import TenderModal from "@/modules/till/components/TenderModal";
 import TillHeader from "@/modules/till/components/TillHeader";
+import OfflineBanner from "@/modules/till/offline/OfflineBanner";
+import { buildOfflineReceipt } from "@/modules/till/offline/offlineReceipt";
+import { useOfflineTill } from "@/modules/till/offline/useOfflineTill";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logout } from "@/store/slices/authSlice";
-import type { ParkedSale, Sale, SaleUnit, TenderPayload, TillItem } from "@/types/sales";
+import type { ParkedSale, Sale, SaleUnit, ScanResult, TenderPayload, TillItem } from "@/types/sales";
 import type { Shift, TillContext } from "@/types/till";
 import { formatKes } from "@/utils/money";
 import classes from "../Till.module.css";
@@ -40,6 +43,9 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   const canDiscount = user?.permissions.includes("sales.discount.within-limit") ?? false;
   const { discountLimitPercent, voidApprovalThresholdCents, returnWindowDays } = context.policy;
   const { requestApproval, approvalModal } = useApprovalPrompt();
+  const offline = useOfflineTill(context.till.id, user?.id);
+  const isOnline = offline.online;
+  const { markOffline, search: searchLocal, scan: scanLocal } = offline;
 
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<TillItem[]>([]);
@@ -74,34 +80,44 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
       setResults([]); // eslint-disable-line react-hooks/set-state-in-effect
       return;
     }
+    if (!isOnline) {
+      setResults(searchLocal(term));
+      return;
+    }
     let active = true;
     setSearching(true);
     const timer = window.setTimeout(() => {
       salesApi
         .searchItems(term)
         .then((items) => active && setResults(items))
-        .catch(() => active && setResults([]))
+        .catch((e: unknown) => {
+          if (!active) return;
+          if (e instanceof ApiError && e.status === 0) {
+            markOffline();
+            setResults(searchLocal(term));
+          } else setResults([]);
+        })
         .finally(() => active && setSearching(false));
     }, 250);
     return () => {
       active = false;
       window.clearTimeout(timer);
     };
-  }, [query]);
+  }, [query, isOnline, searchLocal, markOffline]);
 
   const loadParked = useCallback(() => {
     salesApi
       .parked()
       .then(setParked)
-      .catch(() => undefined);
-  }, []);
+      .catch((e: unknown) => e instanceof ApiError && e.status === 0 && markOffline());
+  }, [markOffline]);
 
   useEffect(() => {
     loadParked();
   }, [loadParked]);
 
   // The eTIMS invoice is sent just after the sale commits; refresh the receipt once to show KRA's details.
-  const completedNumber = completed?.etimsStatus === "pending" ? completed.number : null;
+  const completedNumber = completed?.etimsStatus === "pending" && !completed.pendingSync ? completed.number : null;
   useEffect(() => {
     if (!completedNumber) return;
     const timer = window.setTimeout(() => {
@@ -143,11 +159,30 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     const term = query.trim();
     if (!term) return;
     if (looksLikeBarcode(term)) {
-      try {
-        const found = await salesApi.scan(term);
+      const addScanned = (found: ScanResult) => {
         addItem(found.item, found.units);
         if (found.packName) notifications.show({ color: "tessera", message: `${found.packName}: ${found.units} bottles added` });
+      };
+      const offlineScan = () => {
+        const found = scanLocal(term);
+        if (found) addScanned(found);
+        else {
+          notifications.show({ color: "red", message: "No item has this barcode." });
+          setQuery("");
+        }
+      };
+      if (!isOnline) {
+        offlineScan();
+        return;
+      }
+      try {
+        addScanned(await salesApi.scan(term));
       } catch (e) {
+        if (e instanceof ApiError && e.status === 0) {
+          markOffline();
+          offlineScan();
+          return;
+        }
         notifications.show({ color: "red", message: e instanceof Error ? e.message : "Scan failed." });
         setQuery("");
       }
@@ -167,6 +202,19 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   /** Removing a line is logged; above the threshold a manager approves it. */
   const removeLine = async (line: CartLine): Promise<boolean> => {
     const value = lineTotal(line);
+    const dropLine = () => {
+      setLines((current) => current.filter((l) => !sameLine(l, line)));
+      refocus();
+    };
+    if (!isOnline) {
+      if (value > voidApprovalThresholdCents) {
+        notifications.show({ color: "yellow", message: "Removing this needs a manager's approval, which needs the connection." });
+        return false;
+      }
+      offline.enqueueVoid({ variantId: line.variantId, quantity: line.quantity, valueCents: value });
+      dropLine();
+      return true;
+    }
     let token: string | null = null;
     if (value > voidApprovalThresholdCents) {
       const approval = await requestApproval("void", `${lineName(line)}, ${formatKes(value)}.`);
@@ -176,11 +224,16 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     try {
       await salesApi.logVoid(line.variantId, line.quantity, value, null, token);
     } catch (e) {
+      if (e instanceof ApiError && e.status === 0 && !token) {
+        markOffline();
+        offline.enqueueVoid({ variantId: line.variantId, quantity: line.quantity, valueCents: value });
+        dropLine();
+        return true;
+      }
       notifications.show({ color: "red", message: e instanceof Error ? e.message : "Could not remove the item." });
       return false;
     }
-    setLines((current) => current.filter((l) => !sameLine(l, line)));
-    refocus();
+    dropLine();
     return true;
   };
 
@@ -193,6 +246,10 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   const saveLine = async (updated: CartLine) => {
     let line = updated;
     const needed = needsApproval(line, discountLimitPercent);
+    if (needed && !line.approvalToken && !isOnline) {
+      notifications.show({ color: "yellow", message: "Price changes and big discounts need a manager's approval, which needs the connection." });
+      return;
+    }
     if (needed && !line.approvalToken) {
       const approval = await requestApproval(needed, `${lineName(line)}: ${formatKes(lineTotal(line))}.`);
       if (!approval) return;
@@ -203,17 +260,43 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     refocus();
   };
 
+  const finishSale = (sale: Sale) => {
+    setPaying(false);
+    setCompleted(sale);
+    setLines([]);
+    setCustomer(null);
+    setClientId(newClientId());
+  };
+
+  /** Records the sale on this device and prints a provisional receipt; it is sent when the connection is back. */
+  const payOffline = async (tenders: TenderPayload[], customerPin: string | null) => {
+    if (!user) return;
+    if (tenders.some((t) => t.method === "mpesa")) {
+      setPayError("The connection dropped. M-PESA needs the connection — take cash or card instead.");
+      return;
+    }
+    const occurredAt = new Date().toISOString();
+    const payload = { clientId, occurredAt, customerId: customer?.id ?? null, customerPin, lines: lines.map(toPayload), tenders };
+    const localNumber = await offline.enqueueSale(payload, totals.total);
+    finishSale(buildOfflineReceipt({ localNumber, occurredAt, context, user, lines, tenders, customer, customerPin, snapshot: offline.snapshot }));
+  };
+
   const pay = async (tenders: TenderPayload[], customerPin: string | null) => {
     setPayPending(true);
     setPayError(null);
     try {
-      const sale = await salesApi.completeSale({ clientId, customerId: customer?.id ?? null, customerPin, lines: lines.map(toPayload), tenders });
-      setPaying(false);
-      setCompleted(sale);
-      setLines([]);
-      setCustomer(null);
-      setClientId(newClientId());
+      if (!isOnline) {
+        await payOffline(tenders, customerPin);
+        return;
+      }
+      finishSale(await salesApi.completeSale({ clientId, customerId: customer?.id ?? null, customerPin, lines: lines.map(toPayload), tenders }));
     } catch (e) {
+      if (e instanceof ApiError && e.status === 0) {
+        // Same clientId: if the server did get it, the later resend is recorded once.
+        markOffline();
+        await payOffline(tenders, customerPin);
+        return;
+      }
       setPayError(e instanceof ApiError ? (Object.values(e.formErrors)[0] ?? e.message) : "The sale did not go through. Try again.");
     } finally {
       setPayPending(false);
@@ -261,6 +344,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     <div className={classes.sell}>
       <section className={classes.sellMain}>
         <TillHeader context={context} />
+        <OfflineBanner offline={offline} />
 
         <TextInput
           ref={searchRef}
@@ -347,24 +431,24 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
               </ActionIcon>
             </Menu.Target>
             <Menu.Dropdown>
-              <Menu.Item leftSection={<IconReceiptRefund size={16} />} onClick={() => setReturning(true)}>
-                Return / reprint
+              <Menu.Item leftSection={<IconReceiptRefund size={16} />} disabled={!isOnline} onClick={() => setReturning(true)}>
+                Return / reprint{!isOnline && " (needs connection)"}
               </Menu.Item>
-              <Menu.Item leftSection={<IconPlayerPause size={16} />} disabled={lines.length === 0} onClick={() => setParking(true)}>
+              <Menu.Item leftSection={<IconPlayerPause size={16} />} disabled={lines.length === 0 || !isOnline} onClick={() => setParking(true)}>
                 Park sale
               </Menu.Item>
-              <Menu.Item leftSection={<IconPlayerPause size={16} />} disabled={parked.length === 0} onClick={() => setRecalling(true)}>
+              <Menu.Item leftSection={<IconPlayerPause size={16} />} disabled={parked.length === 0 || !isOnline} onClick={() => setRecalling(true)}>
                 Recall parked ({parked.length})
               </Menu.Item>
               <Menu.Item leftSection={<IconTrash size={16} />} disabled={lines.length === 0} onClick={() => void clearCart()}>
                 Clear sale
               </Menu.Item>
               <Menu.Divider />
-              <Menu.Item leftSection={<IconLock size={16} />} disabled={lines.length > 0} onClick={() => void lock()}>
+              <Menu.Item leftSection={<IconLock size={16} />} disabled={lines.length > 0 || !isOnline} onClick={() => void lock()}>
                 Lock till
               </Menu.Item>
-              <Menu.Item leftSection={<IconLogout size={16} />} disabled={lines.length > 0} onClick={() => setEnding(true)}>
-                End shift
+              <Menu.Item leftSection={<IconLogout size={16} />} disabled={lines.length > 0 || !isOnline || offline.unsynced > 0} onClick={() => setEnding(true)}>
+                End shift{offline.unsynced > 0 ? " (offline sales still sending)" : !isOnline ? " (needs connection)" : ""}
               </Menu.Item>
             </Menu.Dropdown>
           </Menu>
@@ -472,7 +556,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
         />
       )}
 
-      {paying && <TenderModal totalCents={totals.total} mpesaMode={context.policy.mpesaMode} mpesaDemo={context.policy.mpesaDemo} customer={customer} pending={payPending} serverError={payError} onClose={() => setPaying(false)} onPay={(t, pin) => void pay(t, pin)} />}
+      {paying && <TenderModal totalCents={totals.total} mpesaMode={context.policy.mpesaMode} mpesaDemo={context.policy.mpesaDemo} customer={customer} offline={!isOnline} pending={payPending} serverError={payError} onClose={() => setPaying(false)} onPay={(t, pin) => void pay(t, pin)} />}
 
       {completed && (
         <Modal
@@ -528,7 +612,9 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
       {recalling && <RecallModal parked={parked} cartHasItems={lines.length > 0} onClose={() => setRecalling(false)} onRecall={recall} />}
       {ending && !closed && <EndShiftModal shift={shift} onClose={() => setEnding(false)} onClosed={setClosed} />}
       {closed && <ShiftSummaryModal shift={closed} onDone={() => void lock()} />}
-      {pickingCustomer && <CustomerPicker current={customer} onClose={() => setPickingCustomer(false)} onPick={chooseCustomer} />}
+      {pickingCustomer && (
+        <CustomerPicker current={customer} localCustomers={isOnline ? null : (offline.snapshot?.customers ?? [])} onClose={() => setPickingCustomer(false)} onPick={chooseCustomer} />
+      )}
       {approvalModal}
       {printing && <ReceiptPrint sale={printing.sale} copy={printing.copy} />}
     </div>

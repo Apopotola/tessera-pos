@@ -1,3 +1,6 @@
+import type { TillCustomer } from "@/types/customers";
+import type { SalePayload, TillItem } from "@/types/sales";
+
 /** Mirrors Modules\Organisation\Http\Resources\TillResource. */
 export interface Till {
   id: number;
@@ -32,6 +35,7 @@ export interface TillContext {
     mpesaMode: "stk" | "manual";
     /** Demo M-PESA (fake driver): nothing reaches Safaricom. */
     mpesaDemo: boolean;
+    receiptFooter: string;
   };
   cashiers: TillCashier[];
 }
@@ -57,3 +61,35 @@ export interface Shift {
   countedCashCents: number | null;
   varianceCents: number | null;
 }
+
+/** GET /sales/till/catalogue — what the till keeps on the device to sell offline. */
+export interface TillSnapshot {
+  generatedAt: string;
+  items: (TillItem & { search: string })[];
+  barcodes: { code: string; variantId: number; units: number; packName: string | null }[];
+  customers: TillCustomer[];
+}
+
+/** Something done offline that the server has not seen yet. */
+export type QueuedEntry =
+  | {
+      kind: "sale";
+      clientId: string;
+      /** Signed-in cashier when it was rung up; only they can send it (their shift). */
+      userId: number;
+      localNumber: string;
+      totalCents: number;
+      queuedAt: string;
+      payload: SalePayload;
+      status: "pending" | "failed";
+      error: string | null;
+    }
+  | {
+      kind: "void";
+      clientId: string;
+      userId: number;
+      queuedAt: string;
+      payload: { variantId: number; quantity: number; valueCents: number };
+      status: "pending" | "failed";
+      error: string | null;
+    };

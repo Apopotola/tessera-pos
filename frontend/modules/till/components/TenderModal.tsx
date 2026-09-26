@@ -18,6 +18,8 @@ interface TenderModalProps {
   mpesaDemo: boolean;
   /** Registered customer on the sale; their KRA PIN goes on the invoice. */
   customer: TillCustomer | null;
+  /** Offline: cash and card only (M-PESA needs Safaricom). */
+  offline?: boolean;
   pending: boolean;
   serverError: string | null;
   onClose: () => void;
@@ -36,7 +38,7 @@ function quickCash(totalCents: number): number[] {
  * (the same rule the API applies). M-PESA codes are checked against the statement until the
  * Payments module confirms them automatically.
  */
-export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, customer, pending, serverError, onClose, onPay }: TenderModalProps) {
+export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, customer, offline = false, pending, serverError, onClose, onPay }: TenderModalProps) {
   const [mode, setMode] = useState<Mode>("cash");
   const [cashKes, setCashKes] = useState<number | string>(totalCents / 100);
   const [mpesaKes, setMpesaKes] = useState<number | string>("");
@@ -153,7 +155,7 @@ export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, customer
           disabled={Boolean(mpesaPaid)}
           data={[
             { value: "cash", label: <Label icon={<IconCash size={18} />} text="Cash" /> },
-            { value: "mpesa", label: <Label icon={<IconDeviceMobile size={18} />} text="M-PESA" /> },
+            { value: "mpesa", label: <Label icon={<IconDeviceMobile size={18} />} text="M-PESA" />, disabled: offline },
             { value: "card", label: <Label icon={<IconCreditCard size={18} />} text="Card" /> },
             { value: "split", label: <Label icon={<IconArrowsSplit size={18} />} text="Split" /> },
           ]}
@@ -162,9 +164,14 @@ export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, customer
         {mode === "cash" && cashInput}
         {mode === "mpesa" && mpesaInputs}
         {mode === "card" && cardInputs}
+        {offline && (
+          <Text size="xs" c="yellow.8">
+            Offline: cash and card only. This sale is saved on the till and sent when the connection is back.
+          </Text>
+        )}
         {mode === "split" && (
           <Stack gap="sm">
-            {mpesaInputs}
+            {!offline && mpesaInputs}
             {cardInputs}
             {cashInput}
           </Stack>

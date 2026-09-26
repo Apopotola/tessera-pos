@@ -1,8 +1,8 @@
 import { api } from "@/api/client";
-import { SALES_URLS as U } from "@/api/urls";
+import { PING_URL, SALES_URLS as U } from "@/api/urls";
 import type { Paginated } from "@/types/api";
 import type { ApprovalAction, Approval, OpenBottle, ParkedLine, ParkedSale, ReturnPayload, Sale, SalePayload, ScanResult, ShiftRow, TillItem } from "@/types/sales";
-import type { Shift } from "@/types/till";
+import type { Shift, TillSnapshot } from "@/types/till";
 
 export const salesApi = {
   // Till shift (signed-in cashier on a paired till)
@@ -12,6 +12,8 @@ export const salesApi = {
 
   // Selling
   searchItems: (search: string) => api.get<TillItem[]>(U.tillItems, { search }),
+  tillCatalogue: () => api.get<TillSnapshot>(U.tillCatalogue),
+  ping: () => api.get<{ time: string }>(PING_URL),
   scan: (code: string) => api.get<ScanResult>(U.tillScan(code)),
   approvers: (action: ApprovalAction) => api.get<{ id: number; name: string }[]>(U.tillApprovers, { action }),
   approve: (approverId: number, pin: string, action: ApprovalAction) => api.post<Approval>(U.tillApprovals, { approverId, pin, action }),

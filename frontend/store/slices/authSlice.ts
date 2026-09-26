@@ -84,6 +84,14 @@ const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
+    /**
+     * Offline till: the server cannot be reached, so resume the cashier saved on this device.
+     * Their session cookie is still used for anything sent once the connection is back.
+     */
+    restoreOfflineSession(state, { payload }: { payload: AuthUser }) {
+      state.status = "authenticated";
+      state.user = payload;
+    },
     sessionExpired(state) {
       state.status = "unauthenticated";
       state.user = null;
@@ -129,5 +137,5 @@ const authSlice = createSlice({
   },
 });
 
-export const { sessionExpired } = authSlice.actions;
+export const { restoreOfflineSession, sessionExpired } = authSlice.actions;
 export default authSlice.reducer;

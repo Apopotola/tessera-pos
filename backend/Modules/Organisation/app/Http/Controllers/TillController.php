@@ -69,6 +69,8 @@ class TillController extends Controller
                 // "stk": prompt the customer's phone / pick their payment; "manual": type the code (unverified).
                 'mpesaMode' => config('payments.mpesa.driver') === 'manual' ? 'manual' : 'stk',
                 'mpesaDemo' => config('payments.mpesa.driver') === 'fake',
+                // Printed on receipts, including those the till prints while offline.
+                'receiptFooter' => (string) config('sales.receipt_footer'),
             ],
             // Display names only — no emails or phone numbers on a shared screen.
             'cashiers' => $this->tills->cashiersFor($till)->map(fn (User $user) => [

@@ -55,6 +55,8 @@ export interface TenderPayload {
 
 export interface SalePayload {
   clientId: string;
+  /** Offline till: when the sale really happened (ISO 8601). */
+  occurredAt?: string | null;
   customerId?: number | null;
   customerPin?: string | null;
   lines: SaleLinePayload[];
@@ -65,6 +67,10 @@ export interface Sale {
   id: number;
   number: string;
   completedAt: string;
+  /** Rung up on an offline till and sent later. */
+  capturedOffline: boolean;
+  /** Client-side only: a receipt printed offline, not yet on the server. */
+  pendingSync?: boolean;
   status: "completed" | "partially_returned" | "returned";
   etimsStatus: EtimsStatus;
   /** KRA details once signed; null while pending. */

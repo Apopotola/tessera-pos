@@ -23,6 +23,7 @@ class SaleResource extends JsonResource
         return [
             'id' => $this->id,
             'number' => $this->number,
+            'capturedOffline' => (bool) $this->captured_offline,
             'completedAt' => $this->completed_at->toIso8601String(),
             'status' => $this->status,
             'etimsStatus' => $this->etims_status,
