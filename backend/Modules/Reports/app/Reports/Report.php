@@ -2,6 +2,7 @@
 
 namespace Modules\Reports\Reports;
 
+use Carbon\CarbonImmutable;
 use Illuminate\Database\Query\Builder;
 use Illuminate\Support\Facades\DB;
 use Modules\Auth\Models\User;
@@ -89,6 +90,16 @@ abstract class Report
             'week' => "to_char(date_trunc('week', {$column}), 'YYYY-MM-DD')",
             'month' => "to_char(date_trunc('month', {$column}), 'YYYY-MM')",
             default => "to_char({$column}, 'YYYY-MM-DD')",
+        };
+    }
+
+    /** "2026-09-26" → "Sat 26 Sep 2026", week → "Week of 21 Sep 2026", "2026-09" → "September 2026". */
+    protected static function periodLabel(string $value, string $grouping): string
+    {
+        return match ($grouping) {
+            'month' => CarbonImmutable::createFromFormat('Y-m-d', "{$value}-01")->format('F Y'),
+            'week' => 'Week of '.CarbonImmutable::parse($value)->format('j M Y'),
+            default => CarbonImmutable::parse($value)->format('D j M Y'),
         };
     }
 

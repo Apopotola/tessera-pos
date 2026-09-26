@@ -77,12 +77,14 @@ class ProfitReport extends Report
             ->orderByRaw($name ? 'sum(f.amount) DESC' : "{$key} ASC");
         $rows = $this->applyProductFilters($query, $filters)->get();
 
-        return new ReportResult($rows->map(function ($r) {
+        $isPeriod = in_array($grouping, ['day', 'week', 'month'], true);
+
+        return new ReportResult($rows->map(function ($r) use ($isPeriod, $grouping) {
             $revenue = self::cents($r->amount) - self::cents($r->vat);
             $profit = $revenue - self::cents($r->cost);
 
             return [
-                'name' => (string) $r->name,
+                'name' => $isPeriod ? self::periodLabel((string) $r->name, $grouping) : (string) $r->name,
                 'revenue' => $revenue,
                 'vat' => self::cents($r->vat),
                 'cost' => self::cents($r->cost),

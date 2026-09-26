@@ -139,7 +139,7 @@ export default function ReportView({ title, section, props }: WorkspaceViewProps
           </Stack>
           <QueryState loading={report.loading} error={report.error} isEmpty={!report.data?.rows.length} emptyMessage="Nothing to report for these filters." onRetry={report.reload}>
             <Table.ScrollContainer minWidth={640}>
-              <Table verticalSpacing="xs" striped highlightOnHover>
+              <Table verticalSpacing="xs" striped highlightOnHover style={{ whiteSpace: "nowrap" }}>
                 <Table.Thead>
                   <Table.Tr>
                     {report.data?.columns.map((c) => (

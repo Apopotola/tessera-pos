@@ -3,7 +3,7 @@
 import { Button, NumberInput, Paper, Select, Stack, Text, TextInput, Title } from "@mantine/core";
 import { useForm } from "@mantine/form";
 import Link from "next/link";
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import { organisationApi } from "@/api";
 import { brand } from "@/app/theme";
 import Logo from "@/components/brand/Logo";
@@ -74,6 +74,14 @@ function PairForm({ onPaired }: { onPaired: (token: string) => Promise<void> }) 
       name: (v) => (v.trim() ? null : "Name the till, e.g. Till 1"),
     },
   });
+
+  // A single-branch shop has nothing to choose.
+  const onlyBranch = branches.data?.length === 1 ? String(branches.data[0].id) : null;
+  const branchChosen = form.values.branchId !== null;
+  useEffect(() => {
+    // Only fills an empty field, so it runs once (form helpers are not stable references).
+    if (onlyBranch && !branchChosen) form.setFieldValue("branchId", onlyBranch);
+  }, [onlyBranch, branchChosen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { mutate, pending } = useApiMutation(
     (values: SetupValues) =>

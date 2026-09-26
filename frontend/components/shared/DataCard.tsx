@@ -32,7 +32,10 @@ export default function DataCard({ title, description, actions, padding = 0, chi
           {actions}
         </Group>
       )}
-      <Box p={padding}>{children}</Box>
+      {/* Wide tables scroll sideways inside the card instead of being cut off on laptops. */}
+      <Box p={padding} style={{ overflowX: "auto" }}>
+        {children}
+      </Box>
     </Paper>
   );
 }

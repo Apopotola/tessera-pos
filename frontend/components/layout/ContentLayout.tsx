@@ -8,6 +8,7 @@ import Sidebar from "@/components/layout/Sidebar";
 import WorkspaceTabRenderer from "@/components/workspace/WorkspaceTabRenderer";
 import WorkspaceTabs from "@/components/workspace/WorkspaceTabs";
 import WorkspaceUrlSync from "@/components/workspace/WorkspaceUrlSync";
+import sidebarClasses from "@/components/layout/Sidebar.module.css";
 
 /** Authenticated shell: header, permission-filtered sidebar, and the tab workspace. */
 export default function ContentLayout() {
@@ -24,7 +25,7 @@ export default function ContentLayout() {
         <Header navOpened={navOpened} onToggleNav={toggle} />
       </AppShell.Header>
 
-      <AppShell.Navbar p="sm">
+      <AppShell.Navbar p="sm" className={sidebarClasses.navbar}>
         <Sidebar onNavigate={close} />
       </AppShell.Navbar>
 

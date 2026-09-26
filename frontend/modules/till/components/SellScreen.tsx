@@ -100,6 +100,19 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     loadParked();
   }, [loadParked]);
 
+  // The eTIMS invoice is sent just after the sale commits; refresh the receipt once to show KRA's details.
+  const completedNumber = completed?.etimsStatus === "pending" ? completed.number : null;
+  useEffect(() => {
+    if (!completedNumber) return;
+    const timer = window.setTimeout(() => {
+      salesApi
+        .findSale(completedNumber)
+        .then((fresh) => setCompleted((current) => (current?.number === fresh.number ? fresh : current)))
+        .catch(() => undefined);
+    }, 1500);
+    return () => window.clearTimeout(timer);
+  }, [completedNumber]);
+
   // Print once the receipt portal is mounted, then unmount it.
   useEffect(() => {
     if (!printing) return;
@@ -323,7 +336,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
             <Text c="gray.5" size="xs">
               Shift since {new Date(shift.openedAt).toLocaleTimeString("en-KE", { hour: "numeric", minute: "2-digit" })}
             </Text>
-            <Button variant="subtle" color={customer ? "amber.4" : "gray"} size="compact-sm" px={0} mt={4} leftSection={<IconUser size={14} />} onClick={() => setPickingCustomer(true)}>
+            <Button variant="light" color={customer ? "amber" : "tessera"} c={customer ? "amber.4" : "gray.3"} size="compact-sm" mt={6} leftSection={<IconUser size={14} />} onClick={() => setPickingCustomer(true)}>
               {customer ? `${customer.name}${customer.isWholesale ? " · wholesale" : ""}` : "Walk-in customer"}
             </Button>
           </div>

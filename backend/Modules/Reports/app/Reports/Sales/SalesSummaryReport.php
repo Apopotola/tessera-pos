@@ -50,7 +50,7 @@ class SalesSummaryReport extends Report
     {
         return [
             Column::text('period', match ($filters->groupBy) {
-                'week' => 'Week of',
+                'week' => 'Week',
                 'month' => 'Month',
                 default => 'Day',
             }),
@@ -89,12 +89,14 @@ class SalesSummaryReport extends Report
             ->groupBy('period')
             ->pluck('n', 'period');
 
-        return new ReportResult($rows->map(function ($r) use ($counts) {
+        $grouping = $filters->groupBy ?? 'day';
+
+        return new ReportResult($rows->map(function ($r) use ($counts, $grouping) {
             $net = self::cents($r->net);
             $profit = $net - self::cents($r->vat) - self::cents($r->cost);
 
             return [
-                'period' => $r->period,
+                'period' => self::periodLabel($r->period, $grouping),
                 'transactions' => (int) ($counts[$r->period] ?? 0),
                 'gross' => self::cents($r->gross),
                 'discounts' => self::cents($r->discounts),

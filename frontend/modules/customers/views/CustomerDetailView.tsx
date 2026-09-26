@@ -78,7 +78,7 @@ export default function CustomerDetailView({ title, section, props }: WorkspaceV
               </Alert>
             )}
             <SimpleGrid cols={{ base: 2, md: 4 }}>
-              <StatTile label="Purchases" value={formatKes(c.salesTotalCents ?? 0)} hint={`${c.salesCount ?? 0} sales`} />
+              <StatTile label="Purchases" value={formatKes(c.salesTotalCents ?? 0)} hint={`${c.salesCount ?? 0} ${c.salesCount === 1 ? "sale" : "sales"}`} />
               <StatTile label="Last purchase" value={c.lastPurchaseAt ? dayjs(c.lastPurchaseAt).format("D MMM YYYY") : "—"} />
               <StatTile label="Price" value={c.isWholesale ? "Wholesale" : "Retail"} />
               <StatTile label="Status" value={c.anonymisedAt ? "Anonymised" : c.isActive ? "Active" : "Inactive"} />

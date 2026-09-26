@@ -1,9 +1,10 @@
-/* Primary actions in the navy banner use the amber call-to-action, as on the till and dashboard. */
-.actions :global(.mantine-Button-root[data-variant="filled"]:not([data-disabled])) {
+/* Primary actions in the navy banner use the amber call-to-action, as on the till and dashboard.
+   Mantine omits data-variant on filled buttons (the default), so match both forms. */
+.actions :global(.mantine-Button-root:is(:not([data-variant]), [data-variant="filled"]):not([data-disabled])) {
   background: var(--mantine-color-amber-5);
   color: #1c1d2e; /* brand.navy */
 }
 
-.actions :global(.mantine-Button-root[data-variant="filled"]:not([data-disabled]):hover) {
+.actions :global(.mantine-Button-root:is(:not([data-variant]), [data-variant="filled"]):not([data-disabled]):hover) {
   background: var(--mantine-color-amber-6);
 }

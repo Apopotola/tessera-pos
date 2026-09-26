@@ -95,7 +95,7 @@ export default function CustomersView({ title, section, tabId }: WorkspaceViewPr
                   <Table.Td ta="right">
                     <Text size="sm">{formatKes(c.salesTotalCents ?? 0)}</Text>
                     <Text size="xs" c="dimmed">
-                      {c.salesCount ?? 0} sales
+                      {c.salesCount ?? 0} {c.salesCount === 1 ? "sale" : "sales"}
                     </Text>
                   </Table.Td>
                   <Table.Td>{c.lastPurchaseAt ? dayjs(c.lastPurchaseAt).format("DD MMM YYYY") : "—"}</Table.Td>

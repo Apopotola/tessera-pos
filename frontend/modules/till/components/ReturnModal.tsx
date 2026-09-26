@@ -89,7 +89,7 @@ export default function ReturnModal({ returnWindowDays, requestApproval, onClose
             onChange={(e) => setNumber(e.currentTarget.value.toUpperCase())}
             onKeyDown={(e) => e.key === "Enter" && void find()}
             style={{ flex: 1 }}
-            ff="monospace"
+            styles={{ input: { fontFamily: "var(--font-mono), monospace" } }}
             data-autofocus
           />
           <Button leftSection={<IconSearch size={16} />} onClick={() => void find()} loading={pending && !sale}>

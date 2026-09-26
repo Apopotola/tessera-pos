@@ -1,0 +1,74 @@
+/* Navy sidebar matching the header and page banners (brand.navy / brand.purple / brand.amber). */
+.navbar {
+  background: linear-gradient(180deg, #1c1d2e 0%, #232438 100%);
+  border-right: 0;
+}
+
+.caption {
+  padding: 14px 12px 6px;
+  color: #7c7d95;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.link {
+  position: relative;
+  margin-bottom: 2px;
+  border-radius: 10px;
+  color: #c9c8dc;
+  transition: background 120ms ease, color 120ms ease;
+}
+
+.link:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.link[data-active] {
+  background: #5b3fa3;
+  color: #fff;
+  font-weight: 600;
+}
+
+.link[data-active]:hover {
+  background: #6849b5;
+}
+
+/* Amber marker on the active item. */
+.link[data-active]::before {
+  content: "";
+  position: absolute;
+  left: -12px;
+  top: 8px;
+  bottom: 8px;
+  width: 4px;
+  border-radius: 0 4px 4px 0;
+  background: #f2a93b;
+}
+
+.section {
+  color: inherit;
+  opacity: 0.9;
+}
+
+.chevron {
+  color: #7c7d95;
+}
+
+/* Sub-items: a thin guide line instead of a box. */
+.children {
+  margin-left: 20px;
+  padding-left: 8px;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.child {
+  font-size: 14px;
+}
+
+.footer {
+  padding: 12px 8px 4px;
+  opacity: 0.35;
+}

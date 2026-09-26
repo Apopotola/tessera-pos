@@ -64,3 +64,8 @@ body {
     width: 80mm;
   }
 }
+
+/* Status badges in tables never shrink to "CO…"; the table scrolls inside its card instead. */
+.mantine-Table-table .mantine-Badge-root {
+  min-width: max-content;
+}

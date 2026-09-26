@@ -52,7 +52,9 @@ export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, customer
   const cardCents = mode === "card" ? totalCents : mode === "split" ? (optionalKesToCents(cardKes) ?? 0) : 0;
   const cashCents = mode === "cash" || mode === "split" ? (optionalKesToCents(cashKes) ?? 0) : 0;
   const cashDue = totalCents - mpesaCents - cardCents;
-  const remaining = Math.max(0, cashDue - cashCents);
+  // M-PESA only counts as paid once Safaricom confirms it.
+  const mpesaOutstanding = stk && mpesaCents > 0 && mpesaPaid?.amountCents !== mpesaCents ? mpesaCents : 0;
+  const remaining = Math.max(0, cashDue - cashCents) + mpesaOutstanding;
   const change = cashDue >= 0 ? Math.max(0, cashCents - cashDue) : 0;
 
   const problems: string[] = [];
@@ -122,13 +124,13 @@ export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, customer
   ) : (
     <Group grow align="flex-start">
       {mpesaAmountInput}
-      <TextInput label="M-PESA code" placeholder="e.g. SIP4XK9ABC" value={mpesaCode} onChange={(e) => setMpesaCode(e.currentTarget.value.toUpperCase())} ff="monospace" />
+      <TextInput label="M-PESA code" placeholder="e.g. SIP4XK9ABC" value={mpesaCode} onChange={(e) => setMpesaCode(e.currentTarget.value.toUpperCase())} styles={{ input: { fontFamily: "var(--font-mono), monospace" } }} />
     </Group>
   );
   const cardInputs = (
     <Group grow align="flex-start">
       {mode === "split" && <NumberInput label="Card amount" min={0} decimalScale={2} thousandSeparator="," value={cardKes} onChange={setCardKes} />}
-      <TextInput label="Approval code" value={cardRef} onChange={(e) => setCardRef(e.currentTarget.value.toUpperCase())} ff="monospace" />
+      <TextInput label="Approval code" value={cardRef} onChange={(e) => setCardRef(e.currentTarget.value.toUpperCase())} styles={{ input: { fontFamily: "var(--font-mono), monospace" } }} />
       <TextInput label="Last 4 (optional)" maxLength={4} inputMode="numeric" value={cardLast4} onChange={(e) => setCardLast4(e.currentTarget.value.replace(/\D/g, ""))} />
     </Group>
   );

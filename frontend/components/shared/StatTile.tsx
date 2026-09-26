@@ -17,6 +17,9 @@ interface StatTileProps {
 export default function StatTile({ label, value, hint, tone = "light", highlight = false, onClick }: StatTileProps) {
   const background = highlight ? brand.amber : tone === "dark" ? brand.navy : "white";
   const color = highlight ? brand.navy : tone === "dark" ? "white" : brand.navy;
+  // Long figures shrink to the tile width; short ones ("4", "1 / 3") stay large.
+  const length = typeof value === "string" || typeof value === "number" ? String(value).length : 6;
+  const fontSize = `clamp(16px, ${Math.min(30, Math.round(175 / Math.max(length, 1)))}cqi, 28px)`;
   const muted = highlight ? "rgba(28,29,46,0.72)" : tone === "dark" ? "rgba(255,255,255,0.6)" : "var(--mantine-color-dimmed)";
 
   return (
@@ -25,13 +28,14 @@ export default function StatTile({ label, value, hint, tone = "light", highlight
       radius="lg"
       withBorder={tone === "light" && !highlight}
       onClick={onClick}
-      style={{ background, cursor: onClick ? "pointer" : undefined }}
+      // The figure scales with the tile width so long amounts (Ksh 439,670.00) never get cut off.
+      style={{ background, cursor: onClick ? "pointer" : undefined, containerType: "inline-size" }}
       role={onClick ? "button" : undefined}
     >
       <Text size="xs" c={muted} fw={500}>
         {label}
       </Text>
-      <Text className="tessera-display" fz={28} c={color} mt={4}>
+      <Text className="tessera-display" fz={fontSize} c={color} mt={4} style={{ whiteSpace: "nowrap" }}>
         {value}
       </Text>
       {hint && (
