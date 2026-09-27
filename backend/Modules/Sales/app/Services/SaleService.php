@@ -82,12 +82,13 @@ class SaleService
             $this->assertOfflineTenders($data['tenders']);
         }
         $lines = $this->priceLines($till, $cashier, $data['lines'], (bool) $customer?->is_wholesale, $occurredAt);
+        $outsideLicensedHours = $this->checkLicensedHours($till, $lines, $occurredAt, $offline);
         $total = array_sum(array_column($lines, 'line_total_cents'));
         ['tenders' => $tenders, 'rounding' => $rounding] = $this->settle($till, $data['tenders'], $total);
         $creditApprovedBy = $this->checkCredit($till, $cashier, $customer, $tenders, $data['creditApprovalToken'] ?? null);
         $etims = $this->policy->etimsEnabled($till);
 
-        return DB::transaction(function () use ($till, $cashier, $data, $shift, $location, $lines, $total, $tenders, $rounding, $customer, $occurredAt, $offline, $etims, $creditApprovedBy) {
+        return DB::transaction(function () use ($till, $cashier, $data, $shift, $location, $lines, $total, $tenders, $rounding, $customer, $occurredAt, $offline, $etims, $creditApprovedBy, $outsideLicensedHours) {
             // Offline sales already happened: they are always recorded and the next count catches any gap.
             $stockApprovedBy = $offline ? null : $this->checkStock($till, $cashier, $location, $lines, $data['stockApprovalToken'] ?? null);
             // Reserve the id first so the ledger can reference the sale and give us exact costs.
@@ -163,11 +164,36 @@ class SaleService
                 'below_zero_approved_by' => $stockApprovedBy,
                 'credit_approved_by' => $creditApprovedBy,
             ], userId: $cashier->id, branchId: $till->branch_id, reference: "till:{$till->id}");
+            if ($outsideLicensedHours) {
+                $this->audit->log('sales.sale.outside_licensed_hours', $sale, after: ['number' => $number, 'occurred_at' => $occurredAt->toIso8601String()],
+                    reason: 'Offline sale of alcohol made outside the licensed hours.', userId: $cashier->id, branchId: $till->branch_id, reference: "till:{$till->id}");
+            }
 
             SaleCompleted::dispatch($sale->id);
 
             return ['sale' => $sale, 'replayed' => false];
         });
+    }
+
+    /**
+     * Settings → Licensed-hours lock: no alcohol outside the licence's hours. An offline sale already
+     * happened (the money is in the drawer), so it is recorded and flagged in the audit log instead.
+     *
+     * @param  list<array<string, mixed>>  $lines
+     * @return bool true when an offline sale broke the hours
+     */
+    private function checkLicensedHours(Till $till, array $lines, CarbonImmutable $at, bool $offline): bool
+    {
+        $hours = $this->policy->licensedHours($till);
+        $alcohol = array_filter($lines, fn ($l) => $l['variant']->product->isAlcoholic());
+        if (! $hours || ! $alcohol || $hours->isOpen($at)) {
+            return false;
+        }
+        if ($offline) {
+            return true;
+        }
+
+        throw ValidationException::withMessages(['licensedHours' => 'Alcohol cannot be sold outside the licensed hours. '.$hours->whenOpen($at)]);
     }
 
     /**

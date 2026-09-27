@@ -6,6 +6,7 @@ use Modules\Auth\Models\User;
 use Modules\Compliance\Models\Licence;
 use Modules\Organisation\Models\Till;
 use Modules\Sales\Models\SaleTender;
+use Modules\Sales\Support\LicensedHours;
 use Modules\Settings\Services\SettingsService;
 
 /**
@@ -125,6 +126,23 @@ class TillPolicy
         return (bool) $this->value('features.sell_by_tot', $till);
     }
 
+    /** Settings → Licensed-hours lock: the licence's hours, or null when alcohol may be sold at any time. */
+    public function licensedHours(Till $till): ?LicensedHours
+    {
+        $schedule = $this->licensedSchedule($till);
+
+        return $schedule !== null ? new LicensedHours($schedule) : null;
+    }
+
+    /** @return array<string, list<array{0: string, 1: string}>>|null */
+    private function licensedSchedule(Till $till): ?array
+    {
+        $schedule = $this->value('sales.licensed_hours', $till);
+
+        // The lock does nothing until the hours are entered.
+        return $this->value('features.licensed_hours_lock', $till) && is_array($schedule) ? $schedule : null;
+    }
+
     public function blindCashUp(Till $till): bool
     {
         return (bool) $this->value('shifts.blind_cashup', $till);
@@ -154,6 +172,7 @@ class TillPolicy
             'etimsEnabled' => $this->etimsEnabled($till),
             'sellByTot' => $this->sellByTot($till),
             'ageCheck' => (bool) $this->value('sales.age_check_prompt', $till),
+            'licensedHours' => $this->licensedSchedule($till),
             'blindCashUp' => $this->blindCashUp($till),
             'autoLockMinutes' => (int) $this->value('staff.till_auto_lock_minutes', $till),
             'layout' => $this->value('sales.layout', $till),

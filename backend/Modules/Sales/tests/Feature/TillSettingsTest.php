@@ -213,6 +213,57 @@ class TillSettingsTest extends InventoryTestCase
             ->assertUnprocessable()->assertJsonValidationErrors(['lines.0.unit']);
     }
 
+    public function test_licensed_hours_stop_alcohol_outside_the_licence_but_not_soft_drinks(): void
+    {
+        $soda = $this->variant('Test Soda', 500, 'SODA-500');
+        $soda->product->forceFill(['abv' => 0])->save();
+        VariantPrice::query()->create([
+            'variant_id' => $soda->id, 'tier' => 'retail', 'price_cents' => 10000,
+            'effective_from' => now()->subDay(), 'status' => 'approved', 'requested_by' => $this->owner->id,
+        ]);
+        $this->setting('stock.below_zero', 'allow');
+        // Weekdays 17:00–23:00, Friday late until 02:00, Saturday from 14:00, none on Sunday.
+        $evening = [['17:00', '23:00']];
+        $this->setting('sales.licensed_hours', [
+            'mon' => $evening, 'tue' => $evening, 'wed' => $evening, 'thu' => $evening, 'fri' => [['17:00', '02:00']], 'sat' => [['14:00', '23:00']], 'sun' => [],
+        ], 'branch', $this->main->id);
+        $whisky = fn () => $this->sell([['variantId' => $this->whisky->id, 'quantity' => 1]], $this->cash());
+        $monday = now()->toImmutable()->next('Monday');
+
+        // The hours alone change nothing until the lock is switched on.
+        $this->travelTo($monday->setTime(10, 0));
+        $whisky()->assertCreated();
+
+        $this->setting('features.licensed_hours_lock', true);
+        $whisky()->assertUnprocessable()
+            ->assertJsonPath('errors.licensedHours.0', 'Alcohol cannot be sold outside the licensed hours. Sales open again at 17:00.');
+        $this->sell([['variantId' => $soda->id, 'quantity' => 1]], $this->cash(10000))->assertCreated();
+        // An offline sale already happened: it is kept, and flagged for the owner.
+        $this->sell([['variantId' => $this->whisky->id, 'quantity' => 1]], $this->cash(), ['occurredAt' => $monday->setTime(9, 30)->toIso8601String()])->assertCreated();
+        $this->assertDatabaseHas('audit_logs', ['action' => 'sales.sale.outside_licensed_hours']);
+
+        $this->travelTo($monday->setTime(17, 0));
+        $whisky()->assertCreated();
+        $this->travelTo($monday->addDays(5)->setTime(1, 30));
+        $whisky()->assertCreated(); // Friday's late licence runs into Saturday morning.
+        $this->travelTo($monday->addDays(6)->setTime(12, 0));
+        $whisky()->assertUnprocessable()
+            ->assertJsonPath('errors.licensedHours.0', 'Alcohol cannot be sold outside the licensed hours. Sales open again on Monday at 17:00.');
+
+        $this->withHeaders(['X-Till-Token' => $this->token])->getJson('/api/v1/organisation/till-context')
+            ->assertOk()->assertJsonPath('data.policy.licensedHours.mon', $evening)->assertJsonPath('data.policy.licensedHours.sun', []);
+        $this->till()->getJson('/api/v1/sales/till/items?search=soda')->assertOk()->assertJsonPath('data.0.alcoholic', false);
+        $this->till()->getJson('/api/v1/sales/till/items?search=whisky')->assertOk()->assertJsonPath('data.0.alcoholic', true);
+    }
+
+    public function test_licensed_hours_must_be_real_times(): void
+    {
+        $this->backOffice($this->owner)->putJson('/api/v1/settings/values/sales.licensed_hours', ['scope' => 'business', 'scopeId' => 0, 'value' => ['mon' => [['17:00', '17:00']]]])
+            ->assertUnprocessable();
+        $this->backOffice($this->owner)->putJson('/api/v1/settings/values/sales.licensed_hours', ['scope' => 'business', 'scopeId' => 0, 'value' => ['someday' => []]])
+            ->assertUnprocessable();
+    }
+
     public function test_items_without_a_reorder_level_use_the_branch_low_stock_default(): void
     {
         $isLow = fn () => $this->backOffice($this->owner)->getJson("/api/v1/inventory/stock?branchId={$this->main->id}&search=whisky")->assertOk()->json('data.items.0.isLow');

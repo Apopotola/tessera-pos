@@ -9,7 +9,7 @@ import QueryState from "@/components/shared/QueryState";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import SettingEditor from "@/modules/settings/components/SettingEditor";
-import type { SettingField, SettingLevel, SettingScope, SettingValue, SettingsSchema } from "@/types/settings";
+import type { SettingField, SettingLevel, SettingScope, SettingValue, SettingsSchema, WeeklyHours } from "@/types/settings";
 
 interface SettingRowProps {
   field: SettingField;
@@ -54,6 +54,10 @@ export function describeValue(field: Pick<SettingField, "type" | "options">, val
       return Array.isArray(value) ? (value.length ? `${value.length} chosen` : field.type === "categories" ? "All" : "None") : String(value);
     case "lines":
       return String(value).replace(/\n/g, " / ");
+    case "hours":
+      return Object.entries(value as WeeklyHours)
+        .map(([day, periods]) => `${day.charAt(0).toUpperCase()}${day.slice(1)} ${periods.length ? periods.map(([from, to]) => `${from}–${to}`).join(", ") : "closed"}`)
+        .join(" · ");
     default:
       return typeof value === "object" ? JSON.stringify(value) : String(value);
   }

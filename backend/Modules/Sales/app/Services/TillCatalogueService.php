@@ -181,6 +181,8 @@ class TillCatalogueService
                 // For promotions that target a category (or its parent) or a brand.
                 'categoryIds' => array_values(array_filter([$v->product->category_id, $v->product->category?->parent_id])),
                 'brandId' => $v->product->brand_id,
+                // Licensed hours: only items recorded with 0% ABV (soft drinks, mixers) sell at any time.
+                'alcoholic' => $v->product->isAlcoholic(),
                 'sku' => $v->sku,
                 'priceCents' => $price?->price_cents,
                 'minPriceCents' => $price?->min_price_cents,

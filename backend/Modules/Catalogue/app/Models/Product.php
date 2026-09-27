@@ -18,6 +18,12 @@ class Product extends Model
         ];
     }
 
+    /** Alcohol for licensed hours: anything not recorded as 0% ABV (a missing ABV counts as alcohol). */
+    public function isAlcoholic(): bool
+    {
+        return $this->abv === null || (float) $this->abv > 0;
+    }
+
     /** @return BelongsTo<Brand, $this> */
     public function brand(): BelongsTo
     {

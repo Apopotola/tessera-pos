@@ -240,3 +240,10 @@ When the connection drops the till keeps selling **cash and card** from a copy o
 - **Cash paid out of a till** (till menu → *Pay out cash*): a manager witnesses it with their PIN; it counts as approved and comes off the cash the drawer should hold at cash-up (expected cash = float + cash sales − refunds − drops − payouts).
 - Report: *Expenses (petty cash)* (financial). The dashboard shows expenses waiting for approval.
 - **Licences & permits** (*Compliance → Licences & permits*, managed with `compliance.manage`): liquor licence, single business permit, fire and health certificates… per branch, with expiry. **Renew** adds a new entry and the old one stays as history. Alerts go out 60 and 30 days before expiry and when expired (*Settings → Notifications → Licence expiry*, checked nightly with the low-stock digest). A licence marked *Print on receipts* prints its current number on till receipts. This is a reminder only: which licences apply and whether receipts must show them REQUIRES VALIDATION with the county.
+
+## Licensed trading hours (Phase 2)
+
+- *Settings → Sales screen → Industry features*: switch on **Licensed-hours lock** and enter **Licensed hours** from the branch's liquor licence. Each day can have up to three periods. An end time before the start runs past midnight (Fri 17:00–02:00). A day with no periods means no alcohol sales that day. Both settings can differ per branch. The lock does nothing until the hours are entered.
+- Outside the hours, the till shows a banner saying when sales open again and refuses alcoholic items. The server also refuses the sale (`errors.licensedHours`). Items recorded with **0% ABV** (soft drinks, mixers) and returns are not affected. A product with no ABV counts as alcohol.
+- An offline sale made outside the hours has already happened, so it is recorded and flagged in the audit log (`sales.sale.outside_licensed_hours`).
+- The hours follow the Tessera server clock (`APP_TIMEZONE`, default Africa/Nairobi). Public holidays are not handled separately: enter the stricter hours when a holiday falls. County rules differ, so the hours to enter REQUIRE VALIDATION against each licence.

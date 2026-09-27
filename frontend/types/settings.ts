@@ -17,10 +17,16 @@ export type SettingType =
   | "categories"
   | "items"
   | "role_percent"
-  | "role_tiles";
+  | "role_tiles"
+  | "hours";
+
+export const WEEKDAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
+export type Weekday = (typeof WEEKDAYS)[number];
+/** Licensed hours: periods ["17:00", "23:00"] per weekday; an end before the start runs past midnight. */
+export type WeeklyHours = Record<Weekday, [string, string][]>;
 
 // Values are JSON: strings, numbers, booleans, lists and maps.
-export type SettingValue = string | number | boolean | null | string[] | number[] | Record<string, number> | Record<string, string[]>;
+export type SettingValue = string | number | boolean | null | string[] | number[] | Record<string, number> | Record<string, string[]> | WeeklyHours;
 
 export interface SettingField {
   key: string;

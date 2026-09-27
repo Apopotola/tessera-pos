@@ -1,10 +1,10 @@
 "use client";
 
-import { ActionIcon, Badge, Button, Group, Loader, Menu, Modal, ScrollArea, Stack, Text, TextInput, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Alert, Badge, Button, Group, Loader, Menu, Modal, ScrollArea, Stack, Text, TextInput, UnstyledButton } from "@mantine/core";
 import { useIdle } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import { IconBarcode, IconBuildingBank, IconDiscount, IconDots, IconUser, IconGlassFull, IconLock, IconLogout, IconMinus, IconPlayerPause, IconPlus, IconPrinter, IconReceipt2, IconReceiptRefund, IconSearch, IconTag, IconTrash, IconUsers } from "@tabler/icons-react";
+import { IconBarcode, IconBuildingBank, IconClockOff, IconDiscount, IconDots, IconUser, IconGlassFull, IconLock, IconLogout, IconMinus, IconPlayerPause, IconPlus, IconPrinter, IconReceipt2, IconReceiptRefund, IconSearch, IconTag, IconTrash, IconUsers } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, authApi, salesApi } from "@/api";
 import { brand } from "@/app/theme";
@@ -22,6 +22,7 @@ import PriceCheckModal from "@/modules/till/components/PriceCheck";
 import ReturnModal from "@/modules/till/components/ReturnModal";
 import TenderModal from "@/modules/till/components/TenderModal";
 import TillHeader from "@/modules/till/components/TillHeader";
+import { isLicensedOpen, licensedOpensLabel } from "@/modules/till/licensedHours";
 import OfflineBanner from "@/modules/till/offline/OfflineBanner";
 import { buildOfflineReceipt } from "@/modules/till/offline/offlineReceipt";
 import { useOfflineTill } from "@/modules/till/offline/useOfflineTill";
@@ -113,6 +114,10 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     const timer = window.setInterval(() => setClock(new Date()), 60_000);
     return () => window.clearInterval(timer);
   }, []);
+  // Settings → Licensed-hours lock: no alcohol outside the licence's hours (the server re-checks every sale).
+  const { licensedHours } = policy;
+  const alcoholClosed = licensedHours !== null && !isLicensedOpen(licensedHours, clock);
+  const alcoholOpens = alcoholClosed ? licensedOpensLabel(licensedHours, clock) : null;
   const snapshotPromotions = offline.snapshot?.promotions;
   useEffect(() => {
     if (!isOnline) {
@@ -221,6 +226,12 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   }, [printing]);
 
   const addItem = useCallback((item: TillItem, quantity = 1, unit: SaleUnit = "bottle") => {
+    const now = new Date();
+    if (item.alcoholic && licensedHours && !isLicensedOpen(licensedHours, now)) {
+      const opens = licensedOpensLabel(licensedHours, now);
+      notifications.show({ color: "red", message: `Alcohol cannot be sold outside the licensed hours.${opens ? ` Sales open again ${opens}.` : ""}` });
+      return;
+    }
     if ((unit === "tot" ? item.totPriceCents : item.priceCents) == null) {
       notifications.show({ color: "yellow", message: `${item.displayName} has no ${unit === "tot" ? "tot" : "retail"} price yet. Ask a manager.` });
       return;
@@ -234,7 +245,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     setQuery("");
     setResults([]);
     refocus();
-  }, [customer]);
+  }, [customer, licensedHours]);
 
   const onEnter = async () => {
     const term = query.trim();
@@ -524,6 +535,11 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
       <section className={classes.sellMain}>
         <TillHeader context={context} />
         <OfflineBanner offline={offline} />
+        {alcoholClosed && (
+          <Alert color="yellow" icon={<IconClockOff size={18} />} mb="sm">
+            Outside licensed hours: alcohol cannot be sold.{alcoholOpens ? ` Sales open again ${alcoholOpens}.` : ""} Soft drinks can still be sold.
+          </Alert>
+        )}
 
         <TextInput
           ref={searchRef}

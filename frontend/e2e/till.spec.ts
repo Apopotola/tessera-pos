@@ -1,8 +1,8 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, request, test } from "@playwright/test";
 
 /**
  * A cashier's shift on a new till, through the real screens: set-up by the owner, PIN sign-in,
- * a cash sale with change, a promotion, a sale on account, lock / unlock and the cash-up.
+ * a cash sale with change, a promotion, a sale on account, lock / unlock, licensed hours and the cash-up.
  * Demo data comes from the seeders (see e2e/global-setup.ts); amounts are the demo prices.
  */
 test.describe.configure({ mode: "serial" });
@@ -40,6 +40,22 @@ async function startPayment() {
   if (await ageCheck.isVisible()) await ageCheck.click();
   await expect(tender).toBeVisible();
   return tender;
+}
+
+/** The owner changes business settings through the API, as the Settings screen does. */
+async function ownerSettings(values: Record<string, unknown>) {
+  const api = await request.newContext({
+    baseURL: "http://localhost:8011",
+    extraHTTPHeaders: { Accept: "application/json", Origin: "http://localhost:3011", Referer: "http://localhost:3011/" },
+  });
+  const xsrf = async () => ({ "X-XSRF-TOKEN": decodeURIComponent((await api.storageState()).cookies.find((c) => c.name === "XSRF-TOKEN")?.value ?? "") });
+  await api.get("/sanctum/csrf-cookie");
+  expect((await api.post("/api/v1/auth/login", { data: { login: "owner@tessera.test", password: "password" }, headers: await xsrf() })).ok()).toBe(true);
+  for (const [key, value] of Object.entries(values)) {
+    const saved = await api.put(`/api/v1/settings/values/${key}`, { data: { scope: "business", scopeId: 0, value }, headers: await xsrf() });
+    expect(saved.ok(), `${key}: ${await saved.text()}`).toBe(true);
+  }
+  await api.dispose();
 }
 
 async function nextCustomer() {
@@ -141,6 +157,26 @@ test("a locked till keeps the sale and needs the cashier's PIN", async () => {
   await page.getByRole("button", { name: "Till menu" }).click();
   await page.getByRole("menuitem", { name: "Clear sale" }).click();
   await expect(page.getByText("Cart is empty")).toBeVisible();
+});
+
+test("outside licensed hours the till refuses alcohol", async () => {
+  // No licensed hours on any day, then the lock on: alcohol is never allowed.
+  await ownerSettings({
+    "sales.licensed_hours": { mon: [], tue: [], wed: [], thu: [], fri: [], sat: [], sun: [] },
+    "features.licensed_hours_lock": true,
+  });
+  await page.reload();
+  await expect(page.getByText(/Outside licensed hours: alcohol cannot be sold/)).toBeVisible();
+
+  await page.getByPlaceholder(/Scan a barcode/).fill("Tusker");
+  await page.getByText("TUS-500", { exact: true }).first().click();
+  await expect(page.getByText(/^Alcohol cannot be sold outside the licensed hours/)).toBeVisible();
+  await expect(page.getByText("Cart is empty")).toBeVisible();
+
+  await ownerSettings({ "features.licensed_hours_lock": false });
+  await page.reload();
+  await expect(page.getByText("Cart is empty")).toBeVisible();
+  await expect(page.getByText(/Outside licensed hours/)).toBeHidden();
 });
 
 test("the cash-up balances: float plus cash sales only", async () => {

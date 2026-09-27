@@ -36,6 +36,9 @@ final class SettingsRegistry
         '#F2A93B' => 'Tile Amber', '#F59E0B' => 'Sunrise', '#10B981' => 'Mint', '#38BDF8' => 'Sky', '#F472B6' => 'Rose', '#A3E635' => 'Lime',
     ];
 
+    /** Keys of an "hours" setting (licensed hours), Monday first. */
+    public const WEEKDAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+
     public const ROLES_FOR_LIMITS = ['Cashier', 'Branch Manager', 'Storekeeper', 'Accountant', 'Admin', 'Owner'];
 
     public const DASHBOARD_TILES = [
@@ -124,7 +127,10 @@ final class SettingsRegistry
             'sales.age_check_prompt' => self::f('sales', 'Age-check prompt', 'boolean', true, 'O', group: 'Industry features',
                 help: 'The cashier confirms the customer is 18 or over before payment.'),
             'features.crate_deposits' => self::f('sales', 'Crate and bottle deposits', 'boolean', false, 'O', group: 'Industry features', available: false, note: 'Arrives later.'),
-            'features.licensed_hours_lock' => self::f('sales', 'Licensed-hours lock', 'boolean', false, 'O', group: 'Industry features', available: false, note: 'Arrives later.'),
+            'features.licensed_hours_lock' => self::f('sales', 'Licensed-hours lock', 'boolean', false, 'O', group: 'Industry features', scopes: ['business', 'branch'],
+                help: 'The till does not sell alcohol outside the licensed hours below (enter them first). Items recorded with 0% ABV, such as soft drinks, and returns are not affected.'),
+            'sales.licensed_hours' => self::f('sales', 'Licensed hours', 'hours', null, 'O', group: 'Industry features', scopes: ['business', 'branch'],
+                help: 'Copy them from the liquor licence: county rules differ. A day left empty means no alcohol sales that day; an end time before the start runs past midnight.'),
             'features.expiry_alerts' => self::f('sales', 'Expiry alerts', 'boolean', false, 'O', group: 'Industry features', available: false, note: 'Arrives later.'),
             'features.prescription_notes' => self::f('sales', 'Prescription notes', 'boolean', false, 'O', group: 'Industry features', available: false, note: 'Arrives later.'),
             'features.weighing_scale' => self::f('sales', 'Weighing-scale items', 'boolean', false, 'O', group: 'Industry features', available: false, note: 'Arrives later.'),

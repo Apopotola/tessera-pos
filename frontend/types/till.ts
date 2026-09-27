@@ -1,5 +1,6 @@
 import type { TillCustomer } from "@/types/customers";
 import type { PromotionRule, ReceiptSettings, SalePayload, TenderMethod, TillItem } from "@/types/sales";
+import type { WeeklyHours } from "@/types/settings";
 
 /** Mirrors Modules\Organisation\Http\Resources\TillResource. */
 export interface Till {
@@ -53,6 +54,8 @@ export interface TillContext {
     sellByTot: boolean;
     /** Confirm the customer is 18 or over before payment. */
     ageCheck: boolean;
+    /** Licensed-hours lock: alcohol only in these hours (null = any time). */
+    licensedHours: WeeklyHours | null;
     blindCashUp: boolean;
     /** Lock the screen after this many idle minutes (0 = never); the sale in progress is kept. */
     autoLockMinutes: number;

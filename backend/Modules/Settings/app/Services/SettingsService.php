@@ -490,6 +490,30 @@ class SettingsService
                 }
 
                 return (string) $value;
+            case 'hours':
+                if ($value === null) {
+                    return null;
+                }
+                if (! is_array($value) || array_diff(array_keys($value), SettingsRegistry::WEEKDAYS) !== []) {
+                    $fail('Enter the hours for each day.');
+                }
+                $clean = [];
+                foreach (SettingsRegistry::WEEKDAYS as $day) {
+                    $windows = array_values((array) ($value[$day] ?? []));
+                    if (count($windows) > 3) {
+                        $fail('At most three periods a day.');
+                    }
+                    foreach ($windows as $window) {
+                        $valid = is_array($window) && count($window) === 2
+                            && preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) ($window[0] ?? '')) && preg_match('/^([01]\d|2[0-3]):[0-5]\d$/', (string) ($window[1] ?? ''));
+                        if (! $valid || $window[0] === $window[1]) {
+                            $fail('Each period needs a start and an end time, like 17:00 to 23:00.');
+                        }
+                    }
+                    $clean[$day] = array_map(fn ($w) => [(string) $w[0], (string) $w[1]], $windows);
+                }
+
+                return $clean;
             case 'categories':
             case 'items':
                 if (! is_array($value)) {

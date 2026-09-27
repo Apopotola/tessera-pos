@@ -23,7 +23,7 @@ import { IconArrowDown, IconArrowUp, IconCheck, IconUpload, IconX } from "@table
 import { useState } from "react";
 import { settingsApi } from "@/api";
 import VariantPicker from "@/modules/inventory/components/VariantPicker";
-import type { SettingField, SettingValue, SettingsSchema } from "@/types/settings";
+import { WEEKDAYS, type SettingField, type SettingValue, type SettingsSchema, type Weekday, type WeeklyHours } from "@/types/settings";
 import { contrastRatio } from "@/utils/palette";
 
 export interface EditorProps {
@@ -191,7 +191,59 @@ export default function SettingEditor({ field, draft, onChange, disabled, refere
         </Stack>
       );
     }
+
+    case "hours":
+      return <HoursEditor value={(draft as WeeklyHours | null) ?? null} onChange={onChange} disabled={disabled} error={error} />;
   }
+}
+
+const DAY_NAMES: Record<Weekday, string> = { mon: "Monday", tue: "Tuesday", wed: "Wednesday", thu: "Thursday", fri: "Friday", sat: "Saturday", sun: "Sunday" };
+
+/** Licensed hours: up to three periods a day; a day with none is closed for alcohol. */
+function HoursEditor({ value, onChange, disabled, error }: { value: WeeklyHours | null; onChange: (v: SettingValue) => void; disabled: boolean; error?: string }) {
+  const hours = Object.fromEntries(WEEKDAYS.map((d) => [d, value?.[d] ?? []])) as WeeklyHours;
+  const setDay = (day: Weekday, periods: [string, string][]) => onChange({ ...hours, [day]: periods });
+  const setTime = (day: Weekday, index: number, end: 0 | 1, time: string) =>
+    setDay(day, hours[day].map((p, i) => (i === index ? (end === 0 ? [time, p[1]] : [p[0], time]) : p)));
+
+  return (
+    <Stack gap={6}>
+      {WEEKDAYS.map((day) => (
+        <Group key={day} gap="xs" align="center" wrap="nowrap">
+          <Text size="sm" fw={600} w={96}>
+            {DAY_NAMES[day]}
+          </Text>
+          <Group gap="xs" style={{ flex: 1 }}>
+            {hours[day].length === 0 && (
+              <Text size="sm" c="dimmed">
+                No alcohol sales
+              </Text>
+            )}
+            {hours[day].map(([from, to], i) => (
+              <Group key={i} gap={4} wrap="nowrap">
+                <TextInput type="time" aria-label={`${DAY_NAMES[day]} from`} value={from} onChange={(e) => setTime(day, i, 0, e.currentTarget.value)} disabled={disabled} w={136} />
+                <Text size="sm">to</Text>
+                <TextInput type="time" aria-label={`${DAY_NAMES[day]} to`} value={to} onChange={(e) => setTime(day, i, 1, e.currentTarget.value)} disabled={disabled} w={136} />
+                <ActionIcon variant="subtle" color="gray" aria-label="Remove period" onClick={() => setDay(day, hours[day].filter((_, j) => j !== i))} disabled={disabled}>
+                  <IconX size={14} />
+                </ActionIcon>
+              </Group>
+            ))}
+            {hours[day].length < 3 && (
+              <Button variant="subtle" size="compact-sm" onClick={() => setDay(day, [...hours[day], ["17:00", "23:00"]])} disabled={disabled}>
+                Add period
+              </Button>
+            )}
+          </Group>
+        </Group>
+      ))}
+      {error && (
+        <Text size="xs" c="red">
+          {error}
+        </Text>
+      )}
+    </Stack>
+  );
 }
 
 /** Chosen options in order: move up or down, remove, add from the rest. */
