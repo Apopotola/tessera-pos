@@ -195,8 +195,8 @@ final class SettingsRegistry
                 available: false, note: 'Arrives later.'),
 
             // ------------------------------------------------------------------ Notifications
-            'notifications.recipients' => self::f('notifications', 'Alert recipients', 'multiselect', ['low_stock', 'large_refund', 'cash_variance', 'etims_failure', 'daily_summary'], 'O',
-                options: ['low_stock' => 'Low stock', 'large_refund' => 'Large refund', 'cash_variance' => 'Cash variance', 'etims_failure' => 'eTIMS failure', 'daily_summary' => 'End-of-day summary'],
+            'notifications.recipients' => self::f('notifications', 'Alert recipients', 'multiselect', ['low_stock', 'large_refund', 'cash_variance', 'etims_failure', 'licence_expiry', 'daily_summary'], 'O',
+                options: ['low_stock' => 'Low stock', 'large_refund' => 'Large refund', 'cash_variance' => 'Cash variance', 'etims_failure' => 'eTIMS failure', 'licence_expiry' => 'Licence expiry (60 and 30 days)', 'daily_summary' => 'End-of-day summary'],
                 help: 'Which alerts are raised. Owners get every one; managers and storekeepers get those they can act on at their branch.'),
             'notifications.large_refund_cents' => self::f('notifications', 'A refund is "large" from', 'money', 500000, 'O', scopes: ['business', 'branch'], min: 0),
             'notifications.channels' => self::f('notifications', 'Channels', 'multiselect', ['in_app', 'sms'], 'O',

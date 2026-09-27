@@ -3,6 +3,7 @@
 namespace Modules\Sales\Services;
 
 use Modules\Auth\Models\User;
+use Modules\Compliance\Models\Licence;
 use Modules\Organisation\Models\Till;
 use Modules\Sales\Models\SaleTender;
 use Modules\Settings\Services\SettingsService;
@@ -179,6 +180,11 @@ class TillPolicy
             'paperSize' => $get('receipts.paper_size'),
             'printBehaviour' => $get('receipts.print_behaviour'),
             'returnWindowDays' => (int) config('sales.return_window_days', 7),
+            // Licence numbers marked "print on receipt"; a renewed licence prints only its newest entry.
+            'licenceLines' => Licence::query()->from('licences as l')->where('l.branch_id', $branchId)->where('l.print_on_receipt', true)->whereDate('l.expires_on', '>=', now())
+                ->whereNotExists(fn ($q) => $q->from('licences as n')->whereColumn('n.branch_id', 'l.branch_id')->whereColumn('n.type', 'l.type')
+                    ->whereColumn('n.name', 'l.name')->whereColumn('n.expires_on', '>', 'l.expires_on'))
+                ->orderBy('l.type')->get(['l.name', 'l.number'])->map(fn (Licence $l) => "{$l->name} No. {$l->number}")->values()->all(),
             'logo' => $this->settings->present($this->settings->definition('branding.receipt_logo'), $get('branding.receipt_logo')),
         ];
     }

@@ -5,6 +5,7 @@ namespace Modules\Notifications\Services;
 use Modules\Auth\Models\User;
 use Modules\Authorization\Support\Roles;
 use Modules\Compliance\Models\EtimsSubmission;
+use Modules\Compliance\Models\Licence;
 use Modules\Dashboard\Services\KpiService;
 use Modules\Inventory\Services\StockQueryService;
 use Modules\Notifications\Models\Alert;
@@ -72,6 +73,37 @@ class ScheduledAlerts
 
         return $this->alerts->raise(Alert::LOW_STOCK, null, "{$count} item(s) at or below their reorder level",
             "Fast movers first: {$top}.", ['count' => $count], 'low_stock_digest:'.now()->toDateString(), 20);
+    }
+
+    /**
+     * Requirements: "alert 30/60 days before expiry". Once per licence per stage (60, 30, expired);
+     * a licence renewed by a newer entry for the same branch, type and name is skipped.
+     *
+     * @return int alerts raised
+     */
+    public function licenceExpiry(): int
+    {
+        $raised = 0;
+        $licences = Licence::query()->with('branch')->whereDate('expires_on', '<=', now()->addDays(60))->get();
+        foreach ($licences as $licence) {
+            $renewed = Licence::query()->where(['branch_id' => $licence->branch_id, 'type' => $licence->type, 'name' => $licence->name])
+                ->whereDate('expires_on', '>', $licence->expires_on)->exists();
+            if ($renewed) {
+                continue;
+            }
+            $days = $licence->daysLeft();
+            [$stage, $when] = match (true) {
+                $days < 0 => ['expired', 'expired on '.$licence->expires_on->format('j M Y')],
+                $days <= 30 => ['30', "expires in {$days} days"],
+                default => ['60', "expires in {$days} days"],
+            };
+            $alert = $this->alerts->raise(Alert::LICENCE_EXPIRY, $licence->branch_id, "{$licence->name} at {$licence->branch->name} {$when}",
+                "Number {$licence->number}. Renew it and add the new licence under Compliance → Licences & permits.",
+                ['licenceId' => $licence->id, 'daysLeft' => $days], "licence:{$licence->id}:{$stage}", 24 * 400);
+            $raised += $alert ? 1 : 0;
+        }
+
+        return $raised;
     }
 
     /** Invoices KRA has not signed within the alert window (default 60 minutes); at most every 6 hours. */

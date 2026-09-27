@@ -57,6 +57,8 @@ const ViewRegistry: Record<string, ComponentType<WorkspaceViewProps>> = {
 
   // Compliance / eTIMS (not built yet)
   etimsMonitor: lazyView(() => import("@/modules/compliance/views/EtimsMonitorView")),
+  licences: lazyView(() => import("@/modules/compliance/views/LicencesView")),
+  expensesList: lazyView(() => import("@/modules/expenses/views/ExpensesView")),
 
   // Reports (not built yet)
   reportsHome: lazyView(() => import("@/modules/reports/views/ReportsHomeView")),

@@ -1,0 +1,30 @@
+{
+    "name": "tessera/expenses",
+    "description": "",
+    "authors": [
+        {
+            "name": "SoftClans",
+            "email": "dev@softclans.co.ke"
+        }
+    ],
+    "extra": {
+        "laravel": {
+            "providers": [],
+            "aliases": {
+
+            }
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "Modules\\Expenses\\": "app/",
+            "Modules\\Expenses\\Database\\Factories\\": "database/factories/",
+            "Modules\\Expenses\\Database\\Seeders\\": "database/seeders/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Modules\\Expenses\\Tests\\": "tests/"
+        }
+    }
+}

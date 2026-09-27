@@ -5,6 +5,7 @@ namespace Modules\Reports;
 use Modules\Auth\Models\User;
 use Modules\Authorization\Support\Permissions;
 use Modules\Reports\Reports\Financial\CashUpReport;
+use Modules\Reports\Reports\Financial\ExpensesReport;
 use Modules\Reports\Reports\Financial\PayablesAgingReport;
 use Modules\Reports\Reports\Financial\ProfitReport;
 use Modules\Reports\Reports\Financial\PurchasesBySupplierReport;
@@ -43,6 +44,7 @@ final class ReportRegistry
         PurchasesBySupplierReport::class,
         ReceivablesAgingReport::class,
         PayablesAgingReport::class,
+        ExpensesReport::class,
     ];
 
     /** Screens elsewhere in the app that already serve as these reports. */
@@ -50,6 +52,7 @@ final class ReportRegistry
         ['key' => 'stock-ledger', 'group' => 'inventory', 'title' => 'Stock movement ledger', 'description' => 'Every stock movement per item and document.', 'view' => 'stockLedger', 'path' => '/inventory/ledger', 'permission' => Permissions::INVENTORY_VIEW],
         ['key' => 'mpesa', 'group' => 'financial', 'title' => 'M-PESA reconciliation', 'description' => 'M-PESA payments matched to sales, and anything unmatched.', 'view' => 'mpesaReconciliation', 'path' => '/payments/mpesa', 'permission' => Permissions::PAYMENTS_VIEW],
         ['key' => 'etims', 'group' => 'compliance', 'title' => 'eTIMS status, failures & daily check', 'description' => 'Signed, pending and refused invoices, and POS sales against KRA-signed invoices per day.', 'view' => 'etimsMonitor', 'path' => '/compliance/etims', 'permission' => Permissions::COMPLIANCE_VIEW],
+        ['key' => 'licences', 'group' => 'compliance', 'title' => 'Licence & permit expiry list', 'description' => 'Every licence and permit per branch, soonest expiry first.', 'view' => 'licences', 'path' => '/compliance/licences', 'permission' => Permissions::COMPLIANCE_VIEW],
         ['key' => 'audit', 'group' => 'compliance', 'title' => 'Audit trail', 'description' => 'Who did what, when — filter by user, action and record.', 'view' => 'auditLog', 'path' => '/admin/audit-log', 'permission' => Permissions::AUDIT_VIEW],
     ];
 

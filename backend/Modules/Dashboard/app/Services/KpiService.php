@@ -28,6 +28,32 @@ class KpiService
         private readonly SupplierAccountService $suppliers,
     ) {}
 
+    /** Licences expired or expiring within 60 days that have not been renewed. @param list<int> $branchIds */
+    public function licencesExpiring(array $branchIds): int
+    {
+        return DB::table('licences as l')->whereIn('l.branch_id', $branchIds)->whereDate('l.expires_on', '<=', now()->addDays(60))
+            ->whereNotExists(fn ($q) => $q->from('licences as n')->whereColumn('n.branch_id', 'l.branch_id')->whereColumn('n.type', 'l.type')
+                ->whereColumn('n.name', 'l.name')->whereColumn('n.expires_on', '>', 'l.expires_on'))
+            ->count();
+    }
+
+    /**
+     * Approved expenses this month and how many wait for approval.
+     *
+     * @param  list<int>  $branchIds
+     * @return array{monthCents: int, pendingCount: int, pendingCents: int}
+     */
+    public function expenses(array $branchIds): array
+    {
+        $scope = DB::table('expenses')->whereIn('branch_id', $branchIds);
+
+        return [
+            'monthCents' => (int) (clone $scope)->where('status', 'approved')->whereDate('spent_on', '>=', now()->startOfMonth())->sum('amount_cents'),
+            'pendingCount' => (clone $scope)->where('status', 'pending')->count(),
+            'pendingCents' => (int) (clone $scope)->where('status', 'pending')->sum('amount_cents'),
+        ];
+    }
+
     /**
      * What account customers owe (Phase 2 KPI "receivables"): total, overdue, over 90 days.
      *

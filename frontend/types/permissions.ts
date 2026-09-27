@@ -27,6 +27,8 @@ export const PERMISSIONS = {
   PURCHASING_MANAGE: "purchasing.manage",
   PURCHASING_APPROVE: "purchasing.approve",
   PURCHASING_PAY: "purchasing.pay",
+  EXPENSES_REQUEST: "expenses.request",
+  EXPENSES_APPROVE: "expenses.approve",
   PAYMENTS_VIEW: "payments.view",
   PAYMENTS_RECONCILE: "payments.reconcile",
   CUSTOMERS_VIEW: "customers.view",

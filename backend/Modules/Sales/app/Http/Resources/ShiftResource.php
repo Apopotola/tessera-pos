@@ -32,6 +32,8 @@ class ShiftResource extends JsonResource
             'varianceCents' => $closed ? $this->variance_cents : null,
             // Drops are known to the cashier (they handed the cash over); the count only after closing.
             'dropsCents' => (int) $this->drops_cents,
+            // Expenses paid out of the drawer (witnessed by a manager).
+            'payoutsCents' => (int) $this->payouts_cents,
             // List of {denominationCents, count}: numeric-keyed maps get renumbered by API resources.
             'countBreakdown' => $closed && $this->count_breakdown
                 ? collect($this->count_breakdown)->map(fn ($count, $cents) => ['denominationCents' => (int) $cents, 'count' => (int) $count])->sortByDesc('denominationCents')->values()->all()

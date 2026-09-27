@@ -54,3 +54,39 @@ export interface EtimsReconciliationRow {
   signedCreditNotesCents: number;
   matches: boolean;
 }
+
+/** Mirrors Modules\Compliance\Http\Controllers\LicenceController. */
+export interface Licence {
+  id: number;
+  branch: { id: number; code: string; name: string };
+  type: string;
+  typeLabel: string;
+  name: string;
+  number: string;
+  issuer: string | null;
+  issuedOn: string | null;
+  expiresOn: string;
+  /** Negative once expired. */
+  daysLeft: number;
+  printOnReceipt: boolean;
+  notes: string | null;
+  /** false = renewed by a newer entry for the same licence. */
+  isCurrent: boolean;
+}
+
+export interface LicenceRegister {
+  types: { value: string; label: string }[];
+  items: Licence[];
+}
+
+export interface LicencePayload {
+  branchId: number;
+  type: string;
+  name: string;
+  number: string;
+  issuer: string | null;
+  issuedOn: string | null;
+  expiresOn: string;
+  printOnReceipt: boolean;
+  notes: string | null;
+}

@@ -114,6 +114,8 @@ class DashboardService
                     ->whereIn('status', [EtimsSubmission::PENDING, EtimsSubmission::FAILED])
                     ->where('created_at', '<', now()->subMinutes((int) config('compliance.etims.pending_alert_minutes', 60)))->count(),
                 ...$this->kpis->etims($branchIds),
+                // Licence & permit register: expired or expiring within 60 days (latest entry per licence).
+                'licencesExpiring' => $this->kpis->licencesExpiring($branchIds),
             ] : null,
 
             'purchasing' => $user->can(Permissions::PURCHASING_VIEW) ? [
@@ -122,6 +124,8 @@ class DashboardService
                     ->whereIn('status', [PurchaseOrderStatus::Approved, PurchaseOrderStatus::Sent, PurchaseOrderStatus::PartiallyReceived])->count(),
                 'invoicesWithVariance' => SupplierInvoice::query()->where('match_status', SupplierInvoice::VARIANCE)->count(),
             ] : null,
+
+            'expenses' => $user->canAny([Permissions::EXPENSES_APPROVE, Permissions::REPORTS_FINANCIAL_VIEW]) ? $this->kpis->expenses($branchIds) : null,
 
             // Phase 2: credit accounts and supplier balances (financial figures).
             'receivables' => $user->can(Permissions::REPORTS_FINANCIAL_VIEW) && $user->can(Permissions::CUSTOMERS_VIEW) ? $this->kpis->receivables() : null,

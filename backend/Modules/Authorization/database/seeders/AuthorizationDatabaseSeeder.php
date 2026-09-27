@@ -72,8 +72,10 @@ class AuthorizationDatabaseSeeder extends Seeder
                 ['key' => 'customers.list', 'title' => 'Customers', 'view_type' => 'customersList', 'path' => '/customers', 'permission' => P::CUSTOMERS_VIEW],
                 ['key' => 'customers.accounts', 'title' => 'Customer accounts', 'view_type' => 'receivables', 'path' => '/customers/accounts', 'permission' => P::REPORTS_FINANCIAL_VIEW],
             ]],
+            ['key' => 'expenses', 'title' => 'Expenses', 'icon' => 'IconReceipt2', 'view_type' => 'expensesList', 'path' => '/expenses', 'permission' => P::EXPENSES_REQUEST],
             ['key' => 'compliance', 'title' => 'Compliance', 'icon' => 'IconShieldCheck', 'children' => [
                 ['key' => 'compliance.etims', 'title' => 'eTIMS monitor', 'view_type' => 'etimsMonitor', 'path' => '/compliance/etims', 'permission' => P::COMPLIANCE_VIEW],
+                ['key' => 'compliance.licences', 'title' => 'Licences & permits', 'view_type' => 'licences', 'path' => '/compliance/licences', 'permission' => P::COMPLIANCE_VIEW],
             ]],
             ['key' => 'reports', 'title' => 'Reports', 'icon' => 'IconReportAnalytics', 'view_type' => 'reportsHome', 'path' => '/reports', 'permission' => P::REPORTS_VIEW],
             ['key' => 'admin', 'title' => 'Administration', 'icon' => 'IconSettings', 'children' => [

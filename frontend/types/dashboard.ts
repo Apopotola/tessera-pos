@@ -67,9 +67,12 @@ export interface DashboardSummary {
     failed: number;
     rejected: number;
     oldestPendingMinutes: number | null;
+    /** Licences expired or expiring within 60 days, not renewed. */
+    licencesExpiring: number;
   } | null;
   purchasing: { ordersAwaitingApproval: number; ordersAwaitingDelivery: number; invoicesWithVariance: number } | null;
   staff: { active: number; cashiersWithoutPin: number } | null;
+  expenses: { monthCents: number; pendingCount: number; pendingCents: number } | null;
   receivables: { balanceCents: number; overdueCents: number; over90Cents: number; customers: number } | null;
   payables: { balanceCents: number; dueCents: number; onQueryCents: number; suppliers: number } | null;
 }

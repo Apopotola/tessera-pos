@@ -4,7 +4,7 @@ import { ActionIcon, Badge, Button, Group, Loader, Menu, Modal, ScrollArea, Stac
 import { useIdle } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import { IconBarcode, IconBuildingBank, IconDiscount, IconDots, IconUser, IconGlassFull, IconLock, IconLogout, IconMinus, IconPlayerPause, IconPlus, IconPrinter, IconReceiptRefund, IconSearch, IconTag, IconTrash, IconUsers } from "@tabler/icons-react";
+import { IconBarcode, IconBuildingBank, IconDiscount, IconDots, IconUser, IconGlassFull, IconLock, IconLogout, IconMinus, IconPlayerPause, IconPlus, IconPrinter, IconReceipt2, IconReceiptRefund, IconSearch, IconTag, IconTrash, IconUsers } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, authApi, salesApi } from "@/api";
 import { brand } from "@/app/theme";
@@ -17,6 +17,7 @@ import { CashDropModal, EndShiftModal, ShiftSummaryModal } from "@/modules/till/
 import LineEditModal from "@/modules/till/components/LineEditModal";
 import LockScreen from "@/modules/till/components/LockScreen";
 import { ParkModal, RecallModal } from "@/modules/till/components/ParkedSales";
+import PayoutModal from "@/modules/till/components/PayoutModal";
 import PriceCheckModal from "@/modules/till/components/PriceCheck";
 import ReturnModal from "@/modules/till/components/ReturnModal";
 import TenderModal from "@/modules/till/components/TenderModal";
@@ -79,6 +80,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   const [parking, setParking] = useState(false);
   const [recalling, setRecalling] = useState(false);
   const [checkingPrice, setCheckingPrice] = useState(false);
+  const [payingOut, setPayingOut] = useState(false);
   const [favourites, setFavourites] = useState<TillItem[]>([]);
   const [locked, setLocked] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
@@ -609,6 +611,9 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
               <Menu.Item leftSection={<IconBuildingBank size={16} />} disabled={!isOnline} onClick={() => setDropping(true)}>
                 Cash drop to safe{!isOnline && " (needs connection)"}
               </Menu.Item>
+              <Menu.Item leftSection={<IconReceipt2 size={16} />} disabled={!isOnline} onClick={() => setPayingOut(true)}>
+                Pay out cash (expense){!isOnline && " (needs connection)"}
+              </Menu.Item>
               <Menu.Item leftSection={<IconLock size={16} />} disabled={!isOnline} onClick={() => void lockScreen("manual")}>
                 Lock screen (keeps the sale)
               </Menu.Item>
@@ -807,6 +812,16 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
           onClose={() => setDropping(false)}
           onDropped={() => {
             setDropping(false);
+            refocus();
+          }}
+        />
+      )}
+      {payingOut && (
+        <PayoutModal
+          requestApproval={requestApproval}
+          onClose={() => setPayingOut(false)}
+          onPaid={() => {
+            setPayingOut(false);
             refocus();
           }}
         />

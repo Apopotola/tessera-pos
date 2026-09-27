@@ -185,6 +185,15 @@ export const COMPLIANCE_URLS = {
   submissions: "/compliance/etims/submissions",
   retry: (id: number) => `/compliance/etims/submissions/${id}/retry`,
   reconciliation: "/compliance/etims/reconciliation",
+  licences: "/compliance/licences",
+  licence: (id: number) => `/compliance/licences/${id}`,
+} as const;
+
+export const EXPENSES_URLS = {
+  expenses: "/expenses",
+  categories: "/expenses/categories",
+  action: (id: number, action: "approve" | "reject" | "reverse") => `/expenses/${id}/${action}`,
+  tillPayout: "/expenses/till/payouts",
 } as const;
 
 export const REPORTS_URLS = {

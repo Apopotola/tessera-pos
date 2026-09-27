@@ -49,7 +49,7 @@ export function EndShiftModal({ shift, blind, onClose, onClosed }: { shift: Shif
     <Modal opened onClose={onClose} title="End shift — count the cash drawer" centered size="lg">
       <Stack>
         <Text size="sm" c="dimmed">
-          Count every note and coin in the drawer, including the float. Cash already dropped to the safe is not in the drawer.
+          Count every note and coin in the drawer, including the float. Cash already dropped to the safe or paid out for expenses is not in the drawer.
           {blind && " The expected amount is shown after you submit."}
         </Text>
         {expected !== null && (

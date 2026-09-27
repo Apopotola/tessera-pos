@@ -31,6 +31,9 @@ export default function Receipt({ sale, copy = false }: { sale: Sale; copy?: boo
         {receipt.headerLines.map((line, i) => (
           <div key={i}>{line}</div>
         ))}
+        {(receipt.licenceLines ?? []).map((line) => (
+          <div key={line}>{line}</div>
+        ))}
         {sale.business.kraPin && <div>PIN: {sale.business.kraPin}</div>}
         {copy && <div className={classes.copy}>*** COPY ***</div>}
       </div>

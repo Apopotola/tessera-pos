@@ -13,5 +13,6 @@
     "Reports": true,
     "Dashboard": true,
     "Settings": true,
-    "Notifications": true
+    "Notifications": true,
+    "Expenses": true
 }

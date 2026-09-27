@@ -92,6 +92,8 @@ export interface Shift {
   varianceCents: number | null;
   /** Cash moved to the safe during the shift. */
   dropsCents: number;
+  /** Expenses paid out of the drawer (witnessed by a manager). */
+  payoutsCents: number;
   /** Count by denomination, after closing. */
   countBreakdown: { denominationCents: number; count: number }[] | null;
   varianceReason: string | null;

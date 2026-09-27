@@ -78,6 +78,12 @@ final class Permissions
 
     public const PURCHASING_APPROVE = 'purchasing.approve';
 
+    /** Record expenses (a manager approves them). */
+    public const EXPENSES_REQUEST = 'expenses.request';
+
+    /** Approve, reject and reverse expenses at your branches (not your own). */
+    public const EXPENSES_APPROVE = 'expenses.approve';
+
     /** Record (and reverse) payments to suppliers. */
     public const PURCHASING_PAY = 'purchasing.pay';
 

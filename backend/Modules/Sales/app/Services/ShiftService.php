@@ -28,12 +28,12 @@ class ShiftService
         private readonly TillApprovalService $approvals,
     ) {}
 
-    /** Cash in the drawer right now: float + cash taken − cash refunded − drops to the safe. */
+    /** Cash in the drawer right now: float + cash taken − cash refunded − drops to the safe − expenses paid out. */
     public function cashInDrawer(Shift $shift): int
     {
         $cash = (int) SaleTender::query()->where('shift_id', $shift->id)->where('method', SaleTender::CASH)->sum('amount_cents');
 
-        return $shift->opening_float_cents + $cash - (int) CashDrop::query()->where('shift_id', $shift->id)->sum('amount_cents');
+        return $shift->opening_float_cents + $cash - (int) CashDrop::query()->where('shift_id', $shift->id)->sum('amount_cents') - (int) $shift->payouts_cents;
     }
 
     /** Move excess cash to the safe, witnessed by a manager's PIN. */

@@ -32,6 +32,8 @@ const ORDERS_TAB: OpenTabConfig = { title: "Purchase orders", path: "/purchasing
 const INVOICES_TAB: OpenTabConfig = { title: "Supplier invoices", path: "/purchasing/invoices", view: "supplierInvoices" };
 const RECEIVABLES_TAB: OpenTabConfig = { title: "Customer accounts", path: "/customers/accounts", view: "receivables" };
 const PAYABLES_TAB: OpenTabConfig = { title: "Supplier accounts", path: "/purchasing/accounts", view: "payables" };
+const EXPENSES_TAB: OpenTabConfig = { title: "Expenses", path: "/expenses", view: "expensesList" };
+const LICENCES_TAB: OpenTabConfig = { title: "Licences & permits", path: "/compliance/licences", view: "licences" };
 const ADJUSTMENTS_TAB: OpenTabConfig = { title: "Breakages & adjustments", path: "/inventory/adjustments", view: "stockAdjustments" };
 
 /** "▲ 12% vs last Saturday" — same weekday, same time of day. */
@@ -274,6 +276,12 @@ function AttentionCard({ data, onOpen }: { data: DashboardSummary; onOpen: (tab:
   }
   if (data.compliance?.waitingOverThreshold) {
     items.push({ text: `${data.compliance.waitingOverThreshold} eTIMS invoice(s) waiting over an hour to be signed`, tab: ETIMS_TAB });
+  }
+  if (data.expenses?.pendingCount) {
+    items.push({ text: `${data.expenses.pendingCount} expense(s) waiting for approval (${formatKes(data.expenses.pendingCents)})`, tab: EXPENSES_TAB });
+  }
+  if (data.compliance?.licencesExpiring) {
+    items.push({ text: `${data.compliance.licencesExpiring} licence(s) or permit(s) expired or expiring within 60 days`, tab: LICENCES_TAB });
   }
   if (data.staff?.cashiersWithoutPin) {
     items.push({ text: `${data.staff.cashiersWithoutPin} staff who can sell have no till PIN`, tab: USERS_TAB });

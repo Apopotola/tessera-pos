@@ -7,7 +7,7 @@ export type TenderMethod = "cash" | "mpesa" | "card" | "credit";
 export const TENDER_LABELS: Record<TenderMethod, string> = { cash: "Cash", mpesa: "M-PESA", card: "Card", credit: "On account" };
 /** "not_required": the branch is outside eTIMS (Settings → Integrations), nothing goes to KRA. */
 export type SaleEtimsStatus = EtimsStatus | "not_required";
-export type ApprovalAction = "discount" | "override" | "void" | "refund" | "cash_drop" | "below_zero" | "credit";
+export type ApprovalAction = "discount" | "override" | "void" | "refund" | "cash_drop" | "below_zero" | "credit" | "payout";
 /** A bottle off the shelf, or a tot poured from the open bottle. */
 export type SaleUnit = "bottle" | "tot";
 
@@ -142,6 +142,8 @@ export interface ReceiptSettings {
   printBehaviour: "always" | "ask" | "digital";
   /** For the return-policy line. */
   returnWindowDays: number;
+  /** Licence numbers marked "print on receipt" (Compliance → Licences & permits). */
+  licenceLines: string[];
   logo: string | null;
 }
 

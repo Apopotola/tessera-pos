@@ -25,6 +25,7 @@ class AlertService
         Alert::LARGE_REFUND => ['label' => 'Large refund', 'permission' => Permissions::SHIFTS_CASHUP_APPROVE, 'link' => ['title' => 'Sales', 'path' => '/sales', 'view' => 'salesList']],
         Alert::CASH_VARIANCE => ['label' => 'Cash variance', 'permission' => Permissions::SHIFTS_CASHUP_APPROVE, 'link' => ['title' => 'Shifts & cash-ups', 'path' => '/sales/shifts', 'view' => 'shiftsList']],
         Alert::ETIMS_FAILURE => ['label' => 'eTIMS failure', 'permission' => Permissions::COMPLIANCE_VIEW, 'link' => ['title' => 'eTIMS monitor', 'path' => '/compliance/etims', 'view' => 'etimsMonitor']],
+        Alert::LICENCE_EXPIRY => ['label' => 'Licence expiry', 'permission' => Permissions::COMPLIANCE_VIEW, 'link' => ['title' => 'Licences & permits', 'path' => '/compliance/licences', 'view' => 'licences']],
         Alert::DAILY_SUMMARY => ['label' => 'End-of-day summary', 'permission' => null, 'link' => ['title' => 'Dashboard', 'path' => '/dashboard', 'view' => 'dashboard']],
     ];
 

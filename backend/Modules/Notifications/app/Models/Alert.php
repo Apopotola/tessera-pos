@@ -20,6 +20,8 @@ class Alert extends Model
 
     public const DAILY_SUMMARY = 'daily_summary';
 
+    public const LICENCE_EXPIRY = 'licence_expiry';
+
     protected $fillable = ['type', 'branch_id', 'title', 'body', 'data', 'dedupe_key'];
 
     protected function casts(): array
