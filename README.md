@@ -81,7 +81,12 @@ Open **http://localhost:3010** (use `localhost`, not `127.0.0.1`, so the Sanctum
 | Otieno Kamau (Cashier) | till only | 2580 |
 | Amina Hassan (Cashier) | till only | 3691 |
 | Njeri Wambui (Storekeeper) | `njeri@tessera.test` / `password` | — |
+| Faith Achieng (Accountant) | `accountant@tessera.test` / `password` | — |
 | Tessera Support (all settings, incl. KRA PIN and eTIMS) | `support@tessera.test` / `password` | — |
+
+### Demo walkthrough
+
+Before a client demo, run `php artisan db:seed --class=DemoShowcaseSeeder --force` (local only, safe to repeat). It switches two-step login off for the owner, resets the PINs above, opens a KES 30,000 credit account for *Demo Lounge & Grill*, and adds two approved promotions and a liquor licence expiring in 20 days. The role-by-role demo script and the latest walkthrough results are in [docs/Tessera-POS-Demo-Walkthrough.pdf](docs/Tessera-POS-Demo-Walkthrough.pdf).
 
 Owner, Admin and Tessera Support accounts use **two-step login**: the first sign-in shows a QR code for an authenticator app (Google Authenticator, Microsoft Authenticator, Authy) and then recovery codes. For demos without a phone, an owner can switch it off under **Settings → Staff and roles** (Tessera Support always keeps it).
 

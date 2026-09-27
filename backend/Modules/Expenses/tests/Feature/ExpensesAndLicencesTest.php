@@ -53,9 +53,14 @@ class ExpensesAndLicencesTest extends InventoryTestCase
         $expense = $this->record($this->accountant);
         $this->assertStringStartsWith('MAIN-EXP-', $expense['number']);
 
-        $this->backOffice($this->accountant)->postJson("/api/v1/expenses/{$expense['id']}/approve")->assertForbidden();
+        $this->backOffice($this->accountant)->postJson("/api/v1/expenses/{$expense['id']}/approve")
+            ->assertForbidden()->assertJsonPath('message', 'You are not allowed to perform this action.');
         $own = $this->record($this->manager);
-        $this->backOffice($this->manager)->postJson("/api/v1/expenses/{$own['id']}/approve")->assertForbidden();
+        // The refusal keeps its reason.
+        $this->backOffice($this->manager)->postJson("/api/v1/expenses/{$own['id']}/approve")
+            ->assertForbidden()->assertJsonPath('message', 'Someone else must approve an expense you recorded.');
+        // A malformed id is simply not found, not a database error.
+        $this->backOffice($this->manager)->postJson('/api/v1/expenses/undefined/approve')->assertNotFound()->assertJsonPath('success', false);
 
         $this->backOffice($this->manager)->postJson("/api/v1/expenses/{$expense['id']}/approve")->assertOk()->assertJsonPath('data.status', 'approved');
         $this->backOffice($this->owner)->postJson("/api/v1/expenses/{$own['id']}/reject", ['note' => 'No receipt'])->assertOk();

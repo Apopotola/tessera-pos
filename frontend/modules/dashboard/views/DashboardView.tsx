@@ -236,7 +236,7 @@ function OpenShiftsCard({ shifts }: { shifts: NonNullable<DashboardSummary["open
                     {shift.cashier}
                   </Text>
                   <Text size="xs" c="dimmed">
-                    {shift.branchCode} · {shift.till} · since {dayjs(shift.openedAt).format("h:mm a")}
+                    {shift.branchCode} · {shift.till} · since {dayjs(shift.openedAt).format(dayjs(shift.openedAt).isSame(dayjs(), "day") ? "h:mm a" : "D MMM, h:mm a")}
                   </Text>
                 </div>
               </Group>

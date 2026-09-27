@@ -3,6 +3,7 @@
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -48,11 +49,21 @@ return Application::configure(basePath: dirname(__DIR__))
         });
         $exceptions->render(function (AuthorizationException|AccessDeniedHttpException $e, Request $request) use ($envelope) {
             if ($request->is('api/*')) {
-                return $envelope('You are not allowed to perform this action.', 403);
+                // Keep a specific reason ("Someone else must approve…"); replace only the framework defaults.
+                $message = $e->getMessage();
+                $generic = $message === '' || in_array($message, ['This action is unauthorized.', 'Forbidden'], true);
+
+                return $envelope($generic ? 'You are not allowed to perform this action.' : $message, 403);
             }
         });
         $exceptions->render(function (ModelNotFoundException|NotFoundHttpException $e, Request $request) use ($envelope) {
             if ($request->is('api/*')) {
+                return $envelope('Resource not found.', 404);
+            }
+        });
+        // A record id that is not a number (e.g. /suppliers/abc) cannot exist: 404, not a database error.
+        $exceptions->render(function (QueryException $e, Request $request) use ($envelope) {
+            if ($request->is('api/*') && ($e->errorInfo[0] ?? null) === '22P02') {
                 return $envelope('Resource not found.', 404);
             }
         });

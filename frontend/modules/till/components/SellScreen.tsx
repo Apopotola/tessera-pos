@@ -163,10 +163,15 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
 
   // First screen (Settings → Sales screen): favourites while nothing is typed.
   const showFavourites = policy.layout !== "barcode" && policy.favouritesMode !== "none";
-  const { snapshot } = offline;
+  // Read the offline snapshot through a ref: it refreshes often, and favourites only need it when offline.
+  const snapshotRef = useRef(offline.snapshot);
+  useEffect(() => {
+    snapshotRef.current = offline.snapshot;
+  }, [offline.snapshot]);
   const loadFavourites = useCallback(() => {
     if (!showFavourites) return;
     const fromSnapshot = () => {
+      const snapshot = snapshotRef.current;
       const byId = new Map((snapshot?.items ?? []).map((i) => [i.variantId, i]));
       setFavourites((snapshot?.favouriteIds ?? []).flatMap((id) => byId.get(id) ?? []));
     };
@@ -175,7 +180,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
       return;
     }
     salesApi.favourites().then(setFavourites).catch(fromSnapshot);
-  }, [showFavourites, isOnline, snapshot]);
+  }, [showFavourites, isOnline]);
 
   useEffect(() => {
     loadFavourites();
@@ -865,12 +870,13 @@ function approvalNeeded(e: unknown, approvals: { stock?: string; credit?: string
 
 function ChangeDue({ sale }: { sale: Sale }) {
   const change = sale.tenders.find((t) => t.method === "cash")?.changeCents ?? 0;
+  const onAccount = sale.tenders.filter((t) => t.method === "credit").reduce((sum, t) => sum + t.amountCents, 0);
   const unverified = sale.tenders.some((t) => t.status === "unverified");
 
   return (
     <Stack gap={4} align="center">
       <Text c="dimmed" size="sm">
-        {change > 0 ? "Change to give" : "Paid in full"}
+        {change > 0 ? "Change to give" : onAccount >= sale.totalCents ? `On ${sale.customer?.name ?? "the customer"}'s account` : "Paid in full"}
       </Text>
       <Text className="tessera-display" fz={44} c={change > 0 ? "green.7" : undefined}>
         {formatKes(change > 0 ? change : sale.totalCents)}
