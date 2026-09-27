@@ -141,7 +141,7 @@ export interface ReceiptSettings {
   footerLines: string[];
   show: ("logo" | "cashier" | "customer" | "return_policy" | "loyalty")[];
   paperSize: "58mm" | "80mm" | "a4";
-  printBehaviour: "always" | "ask" | "digital";
+  printBehaviour: "always" | "ask";
   /** For the return-policy line. */
   returnWindowDays: number;
   /** Licence numbers marked "print on receipt" (Compliance → Licences & permits). */

@@ -113,6 +113,9 @@ class SettingsService
     public function set(User $user, string $key, string $scope, int $scopeId, mixed $value, string $source = 'edit'): void
     {
         $def = $this->definition($key);
+        if ($def['hidden']) {
+            throw ValidationException::withMessages(['key' => 'This setting is not available yet.']);
+        }
         $this->assertScope($def, $scope, $scopeId);
         if (! $this->canEdit($user, $def, $scope, $scopeId)) {
             throw new AuthorizationException('You cannot change this setting'.($scope === 'business' ? '' : ' here').'.');
@@ -211,7 +214,8 @@ class SettingsService
         foreach ($bundle['values'] as $key => $value) {
             $def = $this->definition($key);
             $current = $this->get($key);
-            if ($current == $value) {
+            // Hidden settings stay at their default until the feature works.
+            if ($def['hidden'] || $current == $value) {
                 continue;
             }
             $lastSource = SettingChange::query()->where(['key' => $key, 'scope' => 'business', 'scope_id' => 0])->latest('id')->value('source');

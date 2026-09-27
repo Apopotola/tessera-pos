@@ -11,6 +11,7 @@ namespace Modules\Settings\Support;
  * A B setting can also be changed by O and T; an O setting also by T.
  * Scopes (most specific wins): till → branch → business → default below.
  * `available: false` = stored and shown, but the feature it drives is not built yet (`note` says so).
+ * `hidden: true` = not shown or changeable at all until the feature works (docs/user-guide/internal-notes.md).
  */
 final class SettingsRegistry
 {
@@ -105,7 +106,7 @@ final class SettingsRegistry
             'receipts.invoice_prefix' => self::f('receipts', 'Invoice number prefix', 'text', 'INV-', 'O', max: 8, pattern: '/^[A-Z0-9]{0,6}-?$/',
                 help: 'e.g. KWS-. Locked once the first sale is made, so invoice numbers stay in sequence.'),
             'receipts.print_behaviour' => self::f('receipts', 'Print behaviour', 'select', 'ask', 'B', scopes: ['business', 'branch'],
-                options: ['always' => 'Always print', 'ask' => 'Ask each time', 'digital' => 'SMS or email only'], help: 'SMS and email receipts arrive with notifications.'),
+                options: ['always' => 'Always print', 'ask' => 'Ask each time']),
             'receipts.document_template' => self::f('receipts', 'Quotation and delivery note layout', 'select', 'standard', 'O',
                 options: ['standard' => 'Standard', 'compact' => 'Compact', 'detailed' => 'Detailed'], available: false, note: 'Quotations and delivery notes arrive later.'),
 
@@ -143,7 +144,7 @@ final class SettingsRegistry
                 available: false, note: 'Packs and tots work today; other units with conversions arrive later.'),
             'stock.low_stock_default' => self::f('stock', 'Default low-stock level', 'number', 5, 'O', scopes: ['business', 'branch'], branchLevelScopes: ['branch'], min: 0, max: 100000,
                 help: 'Used for items without their own reorder level.'),
-            'stock.batch_tracking_default' => self::f('stock', 'Batch and expiry tracking for new items', 'boolean', false, 'O'),
+            'stock.batch_tracking_default' => self::f('stock', 'Batch and expiry tracking for new items', 'boolean', false, 'O', hidden: true),
             'stock.below_zero' => self::f('stock', 'Selling below zero stock', 'select', 'approval', 'O',
                 options: ['allow' => 'Allow', 'approval' => 'Manager approval', 'block' => 'Block'],
                 help: 'Offline sales are always recorded; the stock count catches the gap.'),
@@ -241,7 +242,7 @@ final class SettingsRegistry
                 'sales.layout' => 'tiles', 'branding.theme' => 'dark', 'features.sell_by_tot' => true, 'sales.age_check_prompt' => true,
                 'features.crate_deposits' => true, 'features.licensed_hours_lock' => true, 'stock.batch_tracking_default' => false, 'features.tables' => false,
             ]],
-            'pharmacy' => ['title' => 'Pharmacy', 'description' => 'Batch and expiry, expiry alerts, prescription notes. Search-first, light.', 'values' => [
+            'pharmacy' => ['title' => 'Pharmacy', 'description' => 'Expiry alerts, prescription notes. Search-first, light.', 'values' => [
                 'sales.layout' => 'list', 'branding.theme' => 'light', 'features.sell_by_tot' => false, 'sales.age_check_prompt' => false,
                 'stock.batch_tracking_default' => true, 'features.expiry_alerts' => true, 'features.prescription_notes' => true,
             ]],
@@ -283,9 +284,9 @@ final class SettingsRegistry
         string $section, string $label, string $type, mixed $default, string $level,
         array $options = [], array $scopes = ['business'], array $branchLevelScopes = [], ?array $model = null,
         ?int $max = null, ?int $min = null, ?string $pattern = null, ?string $help = null, ?string $group = null,
-        bool $available = true, ?string $note = null,
+        bool $available = true, ?string $note = null, bool $hidden = false,
     ): array {
-        return compact('section', 'label', 'type', 'default', 'level', 'options', 'scopes', 'branchLevelScopes', 'model', 'max', 'min', 'pattern', 'help', 'group', 'available', 'note');
+        return compact('section', 'label', 'type', 'default', 'level', 'options', 'scopes', 'branchLevelScopes', 'model', 'max', 'min', 'pattern', 'help', 'group', 'available', 'note', 'hidden');
     }
 
     /** @return array<int, string> */

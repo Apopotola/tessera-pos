@@ -1,0 +1,38 @@
+flowchart LR
+    %% How the Tessera POS modules feed each other, in the order of a business day.
+    %% Source for images/inventory/00-modules-flow.png (rendered with Mermaid).
+    SET["<b>1 · Set up once</b><br/>Settings<br/>Branches & tills<br/>Users & roles"]
+    CAT["<b>2 · Catalogue</b><br/>Products, sizes, barcodes<br/>Price changes (owner approves)<br/>Promotions (owner approves)"]
+    BUY["<b>3 · Purchasing</b><br/>Purchase order<br/>→ someone else approves<br/>→ receive goods"]
+    TILL["<b>4 · POS Till</b><br/>Open shift (PIN, float)<br/>Sell · take payment<br/>Returns (manager approves)"]
+    CLOSE["<b>5 · End shift</b><br/>Count the drawer<br/>→ Shifts & cash-ups<br/>(manager signs off)"]
+    SEE["<b>6 · See the business</b><br/>Dashboard · Reports<br/>Notifications · Audit log"]
+
+    STOCK[("Stock ledger<br/>Stock on hand")]
+    TAX["eTIMS monitor<br/>(KRA-signed invoices)"]
+    MPESA["M-PESA<br/>reconciliation"]
+    AR["Customer accounts<br/>(what customers owe)"]
+    AP["Supplier invoices<br/>→ Supplier accounts<br/>(what you owe)"]
+    INVADJ["Breakages · stock counts<br/>transfers (approved)"]
+    EXP["Expenses &<br/>till payouts"]
+
+    SET --> CAT --> BUY --> TILL --> CLOSE --> SEE
+    BUY -- "stock in" --> STOCK
+    BUY -- "bill" --> AP
+    TILL -- "stock out / back" --> STOCK
+    TILL -- "invoice sent automatically" --> TAX
+    TILL -- "M-PESA payments" --> MPESA
+    TILL -- "sales on account" --> AR
+    INVADJ --> STOCK
+    EXP --> CLOSE
+    STOCK -. "low-stock alerts" .-> SEE
+    TAX -.-> SEE
+    AR -.-> SEE
+    AP -.-> SEE
+
+    classDef step fill:#5B3FA3,stroke:#3E2A73,color:#FFFFFF
+    classDef till fill:#F2A93B,stroke:#B97A1A,color:#1A1B2E
+    classDef side fill:#FFFFFF,stroke:#1C1D2E,color:#1A1B2E
+    class SET,CAT,BUY,CLOSE,SEE step
+    class TILL till
+    class STOCK,TAX,MPESA,AR,AP,INVADJ,EXP side

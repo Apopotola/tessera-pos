@@ -105,6 +105,19 @@ class SettingsTest extends InventoryTestCase
         $this->change($this->owner, 'nope.nothing', true)->assertUnprocessable();
     }
 
+    public function test_settings_for_unfinished_features_are_hidden_and_cannot_be_changed(): void
+    {
+        $fields = collect($this->actingAs($this->owner)->getJson('/api/v1/settings/schema?scope=business&scopeId=0')->assertOk()->json('data.sections'))
+            ->flatMap(fn ($s) => $s['fields'])->keyBy('key');
+
+        $this->assertArrayNotHasKey('stock.batch_tracking_default', $fields->all());
+        $this->assertSame(['always', 'ask'], array_column($fields['receipts.print_behaviour']['options'], 'value'));
+        $this->change($this->owner, 'stock.batch_tracking_default', true)->assertUnprocessable();
+        $this->change($this->owner, 'receipts.print_behaviour', 'digital')->assertUnprocessable();
+        // Presets leave hidden settings alone (the pharmacy preset would switch batch tracking on).
+        $this->assertNotContains('stock.batch_tracking_default', array_column($this->settings()->presetPreview('pharmacy'), 'key'));
+    }
+
     public function test_invoice_prefix_locks_after_the_first_sale(): void
     {
         $this->change($this->owner, 'receipts.invoice_prefix', 'KWS-')->assertOk()->assertJsonPath('data.value', 'KWS-');

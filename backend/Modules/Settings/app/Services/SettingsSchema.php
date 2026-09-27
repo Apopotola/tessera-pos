@@ -31,7 +31,7 @@ class SettingsSchema
         foreach (SettingsRegistry::SECTIONS as $sectionKey => $section) {
             $fields = [];
             foreach (SettingsRegistry::all() as $key => $def) {
-                if ($def['section'] === $sectionKey && in_array($scope, $def['scopes'], true)) {
+                if ($def['section'] === $sectionKey && ! $def['hidden'] && in_array($scope, $def['scopes'], true)) {
                     $fields[] = $this->fieldArray($user, $key, $def, $scope, $scopeId, isset($changed[$key]));
                 }
             }

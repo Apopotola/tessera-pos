@@ -46,6 +46,17 @@ class MenuTest extends TestCase
         $this->assertNotContains('reports', $keys);
     }
 
+    public function test_storekeeper_has_the_dashboard_as_home_but_no_money_screens(): void
+    {
+        $keys = $this->menuKeysFor(Roles::STOREKEEPER);
+
+        $this->assertContains('dashboard', $keys);
+        $this->assertContains('inventory.stock', $keys);
+        $this->assertNotContains('pos', $keys);
+        $this->assertNotContains('reports', $keys);
+        $this->assertNotContains('expenses', $keys);
+    }
+
     public function test_owner_sees_every_menu_item(): void
     {
         $keys = $this->menuKeysFor(Roles::OWNER);
