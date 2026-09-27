@@ -105,6 +105,24 @@ cd backend && php artisan test && vendor/bin/pint --test && composer validate
 cd frontend && pnpm lint && pnpm typecheck && pnpm build
 ```
 
+### Till end-to-end tests
+
+`frontend/e2e/` drives the real till screens in Microsoft Edge (Playwright): the owner sets up a till, a cashier signs in with a PIN (a wrong PIN is refused), and then:
+
+- a cash sale with change;
+- the wine promotion paid by demo M-PESA;
+- a sale on a customer's account;
+- lock / unlock, keeping the sale;
+- a cash-up that balances.
+
+The suite uses its own database, API (port 8011) and production build (port 3011), so development data is untouched. Every run rebuilds the `tessera_pos_e2e` database from the seeders. Create it once with `createdb -U postgres tessera_pos_e2e`, then:
+
+```bash
+cd frontend && TESSERA_PHP=/path/to/php8.4 pnpm e2e
+```
+
+`TESSERA_PHP` defaults to `php` on the PATH. Set `E2E_BROWSER_CHANNEL=chrome` to use Chrome instead of Edge. The run takes about 2 minutes, including the build. Failures leave a screenshot and trace in `frontend/test-results/`.
+
 ## Module status
 
 | Module | Backend | Frontend view(s) |
