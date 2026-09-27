@@ -50,6 +50,11 @@ These are hidden in the system or not built. Leave them out of the client guide 
 - Storekeepers now have the **Dashboard** menu item. Their dashboard shows stock tiles only; they were already landing on it as their home screen.
 - "SMS or email only" receipts and batch/expiry tracking are hidden from Settings (see above).
 - The demo walkthrough PDF now says the owner, admin or accountant raises purchase orders (storekeepers receive goods).
+- **Stock ledger fix:** sales, customer returns, goods received, returns to supplier and opened bottles showed an empty "Type" badge and could not be picked in the type filter. Found while taking the chapter 2 screenshots; fixed in the web app.
+
+## Found while capturing (not changed)
+
+- The inputs on the Settings screen have no accessible label (the label is plain text beside the box). Screen readers cannot name them. Low priority.
 
 ## Decisions for the guide
 

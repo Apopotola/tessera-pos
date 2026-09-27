@@ -13,3 +13,7 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# user-guide build output and capture failures
+docs/user-guide/build/
+docs/user-guide/images/_failure-*.png

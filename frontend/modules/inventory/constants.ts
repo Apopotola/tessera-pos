@@ -32,6 +32,11 @@ export const MOVEMENT_LABEL: Record<MovementType, string> = {
   transfer_dispatch: "Transfer out",
   transfer_receive: "Transfer in",
   count_variance: "Count variance",
+  goods_received: "Goods received",
+  supplier_return: "Returned to supplier",
+  sale: "Sale",
+  customer_return: "Customer return",
+  bottle_opened: "Bottle opened (tots)",
 };
 
 export const DOCUMENT_STATUS_COLOR: Record<DocumentStatus | TransferStatus | CountStatus, string> = {

@@ -17,7 +17,12 @@ export type MovementType =
   | "missing"
   | "transfer_dispatch"
   | "transfer_receive"
-  | "count_variance";
+  | "count_variance"
+  | "goods_received"
+  | "supplier_return"
+  | "sale"
+  | "customer_return"
+  | "bottle_opened";
 
 export interface UserRef {
   id: number;
