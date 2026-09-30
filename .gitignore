@@ -17,3 +17,6 @@ Thumbs.db
 # user-guide build output and capture failures
 docs/user-guide/build/
 docs/user-guide/images/_failure-*.png
+
+# Office lock files (created while a document is open)
+~$*
