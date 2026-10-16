@@ -232,6 +232,16 @@ Each till prints its receipts the way *Settings → Integrations → Receipt pri
 - **Letterhead:** the business name (*Branding → Business display name*), legal name, address, phone, email and KRA PIN (*Settings → Business*), the *App logo* (PNG or JPEG) and the *Primary colour*. Every page has who generated it, when, and "Page x of y".
 - Rendered on the server with `barryvdh/laravel-dompdf` (pure PHP, no system binaries); the shared layout is `backend/app/Services/BrandedPdf.php` and `backend/resources/views/pdf/document.blade.php`. *Print* still prints the screen as before.
 
+## Nightly stock ledger check
+
+Stock on hand (`stock_balances`) is a projection of the append-only stock ledger (`stock_movements`), updated in the same transaction as every movement. Every night at **23:30** the scheduler runs:
+
+```bash
+php artisan inventory:check-ledger
+```
+
+It compares each balance with the sum of its movements, both ways (a balance with no movements, movements with no balance row). If everything agrees it prints *All stock balances agree with the stock ledger.* and exits 0. Otherwise it lists each difference (branch, location, SKU, item, balance, ledger) and **exits 1**, so cron or CI can catch it, and the owners get an alert (*Stock ledger check*, always on, once a day) linking to the stock ledger. A difference means data was changed outside Tessera: ask Tessera support before any stock count. Run it by hand at any time; it only reads.
+
 ## Cash control
 
 - **Cash drops:** during a shift the cashier moves excess notes to the safe from the till menu (*Cash drop to safe*); a manager witnesses it with their PIN. A drop can never exceed what the drawer should hold, and drops are append-only.
@@ -268,7 +278,7 @@ Each till prints its receipts the way *Settings → Integrations → Receipt pri
 
 ## Notifications (Phase 2)
 
-- **Alerts** (switch each on or off in *Settings → Notifications*): low stock (when a sale takes an item to or below its reorder level, plus a nightly digest at 06:00), large refund (from *A refund is "large" from*, default KES 5,000), cash variance (a cash-up outside the allowed variance), eTIMS failure (KRA refused an invoice, or invoices waiting over an hour), and the owner's end-of-day summary at *Daily report time* (default 21:00). *Offline M-PESA not confirmed* cannot be switched off.
+- **Alerts** (switch each on or off in *Settings → Notifications*): low stock (when a sale takes an item to or below its reorder level, plus a nightly digest at 06:00), large refund (from *A refund is "large" from*, default KES 5,000), cash variance (a cash-up outside the allowed variance), eTIMS failure (KRA refused an invoice, or invoices waiting over an hour), and the owner's end-of-day summary at *Daily report time* (default 21:00). *Offline M-PESA not confirmed* and the nightly *Stock ledger check* cannot be switched off.
 - **Who gets them:** the bell in the header shows each alert to everyone who can act on it at that branch (e.g. managers and storekeepers for low stock); owners get everything. The bell's polling does not keep an idle session alive.
 - **SMS / WhatsApp / email** go to owners (phone and email from *Users & roles*), per *Channels*. Email uses Laravel mail (`MAIL_MAILER`, `log` in development). SMS and WhatsApp use the `log` driver (`NOTIFY_SMS_DRIVER`, `NOTIFY_WHATSAPP_DRIVER`): messages are written to the server log, not delivered, until a provider (e.g. Africa's Talking) and a registered sender ID are set up. *Administration → Messages sent* lists every message and marks demo ones.
 - The scheduler runs `notifications:run` every minute (daily summary, eTIMS waiting, sending the outbox) and `notifications:low-stock` nightly — keep `php artisan schedule:work` running in development. `php artisan notifications:run --summary-now` sends today's summary straight away.

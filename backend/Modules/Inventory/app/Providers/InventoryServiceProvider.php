@@ -3,6 +3,7 @@
 namespace Modules\Inventory\Providers;
 
 use Illuminate\Console\Scheduling\Schedule;
+use Modules\Inventory\Console\CheckStockLedger;
 use Nwidart\Modules\Support\ModuleServiceProvider;
 
 class InventoryServiceProvider extends ModuleServiceProvider
@@ -22,7 +23,9 @@ class InventoryServiceProvider extends ModuleServiceProvider
      *
      * @var string[]
      */
-    // protected array $commands = [];
+    protected array $commands = [
+        CheckStockLedger::class,
+    ];
 
     /**
      * Provider classes to register.
@@ -35,12 +38,11 @@ class InventoryServiceProvider extends ModuleServiceProvider
     ];
 
     /**
-     * Define module schedules.
-     *
-     * @param  $schedule
+     * Define module schedules. Run `php artisan schedule:work` in development.
      */
-    // protected function configureSchedules(Schedule $schedule): void
-    // {
-    //     $schedule->command('inspire')->hourly();
-    // }
+    protected function configureSchedules(Schedule $schedule): void
+    {
+        // Stock on hand must equal the ledger; any difference alerts the owners.
+        $schedule->command('inventory:check-ledger')->dailyAt('23:30')->withoutOverlapping();
+    }
 }

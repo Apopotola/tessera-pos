@@ -28,10 +28,12 @@ class AlertService
         Alert::LICENCE_EXPIRY => ['label' => 'Licence expiry', 'permission' => Permissions::COMPLIANCE_VIEW, 'link' => ['title' => 'Licences & permits', 'path' => '/compliance/licences', 'view' => 'licences']],
         Alert::DAILY_SUMMARY => ['label' => 'End-of-day summary', 'permission' => null, 'link' => ['title' => 'Dashboard', 'path' => '/dashboard', 'view' => 'dashboard']],
         Alert::MPESA_UNVERIFIED => ['label' => 'Offline M-PESA not confirmed', 'permission' => Permissions::PAYMENTS_RECONCILE, 'link' => ['title' => 'M-PESA reconciliation', 'path' => '/payments/mpesa', 'view' => 'mpesaReconciliation']],
+        // Owners only (null permission): a ledger difference means data was changed outside Tessera.
+        Alert::STOCK_LEDGER => ['label' => 'Stock ledger check', 'permission' => null, 'link' => ['title' => 'Stock ledger', 'path' => '/inventory/ledger', 'view' => 'stockLedger']],
     ];
 
     /** Integrity alerts: raised whatever Settings → Notifications → Alert recipients says. */
-    public const ALWAYS_ON = [Alert::MPESA_UNVERIFIED];
+    public const ALWAYS_ON = [Alert::MPESA_UNVERIFIED, Alert::STOCK_LEDGER];
 
     public function __construct(
         private readonly SettingsService $settings,

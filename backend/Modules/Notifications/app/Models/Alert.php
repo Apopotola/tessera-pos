@@ -25,6 +25,9 @@ class Alert extends Model
     /** An offline sale's M-PESA code could not be confirmed on sync (always on). */
     public const MPESA_UNVERIFIED = 'mpesa_unverified';
 
+    /** The nightly check found stock balances that disagree with the ledger (always on, owners). */
+    public const STOCK_LEDGER = 'stock_ledger';
+
     protected $fillable = ['type', 'branch_id', 'title', 'body', 'data', 'dedupe_key'];
 
     protected function casts(): array
