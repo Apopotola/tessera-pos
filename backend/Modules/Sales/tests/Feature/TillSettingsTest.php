@@ -101,10 +101,11 @@ class TillSettingsTest extends InventoryTestCase
         $this->setting('hardware.receipt_printer', 'usb', 'branch', $this->main->id);
         $this->setting('hardware.receipt_printer', 'serial', 'till', $tillId);
         $this->setting('hardware.printer_baud_rate', 115200, 'till', $tillId);
+        $this->setting('hardware.cash_drawer', 'printer', 'till', $tillId);
 
         $this->withHeaders(['X-Till-Token' => $this->token])->getJson('/api/v1/organisation/till-context')
             ->assertOk()
-            ->assertJsonPath('data.policy.printer', ['connection' => 'serial', 'baudRate' => 115200, 'cashDrawer' => false]);
+            ->assertJsonPath('data.policy.printer', ['connection' => 'serial', 'baudRate' => 115200, 'cashDrawer' => true]);
 
         $this->backOffice($this->owner)->putJson('/api/v1/settings/values/hardware.receipt_printer', ['scope' => 'till', 'scopeId' => $tillId, 'value' => 'bluetooth-le'])
             ->assertUnprocessable();
@@ -112,21 +113,19 @@ class TillSettingsTest extends InventoryTestCase
 
     public function test_only_the_owner_can_test_the_cash_drawer_and_it_is_audited(): void
     {
-        $owner = fn () => $this->actingAs($this->owner)->withHeaders(['Referer' => 'http://'.config('sanctum.stateful')[0].'/till', 'X-Till-Token' => $this->token]);
+        $atTill = fn (User $user) => $this->backOffice($user)->withHeaders(['Referer' => 'http://'.config('sanctum.stateful')[0].'/till', 'X-Till-Token' => $this->token]);
 
         // No drawer on this till yet.
-        $owner()->postJson('/api/v1/sales/till/drawer-test')->assertUnprocessable()->assertJsonValidationErrors('drawer');
+        $atTill($this->owner)->postJson('/api/v1/sales/till/drawer-test')->assertUnprocessable()->assertJsonValidationErrors('drawer');
 
         $this->setting('hardware.cash_drawer', 'printer', 'branch', $this->main->id);
-        $this->withHeaders(['X-Till-Token' => $this->token])->getJson('/api/v1/organisation/till-context')
-            ->assertJsonPath('data.policy.printer.cashDrawer', true);
 
         // Cashiers and managers cannot open the drawer without a sale.
-        $this->till()->postJson('/api/v1/sales/till/drawer-test')->assertForbidden();
-        $this->actingAs($this->manager)->postJson('/api/v1/sales/till/drawer-test')->assertForbidden();
+        $atTill($this->cashier)->postJson('/api/v1/sales/till/drawer-test')->assertForbidden();
+        $atTill($this->manager)->postJson('/api/v1/sales/till/drawer-test')->assertForbidden();
         $this->assertDatabaseMissing('audit_logs', ['action' => 'sales.drawer.tested']);
 
-        $owner()->postJson('/api/v1/sales/till/drawer-test')->assertOk();
+        $atTill($this->owner)->postJson('/api/v1/sales/till/drawer-test')->assertOk();
         $this->assertDatabaseHas('audit_logs', ['action' => 'sales.drawer.tested', 'user_id' => $this->owner->id, 'branch_id' => $this->main->id]);
     }
 
