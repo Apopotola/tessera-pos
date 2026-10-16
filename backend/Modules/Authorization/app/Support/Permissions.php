@@ -32,6 +32,9 @@ final class Permissions
 
     public const SALES_VIEW = 'sales.view';
 
+    /** Owner only: open the cash drawer from the till printer without a sale, to test it (audited). */
+    public const SALES_DRAWER_TEST = 'sales.drawer.test';
+
     // Shifts / cash-up
     public const SHIFTS_CASHUP = 'shifts.cashup';
 

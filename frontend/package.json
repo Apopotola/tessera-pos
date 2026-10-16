@@ -8,7 +8,8 @@
     "start": "next start --port 3010",
     "lint": "eslint && node scripts/check-ui-conventions.mjs",
     "typecheck": "tsc --noEmit",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "test": "playwright test -c playwright.unit.config.ts"
   },
   "dependencies": {
     "@mantine/core": "^8.3.18",

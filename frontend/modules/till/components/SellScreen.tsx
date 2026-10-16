@@ -9,6 +9,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, authApi, salesApi } from "@/api";
 import { brand } from "@/app/theme";
 import Receipt, { ReceiptPrint } from "@/modules/sales/components/Receipt";
+import ShareReceiptButton from "@/modules/sales/components/ShareReceiptButton";
+import { openDrawerForSale, printReceipt } from "@/modules/sales/printer";
 import { type ApprovalRules, type CartLine, cartTotals, withPromotions, fromParked, lineKey, lineName, lineTotal, looksLikeBarcode, needsApproval, newClientId, newLine, repriceForCustomer, sameLine, toParked, toPayload } from "@/modules/till/cart";
 import CustomerPicker from "@/modules/till/components/CustomerPicker";
 import type { TillCustomer } from "@/types/customers";
@@ -19,6 +21,7 @@ import LockScreen from "@/modules/till/components/LockScreen";
 import { ParkModal, RecallModal } from "@/modules/till/components/ParkedSales";
 import PayoutModal from "@/modules/till/components/PayoutModal";
 import PriceCheckModal from "@/modules/till/components/PriceCheck";
+import PrinterModal from "@/modules/till/components/PrinterModal";
 import ReturnModal from "@/modules/till/components/ReturnModal";
 import TenderModal from "@/modules/till/components/TenderModal";
 import TillHeader from "@/modules/till/components/TillHeader";
@@ -72,7 +75,9 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   const [payError, setPayError] = useState<string | null>(null);
   const [payPending, setPayPending] = useState(false);
   const [completed, setCompleted] = useState<Sale | null>(null);
+  // The print dialog (browser printing, or the fallback when the printer cannot be reached).
   const [printing, setPrinting] = useState<{ sale: Sale; copy: boolean } | null>(null);
+  const [printerSetup, setPrinterSetup] = useState(false);
   const [returning, setReturning] = useState(false);
   const [ending, setEnding] = useState(false);
   const [closed, setClosed] = useState<Shift | null>(null);
@@ -225,6 +230,18 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     return () => window.clearTimeout(timer);
   }, [printing]);
 
+  /** Settings → Receipt printer: straight to the printer, else the print dialog. "No printer" skips the automatic print only. */
+  const printSale = useCallback(
+    async (sale: Sale, copy: boolean, asked: boolean) => {
+      const outcome = await printReceipt(policy.printer, sale, copy);
+      if (outcome.via === "browser") {
+        if (outcome.error) notifications.show({ color: "yellow", message: `The printer did not answer (${outcome.error}). Opening the print dialog instead.` });
+        setPrinting({ sale, copy });
+      } else if (outcome.via === "none" && asked) setPrinting({ sale, copy });
+    },
+    [policy.printer],
+  );
+
   const addItem = useCallback((item: TillItem, quantity = 1, unit: SaleUnit = "bottle") => {
     const now = new Date();
     if (item.alcoholic && licensedHours && !isLicensedOpen(licensedHours, now)) {
@@ -361,7 +378,12 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     setPaying(false);
     setCompleted(sale);
     // Settings → Receipts → Print behaviour.
-    if (policy.receipt.printBehaviour === "always") setPrinting({ sale, copy: false });
+    // The drawer opens first (the cashier needs change), then the receipt prints.
+    void (async () => {
+      const drawer = await openDrawerForSale(policy.printer, sale);
+      if (drawer.via === "browser" && drawer.error) notifications.show({ color: "yellow", message: `The cash drawer did not open (${drawer.error}).` });
+      if (policy.receipt.printBehaviour === "always") await printSale(sale, false, false);
+    })();
     loadFavourites();
     setLines([]);
     setCustomer(null);
@@ -371,8 +393,9 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   /** Records the sale on this device and prints a provisional receipt; it is sent when the connection is back. */
   const payOffline = async (tenders: TenderPayload[], customerPin: string | null) => {
     if (!user) return;
-    if (tenders.some((t) => t.method === "mpesa")) {
-      setPayError("The connection dropped. M-PESA needs the connection — take cash or card instead.");
+    // A payment request or a picked payment needs the connection; a typed code is checked on sync.
+    if (tenders.some((t) => t.method === "mpesa" && t.confirmationId)) {
+      setPayError("The connection dropped. Ask the customer for the M-PESA code from their message, or take cash or card.");
       return;
     }
     const occurredAt = new Date().toISOString();
@@ -628,6 +651,9 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
               <Menu.Item leftSection={<IconTrash size={16} />} disabled={lines.length === 0} onClick={() => void clearCart()}>
                 Clear sale
               </Menu.Item>
+              <Menu.Item leftSection={<IconPrinter size={16} />} onClick={() => setPrinterSetup(true)}>
+                Printer
+              </Menu.Item>
               <Menu.Divider />
               <Menu.Item leftSection={<IconBuildingBank size={16} />} disabled={!isOnline} onClick={() => setDropping(true)}>
                 Cash drop to safe{!isOnline && " (needs connection)"}
@@ -761,7 +787,9 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
           splitAllowed={policy.splitAllowed}
           cashRoundingCents={policy.cashRoundingCents}
           stkPush={policy.stkPush}
-          customer={customer}           offline={!isOnline}
+          customer={customer}
+          offline={!isOnline}
+          usedMpesaCodes={offline.usedMpesaCodes}
           pending={payPending}
           serverError={payError}
           onClose={() => setPaying(false)}
@@ -785,9 +813,13 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
               <Receipt sale={completed} />
             </div>
             <Group grow>
-              <Button variant="default" leftSection={<IconPrinter size={18} />} onClick={() => setPrinting({ sale: completed, copy: false })}>
+              <Button variant="default" leftSection={<IconPrinter size={18} />} onClick={() => void printSale(completed, false, true)}>
                 Print receipt
               </Button>
+              {/* An offline sale has no official number yet, so nothing to link to. */}
+              {!completed.pendingSync && isOnline && (
+                <ShareReceiptButton saleNumber={completed.number} businessName={completed.business.name} createToken={() => salesApi.shareFromTill(completed.number)} />
+              )}
               <Button
                 data-autofocus
                 onClick={() => {
@@ -811,7 +843,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
             setReturning(false);
             refocus();
           }}
-          onReprint={(sale) => setPrinting({ sale, copy: true })}
+          onReprint={(sale) => void printSale(sale, true, true)}
           onReturned={(sale, refund) => {
             setReturning(false);
             // A sale on account is refunded to the account first; only the rest comes from the drawer.
@@ -867,6 +899,15 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
           user={user}
           onUnlocked={() => {
             setLocked(false);
+            refocus();
+          }}
+        />
+      )}
+      {printerSetup && (
+        <PrinterModal
+          context={context}
+          onClose={() => {
+            setPrinterSetup(false);
             refocus();
           }}
         />

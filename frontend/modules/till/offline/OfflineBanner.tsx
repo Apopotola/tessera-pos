@@ -1,7 +1,7 @@
 "use client";
 
 import { Alert, Button, Group, Loader, Modal, Stack, Table, Text } from "@mantine/core";
-import { IconCloudOff, IconCloudUpload, IconAlertTriangle } from "@tabler/icons-react";
+import { IconAlertTriangle, IconClockHour4, IconCloudOff, IconCloudUpload } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { useState } from "react";
 import type { OfflineTill } from "@/modules/till/offline/useOfflineTill";
@@ -16,7 +16,7 @@ export default function OfflineBanner({ offline }: { offline: OfflineTill }) {
     <>
       {!offline.online && (
         <Alert color="yellow" variant="filled" radius="md" icon={<IconCloudOff size={20} />} title="Offline — still selling">
-          Cash and card only. Returns, M-PESA, manager approvals and ending the shift wait for the connection.
+          Cash, card and M-PESA codes typed from the customer&apos;s message (checked when the connection is back). Returns, payment requests, manager approvals and ending the shift wait for the connection.
           {offline.pendingSales > 0 && ` ${offline.pendingSales} sale${offline.pendingSales === 1 ? "" : "s"} waiting to send.`}
           {!offline.snapshot && " This till has no saved catalogue yet — connect once to download it."}
         </Alert>
@@ -38,6 +38,30 @@ export default function OfflineBanner({ offline }: { offline: OfflineTill }) {
               Send now
             </Button>
           </Group>
+        </Alert>
+      )}
+
+      {offline.waitingMpesa.length > 0 && (
+        <Alert color="yellow" radius="md" icon={<IconClockHour4 size={20} />} title="Waiting for M-PESA">
+          <Stack gap={6}>
+            <Text size="sm">Safaricom has not confirmed these codes yet. The till tries again every 2 minutes for up to a day, then a manager is told.</Text>
+            {offline.waitingMpesa.map((w) =>
+              w.kind === "sale" ? (
+                <Group key={w.clientId} justify="space-between" wrap="nowrap">
+                  <Text size="sm">
+                    <Text span ff="monospace">
+                      {w.localNumber}
+                    </Text>{" "}
+                    · {formatKes(w.totalCents)} · {w.payload.tenders.filter((t) => t.method === "mpesa").map((t) => t.reference).join(", ")}
+                  </Text>
+                  <Button size="xs" variant="white" color="yellow" onClick={() => offline.sendWithoutWaiting(w.clientId)}>
+                    Send without waiting
+                  </Button>
+                </Group>
+              ) : null,
+            )}
+            <Text size="xs">Send without waiting records the sale now with the payment unverified (for example to end the shift); a manager checks it.</Text>
+          </Stack>
         </Alert>
       )}
 

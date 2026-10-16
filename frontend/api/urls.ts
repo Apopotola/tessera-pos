@@ -16,6 +16,10 @@ function resolveBackendOrigin(): string {
     return envOrigin || `http://localhost:${localPort}`;
   }
 
+  // Docker / hosting: Nginx serves the API on the page's own origin (set at build time in the Dockerfile),
+  // so even http://localhost:8080 must not be treated as local dev with a separate API port.
+  if (process.env.NEXT_PUBLIC_API_SAME_ORIGIN === "true") return "";
+
   const browserHost = window.location.hostname;
   const isBrowserLocal = LOCAL_HOSTS.includes(browserHost);
 
@@ -84,13 +88,18 @@ export const SALES_URLS = {
   tillApprovals: "/sales/till/approvals",
   tillSales: "/sales/till/sales",
   tillSale: (number: string) => `/sales/till/sales/${encodeURIComponent(number)}`,
+  tillShareLink: (number: string) => `/sales/till/sales/${encodeURIComponent(number)}/share-link`,
   tillReturns: "/sales/till/returns",
   tillVoids: "/sales/till/voids",
+  tillDrawerTest: "/sales/till/drawer-test",
   tillParked: "/sales/till/parked",
   tillRecall: (id: number) => `/sales/till/parked/${id}/recall`,
   openBottles: "/sales/open-bottles",
   writeOffBottle: (id: number) => `/sales/open-bottles/${id}/write-off`,
   sales: "/sales/sales",
+  saleShareLink: (id: number) => `/sales/sales/${id}/share-link`,
+  /** Public, no sign-in: the receipt behind a shared link. */
+  publicReceipt: (token: string) => `/sales/public/receipts/${encodeURIComponent(token)}`,
   shiftHistory: "/sales/shifts",
 } as const;
 
@@ -152,6 +161,7 @@ export const PURCHASING_URLS = {
   payables: "/purchasing/payables",
   supplierAccount: (id: number) => `/purchasing/suppliers/${id}/account`,
   supplierStatement: (id: number) => `/purchasing/suppliers/${id}/statement`,
+  supplierStatementPdf: (id: number) => `/purchasing/suppliers/${id}/statement/pdf`,
   supplierPayments: (id: number) => `/purchasing/suppliers/${id}/payments`,
   reverseSupplierPayment: (paymentId: number) => `/purchasing/payments/${paymentId}/reverse`,
   orders: "/purchasing/orders",
@@ -213,6 +223,7 @@ export const CUSTOMERS_URLS = {
   account: (id: number) => `/customers/${id}/account`,
   credit: (id: number) => `/customers/${id}/credit`,
   statement: (id: number) => `/customers/${id}/statement`,
+  statementPdf: (id: number) => `/customers/${id}/statement/pdf`,
   payments: (id: number) => `/customers/${id}/payments`,
   reversePayment: (paymentId: number) => `/customers/payments/${paymentId}/reverse`,
 } as const;

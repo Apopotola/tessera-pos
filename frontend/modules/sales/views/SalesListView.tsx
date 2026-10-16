@@ -14,6 +14,7 @@ import WorkspacePage from "@/components/shared/WorkspacePage";
 import type { WorkspaceViewProps } from "@/components/workspace/types";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import Receipt, { ReceiptPrint } from "@/modules/sales/components/Receipt";
+import ShareReceiptButton from "@/modules/sales/components/ShareReceiptButton";
 import { type Sale, TENDER_LABELS } from "@/types/sales";
 import { formatKes } from "@/utils/money";
 
@@ -169,9 +170,12 @@ function SaleModal({ sale, onClose }: { sale: Sale; onClose: () => void }) {
           {sale.returns.map((r) => (
             <Detail key={r.id} label={`Return ${r.number}`} value={`${formatKes(r.totalCents)} — ${r.reason}`} />
           ))}
-          <Button variant="default" leftSection={<IconPrinter size={16} />} onClick={() => setPrinting(true)} w="fit-content">
-            Print copy
-          </Button>
+          <Group gap="sm">
+            <Button variant="default" leftSection={<IconPrinter size={16} />} onClick={() => setPrinting(true)}>
+              Print copy
+            </Button>
+            <ShareReceiptButton size="sm" saleNumber={sale.number} businessName={sale.business.name} createToken={() => salesApi.shareSale(sale.id)} />
+          </Group>
         </Stack>
         <div style={{ border: "1px solid var(--mantine-color-gray-3)", borderRadius: 8 }}>
           <Receipt sale={sale} copy />

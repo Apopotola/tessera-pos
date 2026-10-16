@@ -23,8 +23,10 @@ interface TenderModalProps {
   stkPush: boolean;
   /** Registered customer on the sale; their KRA PIN goes on the invoice. */
   customer: TillCustomer | null;
-  /** Offline: cash and card only (M-PESA needs Safaricom). */
+  /** Offline: cash, card or a typed M-PESA code (checked when the sale reaches the server); never on account. */
   offline?: boolean;
+  /** M-PESA codes this till has already used offline (one use per till). */
+  usedMpesaCodes?: string[];
   pending: boolean;
   serverError: string | null;
   onClose: () => void;
@@ -51,11 +53,11 @@ function quickCash(totalCents: number): number[] {
  * (the same rule the API applies). M-PESA codes are checked against the statement until the
  * Payments module confirms them automatically.
  */
-export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, methods, splitAllowed, cashRoundingCents, stkPush, customer, offline = false, pending, serverError, onClose, onPay }: TenderModalProps) {
+export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, methods, splitAllowed, cashRoundingCents, stkPush, customer, offline = false, usedMpesaCodes = [], pending, serverError, onClose, onPay }: TenderModalProps) {
   const modes: Mode[] = [...methods, ...(splitAllowed && methods.length > 1 ? (["split"] as const) : [])];
   // On account: only for a picked account customer, and never offline (the limit cannot be checked).
   const creditAvailable = customer?.creditAvailableCents ?? null;
-  const usable = (m: Mode) => !(offline && (m === "mpesa" || m === "credit")) && !(m === "credit" && creditAvailable === null);
+  const usable = (m: Mode) => !(offline && m === "credit") && !(m === "credit" && creditAvailable === null);
   const [mode, setMode] = useState<Mode>(() => modes.find(usable) ?? "cash");
   const [cashKes, setCashKes] = useState<number | string>(roundTo(totalCents, cashRoundingCents) / 100);
   const [mpesaKes, setMpesaKes] = useState<number | string>("");
@@ -66,7 +68,8 @@ export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, methods,
   const [cardLast4, setCardLast4] = useState("");
   const [customerPin, setCustomerPin] = useState("");
   const [mpesaPaid, setMpesaPaid] = useState<MpesaPaid | null>(null);
-  const stk = mpesaMode === "stk";
+  // Offline there is no payment request: the cashier types the code from the customer's message.
+  const stk = mpesaMode === "stk" && !offline;
 
   const mpesaCents = mode === "mpesa" ? totalCents : mode === "split" ? (optionalKesToCents(mpesaKes) ?? 0) : 0;
   const cardCents = mode === "card" ? totalCents : mode === "split" ? (optionalKesToCents(cardKes) ?? 0) : 0;
@@ -83,7 +86,8 @@ export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, methods,
   const problems: string[] = [];
   if (cashDue < 0) problems.push("M-PESA, card and on-account amounts cannot be more than the total.");
   if (mpesaCents > 0 && stk && mpesaPaid?.amountCents !== mpesaCents) problems.push("Waiting for M-PESA: send the request or pick the customer's payment.");
-  if (mpesaCents > 0 && !stk && !/^[A-Za-z0-9]{8,12}$/.test(mpesaCode.trim())) problems.push("Enter the M-PESA code from the customer's message.");
+  if (mpesaCents > 0 && !stk && !(offline ? /^[A-Z0-9]{10}$/ : /^[A-Za-z0-9]{8,12}$/).test(mpesaCode.trim())) problems.push("Enter the 10-character M-PESA code from the customer's message.");
+  if (mpesaCents > 0 && offline && usedMpesaCodes.includes(mpesaCode.trim())) problems.push(`M-PESA code ${mpesaCode.trim()} was already used on this till.`);
   if (cardCents > 0 && !/^[A-Za-z0-9]{4,30}$/.test(cardRef.trim())) problems.push("Enter the card approval code from the terminal slip.");
   if (cardLast4 && !/^\d{4}$/.test(cardLast4)) problems.push("Card last 4 must be 4 digits.");
   if (customerPin && !/^[A-Za-z]\d{9}[A-Za-z]$/.test(customerPin.trim())) problems.push("KRA PIN looks like A123456789B.");
@@ -189,12 +193,12 @@ export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, methods,
         {mode === "card" && cardInputs}
         {offline && (
           <Text size="xs" c="yellow.8">
-            Offline: cash and card only. This sale is saved on the till and sent when the connection is back.
+            Offline: cash, card or M-PESA to the till. For M-PESA, check the amount on the customer&apos;s message and type its code: it cannot be checked until the connection is back. This sale is saved on the till and sent then.
           </Text>
         )}
         {mode === "split" && (
           <Stack gap="sm">
-            {!offline && methods.includes("mpesa") && mpesaInputs}
+            {methods.includes("mpesa") && mpesaInputs}
             {methods.includes("card") && cardInputs}
             {methods.includes("credit") && usable("credit") && customer && (
               <Stack gap={4}>

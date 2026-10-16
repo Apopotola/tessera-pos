@@ -3,6 +3,7 @@
 namespace Modules\Reports\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Services\BrandedPdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Authorization\Support\Permissions;
@@ -11,7 +12,7 @@ use Modules\Reports\ReportRegistry;
 use Modules\Reports\Services\ReportRunner;
 use Modules\Reports\Support\Column;
 use OpenApi\Attributes as OA;
-use Symfony\Component\HttpFoundation\StreamedResponse;
+use Symfony\Component\HttpFoundation\Response;
 
 /** Report catalogue, runs and CSV exports. */
 class ReportController extends Controller
@@ -53,13 +54,18 @@ class ReportController extends Controller
         ]);
     }
 
-    #[OA\Get(path: '/api/v1/reports/{key}/export', summary: 'Download a report as CSV (needs reports.export; logged)', tags: ['Reports'], responses: [new OA\Response(response: 200, description: 'CSV')])]
-    public function export(RunReportRequest $request, string $key): StreamedResponse
+    #[OA\Get(path: '/api/v1/reports/{key}/export', summary: 'Download a report as CSV, or format=pdf for an A4 PDF with the letterhead (needs reports.export; logged; cost columns only with reports.profit.view)', tags: ['Reports'], responses: [new OA\Response(response: 200, description: 'CSV or PDF')])]
+    public function export(RunReportRequest $request, string $key, BrandedPdf $pdf): Response
     {
         $report = $this->runner->authorize($request->user(), $this->registry->find($key));
         $filters = $this->runner->filters($report, $request->user(), $request->validated());
         $result = $this->runner->run($report, $filters, $request->user());
-        $this->runner->recordExport($report, $filters, $request->user(), count($result['rows']));
+        $format = $request->validated('format') ?? 'csv';
+        $this->runner->recordExport($report, $filters, $request->user(), count($result['rows']), $format);
+
+        if ($format === 'pdf') {
+            return $pdf->download($this->runner->pdfDocument($report, $filters, $result), $report->key().'-'.now()->format('Ymd-His').'.pdf', $request->user());
+        }
 
         ['columns' => $columns, 'rows' => $rows, 'totals' => $totals] = $result;
 

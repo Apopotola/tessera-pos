@@ -2,6 +2,7 @@
 
 use Illuminate\Support\Facades\Route;
 use Modules\Sales\Http\Controllers\OpenBottleController;
+use Modules\Sales\Http\Controllers\ReceiptLinkController;
 use Modules\Sales\Http\Controllers\SalesController;
 use Modules\Sales\Http\Controllers\ShiftController;
 use Modules\Sales\Http\Controllers\TillSaleController;
@@ -31,8 +32,10 @@ Route::middleware(['auth:sanctum', 'till.device'])->prefix('sales')->name('sales
         Route::post('approvals', [TillSaleController::class, 'approve'])->middleware('throttle:30,1')->name('approvals');
         Route::post('sales', [TillSaleController::class, 'store'])->name('sales.store');
         Route::get('sales/{number}', [TillSaleController::class, 'find'])->name('sales.find');
+        Route::post('sales/{number}/share-link', [ReceiptLinkController::class, 'fromTill'])->middleware('throttle:30,1')->name('sales.share-link');
         Route::post('returns', [TillSaleController::class, 'storeReturn'])->name('returns.store');
         Route::post('voids', [TillSaleController::class, 'void'])->name('voids');
+        Route::post('drawer-test', [TillSaleController::class, 'drawerTest'])->middleware('throttle:10,1')->name('drawer-test');
         Route::get('parked', [TillSaleController::class, 'parked'])->name('parked.index');
         Route::post('parked', [TillSaleController::class, 'park'])->name('parked.store');
         Route::post('parked/{parkedSale}/recall', [TillSaleController::class, 'recall'])->name('parked.recall');
@@ -42,9 +45,15 @@ Route::middleware(['auth:sanctum', 'till.device'])->prefix('sales')->name('sales
 // Back office (no till device needed).
 Route::middleware('auth:sanctum')->prefix('sales')->name('sales.')->group(function () {
     Route::get('sales', [SalesController::class, 'index'])->name('sales.index');
+    Route::post('sales/{sale}/share-link', [ReceiptLinkController::class, 'fromBackOffice'])->middleware('throttle:30,1')->name('sales.share-link');
     Route::get('shifts', [SalesController::class, 'shifts'])->name('shifts.index');
     Route::get('shifts/{shift}/detail', [SalesController::class, 'shiftDetail'])->name('shifts.detail');
     Route::post('shifts/{shift}/review', [SalesController::class, 'reviewShift'])->name('shifts.review');
     Route::get('open-bottles', [OpenBottleController::class, 'index'])->name('open-bottles.index');
     Route::post('open-bottles/{openBottle}/write-off', [OpenBottleController::class, 'writeOff'])->name('open-bottles.write-off');
+});
+
+// Public: the receipt behind a shared link (/r/{token}). No sign-in; rate-limited per address.
+Route::prefix('sales/public')->name('sales.public.')->group(function () {
+    Route::get('receipts/{token}', [ReceiptLinkController::class, 'show'])->middleware('throttle:receipt-link')->name('receipts.show');
 });

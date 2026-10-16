@@ -29,12 +29,13 @@ final class Roles
     public static function defaults(): array
     {
         return [
-            self::TESSERA_ADMIN => P::all(),
+            // Opening the drawer without a sale is the owner's alone.
+            self::TESSERA_ADMIN => array_values(array_diff(P::all(), [P::SALES_DRAWER_TEST])),
 
             self::OWNER => array_values(array_diff(P::all(), [P::SETTINGS_PLATFORM])),
 
             // Price changes and promotions are approved by the owner.
-            self::ADMIN => array_values(array_diff(P::all(), [P::PRICES_APPROVE, P::PROMOTIONS_APPROVE, P::SETTINGS_PLATFORM])),
+            self::ADMIN => array_values(array_diff(P::all(), [P::PRICES_APPROVE, P::PROMOTIONS_APPROVE, P::SETTINGS_PLATFORM, P::SALES_DRAWER_TEST])),
 
             self::BRANCH_MANAGER => [
                 P::DASHBOARD_VIEW, P::SALES_SELL, P::SALES_VIEW, P::SALES_DISCOUNT_WITHIN_LIMIT,

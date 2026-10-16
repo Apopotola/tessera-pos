@@ -6,9 +6,11 @@ use Illuminate\Events\Dispatcher;
 use Modules\Catalogue\Models\ProductVariant;
 use Modules\Compliance\Events\EtimsDocumentRejected;
 use Modules\Compliance\Models\EtimsSubmission;
+use Modules\Inventory\Events\StockLedgerMismatch;
 use Modules\Inventory\Services\StockQueryService;
 use Modules\Notifications\Models\Alert;
 use Modules\Notifications\Services\AlertService;
+use Modules\Sales\Events\OfflineMpesaFlagged;
 use Modules\Sales\Events\SaleCompleted;
 use Modules\Sales\Events\SaleReturned;
 use Modules\Sales\Events\ShiftClosed;
@@ -94,6 +96,33 @@ class AlertSubscriber
             ['submissionId' => $submission->id], "etims_rejected:{$submission->id}", 24 * 365);
     }
 
+    /** An offline sale was recorded with an M-PESA code Safaricom has not confirmed: a manager checks it. */
+    public function onOfflineMpesaFlagged(OfflineMpesaFlagged $event): void
+    {
+        $sale = Sale::query()->with(['branch', 'till', 'cashier'])->find($event->saleId);
+        if (! $sale) {
+            return;
+        }
+
+        $this->alerts->raise(Alert::MPESA_UNVERIFIED, $sale->branch_id, "M-PESA code {$event->receipt} not confirmed",
+            "Offline sale {$sale->number} on {$sale->till->name} by {$sale->cashier->name}: {$event->problem} Check the payment and match it on the M-PESA reconciliation screen.",
+            ['saleNumber' => $sale->number, 'receipt' => $event->receipt], "offline_mpesa:{$sale->id}:{$event->receipt}", 24 * 365);
+    }
+
+    /** The nightly ledger check: balances that disagree with the append-only stock ledger (once a day). */
+    public function onStockLedgerMismatch(StockLedgerMismatch $event): void
+    {
+        $count = count($event->differences);
+        $examples = array_map(
+            fn (array $d) => "{$d['item']} ({$d['sku']}) at {$d['branch']} {$d['location']}: balance {$d['balance']}, ledger {$d['ledger']}",
+            array_slice($event->differences, 0, 5),
+        );
+
+        $this->alerts->raise(Alert::STOCK_LEDGER, null, "{$count} stock balance(s) disagree with the stock ledger",
+            implode("\n", array_filter([...$examples, $count > 5 ? '…and '.($count - 5).' more.' : null, 'Stock on hand must equal the ledger: data may have been changed outside Tessera. Ask Tessera support before any stock count.'])),
+            ['count' => $count], 'stock_ledger:'.now()->toDateString());
+    }
+
     /** @return array<class-string, string> */
     public function subscribe(Dispatcher $events): array
     {
@@ -102,6 +131,8 @@ class AlertSubscriber
             SaleReturned::class => 'onReturn',
             ShiftClosed::class => 'onShiftClosed',
             EtimsDocumentRejected::class => 'onEtimsRejected',
+            OfflineMpesaFlagged::class => 'onOfflineMpesaFlagged',
+            StockLedgerMismatch::class => 'onStockLedgerMismatch',
         ];
     }
 }

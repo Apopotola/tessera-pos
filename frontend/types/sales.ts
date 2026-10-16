@@ -73,6 +73,8 @@ export interface SalePayload {
   stockApprovalToken?: string | null;
   /** Manager approval for a sale on account over the limit (or any, per Settings). */
   creditApprovalToken?: string | null;
+  /** Offline M-PESA code: record now as unverified instead of waiting for Safaricom (a manager is told). */
+  mpesaUnconfirmedOk?: boolean;
   lines: SaleLinePayload[];
   tenders: TenderPayload[];
 }
@@ -147,6 +149,41 @@ export interface ReceiptSettings {
   /** Licence numbers marked "print on receipt" (Compliance → Licences & permits). */
   licenceLines: string[];
   logo: string | null;
+}
+
+/** GET /sales/public/receipts/{token}: mirrors Modules\Sales\Http\Resources\PublicReceiptResource (no ids, costs or internal notes). */
+export interface PublicReceipt {
+  number: string;
+  completedAt: string;
+  status: Sale["status"];
+  etimsStatus: SaleEtimsStatus;
+  etims: EtimsReceipt | null;
+  business: { name: string; kraPin: string | null };
+  branch: { name: string };
+  till: { name: string };
+  /** Only when receipts show the cashier (Settings → Receipts). */
+  cashier: { name: string } | null;
+  customer: { name: string } | null;
+  customerPin: string | null;
+  subtotalCents: number;
+  discountCents: number;
+  totalCents: number;
+  roundingCents: number;
+  vatCents: number;
+  returnedCents: number;
+  lines: {
+    displayName: string;
+    unit: SaleUnit;
+    totMl: number | null;
+    quantity: number;
+    unitPriceCents: number;
+    discountCents: number;
+    promotionDiscountCents: number;
+    promotionName: string | null;
+    lineTotalCents: number;
+  }[];
+  tenders: { method: TenderMethod; amountCents: number; tenderedCents: number | null; changeCents: number | null }[];
+  receipt: { headerLines: string[]; footerLines: string[]; licenceLines: string[]; logo: string | null; returnPolicyDays: number | null };
 }
 
 export interface ReturnPayload {

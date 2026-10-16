@@ -43,6 +43,7 @@ Route::middleware('auth:sanctum')->prefix('purchasing')->name('purchasing.')->gr
     Route::get('payables', [SupplierAccountController::class, 'index'])->name('payables.index');
     Route::get('suppliers/{supplier}/account', [SupplierAccountController::class, 'show'])->name('suppliers.account');
     Route::get('suppliers/{supplier}/statement', [SupplierAccountController::class, 'statement'])->name('suppliers.statement');
+    Route::get('suppliers/{supplier}/statement/pdf', [SupplierAccountController::class, 'statementPdf'])->middleware('throttle:30,1')->name('suppliers.statement.pdf');
     Route::get('suppliers/{supplier}/payments', [SupplierAccountController::class, 'payments'])->name('suppliers.payments.index');
     Route::post('suppliers/{supplier}/payments', [SupplierAccountController::class, 'store'])->name('suppliers.payments.store');
     Route::post('payments/{payment}/reverse', [SupplierAccountController::class, 'reverse'])->name('payments.reverse');

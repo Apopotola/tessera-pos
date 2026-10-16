@@ -32,5 +32,8 @@ class AppServiceProvider extends ServiceProvider
 
             return Limit::perMinute((int) config('tessera-auth.pin_rate_limit', 5))->by($device.'|'.$request->input('userId'));
         });
+
+        // Shared receipt links (/r/{token}): plenty for a customer, far too few to guess a token.
+        RateLimiter::for('receipt-link', fn (Request $request) => Limit::perMinute(20)->by($request->ip()));
     }
 }

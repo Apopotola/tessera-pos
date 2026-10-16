@@ -8,6 +8,10 @@ import { offlineGet, offlineSet } from "@/utils/offlineStore";
 
 const SNAPSHOT_REFRESH_MS = 10 * 60 * 1000;
 const PING_EVERY_MS = 10 * 1000;
+/** An offline M-PESA code not yet confirmed by Safaricom is sent again after this. */
+const MPESA_RETRY_MS = 2 * 60 * 1000;
+/** M-PESA codes used offline on this till, kept so one is never used twice (the server checks too). */
+const MPESA_CODES_KEPT = 500;
 
 /**
  * Offline till. Keeps a copy of the catalogue on the device, notices when the connection
@@ -27,13 +31,16 @@ export function useOfflineTill(tillId: number, userId: number | undefined) {
 
   const snapshotKey = `snapshot:${tillId}`;
   const queueKey = `queue:${tillId}`;
+  const codesKey = `mpesa-codes:${tillId}`;
+  const [usedCodes, setUsedCodes] = useState<string[]>([]);
 
   // Load what is on the device.
   useEffect(() => {
     let active = true;
-    void Promise.all([offlineGet<TillSnapshot>(snapshotKey), offlineGet<QueuedEntry[]>(queueKey)]).then(([snap, saved]) => {
+    void Promise.all([offlineGet<TillSnapshot>(snapshotKey), offlineGet<QueuedEntry[]>(queueKey), offlineGet<string[]>(codesKey)]).then(([snap, saved, codes]) => {
       if (!active) return;
       if (snap) setSnapshot(snap);
+      setUsedCodes(codes ?? []);
       queueRef.current = saved ?? [];
       setQueue(queueRef.current);
       setLoaded(true);
@@ -41,7 +48,7 @@ export function useOfflineTill(tillId: number, userId: number | undefined) {
     return () => {
       active = false;
     };
-  }, [snapshotKey, queueKey]);
+  }, [snapshotKey, queueKey, codesKey]);
 
   const saveQueue = useCallback(
     (next: QueuedEntry[]) => {
@@ -132,6 +139,12 @@ export function useOfflineTill(tillId: number, userId: number | undefined) {
     async (payload: SalePayload, totalCents: number) => {
       if (!userId) throw new Error("No cashier signed in.");
       const localNumber = await nextLocalNumber();
+      const codes = payload.tenders.filter((t) => t.method === "mpesa" && t.reference).map((t) => String(t.reference));
+      if (codes.length) {
+        const next = [...usedCodes.filter((c) => !codes.includes(c)), ...codes].slice(-MPESA_CODES_KEPT);
+        setUsedCodes(next);
+        void offlineSet(codesKey, next);
+      }
       saveQueue([
         ...queueRef.current,
         { kind: "sale", clientId: payload.clientId, userId, localNumber, totalCents, queuedAt: new Date().toISOString(), payload, status: "pending", error: null },
@@ -146,7 +159,7 @@ export function useOfflineTill(tillId: number, userId: number | undefined) {
       }
       return localNumber;
     },
-    [userId, nextLocalNumber, saveQueue, snapshot, snapshotKey],
+    [userId, nextLocalNumber, saveQueue, snapshot, snapshotKey, usedCodes, codesKey],
   );
 
   const enqueueVoid = useCallback(
@@ -181,6 +194,12 @@ export function useOfflineTill(tillId: number, userId: number | undefined) {
             break;
           }
           if (e.status === 401 || e.status === 419 || e.status === 429 || e.status >= 500) break; // try again later
+          // Offline M-PESA code not confirmed by Safaricom yet: keep it, try again in a while.
+          if (e.formErrors.mpesaPending) {
+            const retryAt = new Date(Date.now() + MPESA_RETRY_MS).toISOString();
+            saveQueue(queueRef.current.map((q) => (q.kind === "sale" && q.clientId === entry.clientId ? { ...q, status: "waiting", error: e.formErrors.mpesaPending, retryAt } : q)));
+            continue;
+          }
           // Refused (validation / permission): keep it for a person to look at.
           const message = Object.values(e.formErrors)[0] ?? e.message;
           saveQueue(queueRef.current.map((q) => (q.clientId === entry.clientId ? { ...q, status: "failed", error: message } : q)));
@@ -194,6 +213,25 @@ export function useOfflineTill(tillId: number, userId: number | undefined) {
     return sent;
   }, [userId, saveQueue]);
 
+  /** Records a waiting M-PESA sale now as unverified (e.g. to end the shift); a manager is told. */
+  const sendWithoutWaiting = useCallback(
+    (clientId: string) => {
+      saveQueue(queueRef.current.map((q) => (q.kind === "sale" && q.clientId === clientId ? { ...q, status: "pending", error: null, retryAt: null, payload: { ...q.payload, mpesaUnconfirmedOk: true } } : q)));
+    },
+    [saveQueue],
+  );
+
+  // Waiting M-PESA sales go back in line when their retry time comes.
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      const now = Date.now();
+      if (queueRef.current.some((q) => q.status === "waiting" && q.kind === "sale" && q.retryAt && Date.parse(q.retryAt) <= now)) {
+        saveQueue(queueRef.current.map((q) => (q.status === "waiting" && q.kind === "sale" && q.retryAt && Date.parse(q.retryAt) <= now ? { ...q, status: "pending" } : q)));
+      }
+    }, 30_000);
+    return () => window.clearInterval(timer);
+  }, [saveQueue]);
+
   const retryFailed = useCallback(() => {
     saveQueue(queueRef.current.map((q) => (q.status === "failed" ? { ...q, status: "pending", error: null } : q)));
   }, [saveQueue]);
@@ -202,6 +240,11 @@ export function useOfflineTill(tillId: number, userId: number | undefined) {
   const pendingSales = mine.filter((q) => q.kind === "sale" && q.status === "pending").length;
   const pending = mine.filter((q) => q.status === "pending").length;
   const failed = mine.filter((q) => q.status === "failed");
+  const waitingMpesa = mine.filter((q) => q.status === "waiting");
+  const usedMpesaCodes = useMemo(
+    () => [...usedCodes, ...queue.flatMap((q) => (q.kind === "sale" ? q.payload.tenders.filter((t) => t.method === "mpesa" && t.reference).map((t) => String(t.reference)) : []))],
+    [usedCodes, queue],
+  );
   const othersWaiting = queue.filter((q) => q.userId !== userId && q.kind === "sale").length;
 
   // Send as soon as the connection is back (and whenever something new is queued online).
@@ -221,8 +264,11 @@ export function useOfflineTill(tillId: number, userId: number | undefined) {
     syncing,
     lastSynced,
     retryFailed,
+    sendWithoutWaiting,
     pendingSales,
     failed,
+    waitingMpesa,
+    usedMpesaCodes,
     othersWaiting,
     /** Anything of this cashier's not yet on the server (blocks ending the shift). */
     unsynced: mine.length,

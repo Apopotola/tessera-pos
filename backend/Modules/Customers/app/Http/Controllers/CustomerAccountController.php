@@ -3,11 +3,15 @@
 namespace Modules\Customers\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Services\BrandedPdf;
 use App\Support\Aging;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Modules\AuditTrail\Services\AuditLogger;
 use Modules\Authorization\Support\Permissions;
 use Modules\Customers\Models\Customer;
 use Modules\Customers\Models\CustomerPayment;
@@ -66,6 +70,38 @@ class CustomerAccountController extends Controller
         $data = $request->validate(['from' => ['required', 'date'], 'to' => ['required', 'date', 'after_or_equal:from']]);
 
         return $this->success('Statement.', $this->accounts->statement($customer, CarbonImmutable::parse($data['from'])->startOfDay(), CarbonImmutable::parse($data['to'])->endOfDay()));
+    }
+
+    #[OA\Get(path: '/api/v1/customers/{customer}/statement/pdf', summary: 'The statement as an A4 PDF with the business letterhead (logged)', tags: ['Customers'], responses: [new OA\Response(response: 200, description: 'application/pdf')])]
+    public function statementPdf(Request $request, Customer $customer, BrandedPdf $pdf, AuditLogger $audit): Response
+    {
+        $this->requireAccountsAccess($request);
+        $data = $request->validate(['from' => ['required', 'date'], 'to' => ['required', 'date', 'after_or_equal:from']]);
+        $from = CarbonImmutable::parse($data['from'])->startOfDay();
+        $to = CarbonImmutable::parse($data['to'])->endOfDay();
+        $statement = $this->accounts->statement($customer, $from, $to);
+        $limit = $customer->credit_limit_cents;
+
+        $audit->log('customers.statement.downloaded', $customer, after: ['from' => $from->toDateString(), 'to' => $to->toDateString()], userId: $request->user()->id);
+
+        return $pdf->download([
+            'title' => 'Customer statement',
+            'subtitle' => $from->format('j M Y').' to '.$to->format('j M Y'),
+            'meta' => array_values(array_filter([
+                ['Customer', $customer->name],
+                $customer->kra_pin ? ['KRA PIN', $customer->kra_pin] : null,
+                $customer->phone ? ['Phone', $customer->phone] : null,
+                ['Payment terms', "{$customer->credit_terms_days} days"],
+            ])),
+            'summary' => array_values(array_filter([
+                ['Opening balance (KES)', BrandedPdf::money($statement['openingCents'])],
+                ['Balance due (KES)', BrandedPdf::money($statement['closingCents'])],
+                $limit !== null ? ['Credit limit (KES)', BrandedPdf::money($limit)] : null,
+                $limit !== null ? ['Available (KES)', BrandedPdf::money(max(0, $limit - $this->accounts->balance($customer)))] : null,
+            ])),
+            ...BrandedPdf::statementTable($statement, 'Charged', 'Paid'),
+            'notes' => ['Amounts in Kenya shillings. Sales on account, returns to the account and payments received in the period.'],
+        ], 'statement-'.Str::slug($customer->name).'-'.$from->toDateString().'-'.$to->toDateString().'.pdf', $request->user());
     }
 
     #[OA\Get(path: '/api/v1/customers/{customer}/payments', summary: 'Payments received on the account (newest first)', tags: ['Customers'], responses: [new OA\Response(response: 200, description: 'Payments')])]

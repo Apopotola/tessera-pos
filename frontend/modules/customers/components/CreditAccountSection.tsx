@@ -77,7 +77,7 @@ export default function CreditAccountSection({ customer }: { customer: Customer 
 
       {a && (a.hasAccount || a.balanceCents !== 0) && (
         <>
-          <StatementCard load={loadStatement} subject={`${customer.name} owes`} />
+          <StatementCard load={loadStatement} subject={`${customer.name} owes`} downloadPdf={(from, to) => customersApi.statementPdf(customer.id, from, to)} />
           <PaymentsCard
             load={loadPayments}
             refreshKey={version}

@@ -12,7 +12,7 @@ Point of sale for Kenyan wines & spirits retail: bottle-size variants, an append
 | --- | --- |
 | API | Laravel 12, PHP 8.4, `nwidart/laravel-modules` 12, Sanctum (SPA cookies), spatie/laravel-permission, L5-Swagger |
 | Web | Next.js 16 (App Router), React 19, TypeScript, Mantine 8, Redux Toolkit, Axios, Tabler Icons |
-| Data | PostgreSQL 16, Redis (queues, later) |
+| Data | PostgreSQL 16 (database cache, queue and sessions; no Redis) |
 
 ## Repository layout
 
@@ -30,6 +30,10 @@ frontend/           Next.js app
   types/            API contracts mirroring Laravel Resources
 docs/               Requirements and architecture
 compose.dev.yaml    Local PostgreSQL + Redis (optional)
+Dockerfile          One image: Nginx + PHP-FPM + Next.js (see "Docker")
+docker/             Image config (Nginx, PHP, Supervisor, entrypoint)
+docker-compose.yml  PostgreSQL + the app on :8080, optional public tunnel
+render.yaml         Render Blueprint for the free demo
 ```
 
 ## Local development
@@ -98,12 +102,43 @@ Owner, Admin and Tessera Support accounts use **two-step login**: the first sign
 
 Lost or replaced device: **Administration → Branches → Tills → Disconnect**. Staff and PINs: **Administration → Users & roles**.
 
+## Docker
+
+One image runs everything behind one origin: **Nginx** in front, **PHP 8.4-FPM** for `/api`, `/sanctum`, `/storage` and the Swagger docs (`/api/documentation`), and the **Next.js** standalone server for the rest. **Supervisor** also runs the scheduler (`php artisan schedule:work`: eTIMS every minute, notifications, the nightly low-stock digest, customer anonymisation and the 23:30 ledger check) and the queue worker (`php artisan queue:work database`, eTIMS submissions). There is no Redis: cache, queue and sessions use the database.
+
+```bash
+docker compose up -d --build
+```
+
+Open **http://localhost:8080** and sign in as `owner@tessera.test` / `password` (demo mode: two-step login is off, the till PINs are in *Local demo accounts*). The first start takes about a minute.
+
+- **On every start** (`docker/entrypoint.sh`) the container waits for PostgreSQL, runs `migrate --force`, seeds **only an empty database** (with `TESSERA_DEMO=true` it also runs `DemoShowcaseSeeder`), links storage, generates the API docs and caches config, routes, views and events.
+- **APP_KEY:** taken from the environment; locally one is generated on the first start and kept in the `app-storage` volume, so sessions and encrypted settings survive rebuilds.
+- **Demo settings:** `APP_ENV=local`, `APP_DEBUG=false`, `MPESA_DRIVER=fake`, `ETIMS_DRIVER=disabled`. Override any of them in a root `.env` (not committed), e.g. `APP_PORT=9090`.
+- **Share it:** `docker compose --profile share up -d` adds a free Cloudflare quick tunnel; the public HTTPS link is in `docker compose logs tunnel` (look for `trycloudflare.com`). It changes every time the tunnel restarts.
+- **Reset everything:** `docker compose down -v` (deletes the database and uploads).
+- `compose.dev.yaml` is unchanged: it only starts PostgreSQL for `php artisan serve` + `pnpm dev`.
+- The browser calls the API on the same origin because the image is built with `NEXT_PUBLIC_API_SAME_ORIGIN=true`; local development on ports 3010/8010 is unaffected.
+
+## Free demo hosting (Render + Neon)
+
+`render.yaml` is a Render **Blueprint**: one free Docker web service built from the `Dockerfile`, with the health check on `/api/v1/ping`. The database is a free **Neon** PostgreSQL project (Render's own free PostgreSQL is deleted after 30 days); `DB_SSLMODE=require`.
+
+1. **Neon** (neon.tech): create a project in *AWS Europe Central 1 (Frankfurt)*, PostgreSQL 16. From *Connect*, note the host, user and password (database `neondb`).
+2. **APP_KEY:** run `php -r "echo 'base64:'.base64_encode(random_bytes(32)), PHP_EOL;"` once and keep the value.
+3. **Render** (render.com): *New → Blueprint*, pick this repository and branch `main`. Fill in `APP_KEY`, `DB_HOST`, `DB_USERNAME` and `DB_PASSWORD` when asked, then *Apply*. The first build takes about 10 minutes.
+4. Open the service URL (`https://tessera-pos-demo.onrender.com` or similar) and sign in as `owner@tessera.test` / `password`. `APP_URL` defaults to Render's public URL.
+
+**Free-plan limits:** the service **sleeps after 15 minutes without visits** and takes **about a minute to wake**; anything uploaded (logos, branding images) is **lost when it sleeps or redeploys** (no disk on the free plan; the database keeps everything else). 512 MB of RAM, so PHP-FPM runs at most 4 workers and large PDF exports stop at 2,000 rows. Neon's free database suspends when idle and wakes on the first query. This is for demos only: a real shop needs a paid plan, `APP_ENV=production`, its own owner account (`TESSERA_OWNER_EMAIL`, `TESSERA_OWNER_PASSWORD`), `MPESA_DRIVER=daraja` and eTIMS.
+
 ## Checks
 
 ```bash
 cd backend && php artisan test && vendor/bin/pint --test && composer validate
-cd frontend && pnpm lint && pnpm typecheck && pnpm build
+cd frontend && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
+
+`pnpm test` runs the frontend unit tests (`modules/**/*.test.ts`, e.g. the receipt printer) on the Playwright runner in Node: no browser, server or database.
 
 ### Till end-to-end tests
 
@@ -138,7 +173,7 @@ cd frontend && TESSERA_PHP=/path/to/php8.4 pnpm e2e
 | Purchasing | Suppliers (last cost per item), purchase orders with VAT and maker–checker approval, goods received into stock at PO cost (damaged-on-arrival kept out), supplier invoices with three-way match, returns to supplier with credit note | Purchase orders + PO detail, supplier invoices, returns to supplier, suppliers |
 | Payments | M-PESA Express (STK Push) with Daraja callback + status query, customer-initiated Till/Paybill (C2B) payments pooled until matched, M-PESA tender confirmed only by a Safaricom confirmation, back-office matching of typed codes; drivers `daraja`, `fake` (demo), `manual` | Till: send payment request / pick customer's payment; M-PESA reconciliation screen |
 | Compliance | eTIMS transactional outbox (every sale and return queued in its own transaction), credit notes referencing the signed invoice, retry back-off 1→30 min, refused data held as "needs fixing", daily POS vs KRA-signed reconciliation, dashboard alerts; drivers `fake` (mock KRA) and `disabled` — VSCU/OSCU driver pending the KRA v2.0 spec | eTIMS monitor (invoices & credit notes, daily check); receipts print KRA invoice no., signature and QR |
-| Reports | 14 reports off the immutable ledgers (sales summary, by item/product/category/brand, by cashier/branch/tender, voids-discounts-overrides, returns; stock on hand, valuation as at a date, losses by reason, count variance, transfers, low stock; gross profit, cash-ups, purchases by supplier) with branch/date/category/brand/staff filters, cost columns hidden without `reports.profit.view`, CSV export gated by `reports.export` and audit-logged | Report centre (grouped catalogue incl. links to existing screens) + one report tab per report with totals, Print / PDF and CSV |
+| Reports | 14 reports off the immutable ledgers (sales summary, by item/product/category/brand, by cashier/branch/tender, voids-discounts-overrides, returns; stock on hand, valuation as at a date, losses by reason, count variance, transfers, low stock; gross profit, cash-ups, purchases by supplier) with branch/date/category/brand/staff filters, cost columns hidden without `reports.profit.view`, CSV export gated by `reports.export` and audit-logged | Report centre (grouped catalogue incl. links to existing screens) + one report tab per report with totals, Print, CSV and A4 PDF |
 | Settings | One registry of ~75 settings in 9 sections; scoped values (till → branch → business → default); admin levels (Tessera support / owner / branch manager); every change logged with history and undo; industry presets that keep the owner's own changes; encrypted secrets; branding uploads; locked-after-first-use rules | Settings screen; live branding (colours, logo, favicon, login page); settings drive the till, receipts, approvals, stock, payments, eTIMS and dashboard |
 | Credit & supplier payments (Phase 2) | Customer credit accounts (limit, terms, on hold at 0), sales "on account" at the till with manager approval over the limit, returns refunded to the account, payments received and reversed, statements and aging; supplier balances from invoices − payments − credit notes, partial payments and reversals, invoices on query, aging; receivables/payables aging reports; append-only payment tables | Customers → Customer accounts, customer credit section; Purchasing → Supplier accounts; till "On account" payment |
 | Notifications (Phase 2) | Alerts raised from sales (item crosses its reorder level), large refunds, cash-ups outside the allowed variance, KRA-refused invoices, eTIMS waiting too long, nightly low-stock digest and the end-of-day summary; in-app inbox per user by permission and branch; SMS / WhatsApp / email outbox for owners (SMS and WhatsApp demo-logged until a provider is chosen) | Header bell; Administration → Messages sent |
@@ -179,13 +214,66 @@ The PostgreSQL session timezone is set to `APP_TIMEZONE` (config/database.php) s
 
 ## Offline till
 
-When the connection drops the till keeps selling **cash and card** from a copy of the catalogue saved on the device (IndexedDB): prices, barcodes, shelf stock and registered customers, refreshed every 10 minutes while online.
+When the connection drops the till keeps selling for **cash, card and M-PESA till codes** from a copy of the catalogue saved on the device (IndexedDB): prices, barcodes, shelf stock and registered customers, refreshed every 10 minutes while online.
 
 - Offline sales print a receipt with a provisional number (`OFFLINE-<till>-0001`) marked *recorded offline*; the official number and the eTIMS invoice follow when the sale reaches the server.
 - Queued sales are sent in order as soon as the connection is back. The server keeps the time of sale, prices the sale as it was then, and records it once even if it is sent twice (`clientId`). Refused sales stay on the till as *needs attention* for a manager.
-- Offline, these wait for the connection: M-PESA, manager approvals (overrides, big discounts, large voids, refunds), returns, parking, locking and ending the shift. A shift cannot end while its offline sales are still sending.
+- **M-PESA offline (till codes):** the customer pays to the shop's till or paybill as usual and shows the message. The cashier checks the amount and types the 10-character code under *M-PESA*; the till warns that it cannot be checked yet. A code can be used only once on a till (checked on the till and by a unique index on the server, `offline_mpesa_codes`).
+  - When the sale reaches the server, the code is matched against the payments that reached the shop (C2B confirmations): same amount, not used on another sale, not taken at another branch, and paid to *Settings → Payments → Till or Paybill number / Daraja shortcode* when those are set. A match confirms the payment exactly as at an online till.
+  - Safaricom's confirmation can arrive late: the till keeps the sale (*Waiting for M-PESA*) and sends it again every 2 minutes. After `SALES_OFFLINE_MPESA_WAIT_HOURS` (default 24) from the time of sale, or at once if the code is used, for another amount or for another till, the sale is recorded with the payment **unverified** and managers with `payments.reconcile` at that branch get an alert (*Offline M-PESA not confirmed*, always on). They match or chase it on *Payments → M-PESA reconciliation*. Every such sale is in the audit log (`sales.offline_mpesa.flagged`).
+  - **Send without waiting** (in the *Waiting for M-PESA* box) records the sale now with the payment unverified, for example to end the shift; the manager is told the same way.
+- Offline, these wait for the connection: M-PESA payment requests and picking a customer's payment, sales on account, manager approvals (overrides, big discounts, large voids, refunds), returns, parking, locking and ending the shift. A shift cannot end while its offline sales are still sending.
 - A cashier already signed in when the connection dropped can keep selling, even after reloading the page (production builds cache the till page with `public/sw.js`). Signing in a new cashier needs the connection.
 - Offline sales older than `SALES_OFFLINE_MAX_HOURS` (default 72, REQUIRES VALIDATION against KRA/VSCU rules) are refused on sync.
+
+## Receipt printing
+
+Each till prints its receipts the way *Settings → Integrations → Receipt printer* says (set per business, branch or till):
+
+| Connection | Use | Needs |
+| --- | --- | --- |
+| Print through the browser (default) | Any printer the computer knows | Nothing; the print dialog opens with the 58/80 mm layout |
+| USB thermal printer | ESC/POS printer on a USB cable | Chrome or Edge (WebUSB) |
+| Serial or Bluetooth printer | Serial / USB-serial printers, and Bluetooth printers paired as a COM port | Chrome or Edge on a computer (Web Serial); *Serial printer speed* from the printer's self-test page |
+| RawBT app | Android tablets and phones (Bluetooth, USB or network printers) | The free RawBT app from Google Play |
+| No printer | Receipts are not printed automatically | The *Print receipt* button still opens the print dialog |
+
+- **Direct printing** sends ESC/POS commands, which every common thermal printer understands. Receipts follow *Receipts → Paper size* (58 mm: 32 characters, 80 mm: 48). The *Receipt logo* is turned black and white (dithered) when *Show on receipt → Logo* is ticked, and the printer draws the eTIMS QR itself. The logo is kept on the till, so offline receipts still carry it.
+- **Set up a till:** till menu → **Printer** → **Choose printer** (USB or serial: the browser asks once and remembers the device) → **Print test page**. The test page shows the business name, the logo and a full line of characters, then cuts the paper.
+- **If the printer cannot be reached** (unplugged, out of paper, another browser) the receipt opens in the print dialog instead, so a receipt is never lost, and the till says why.
+- Reprints from *Return / reprint* print `*** COPY ***`. The back office (*Sales*) prints through the browser.
+- Code: `frontend/modules/sales/printer/` (ESC/POS writer, logo raster, transports, receipt layout) and `frontend/modules/till/components/PrinterModal.tsx`.
+
+### Cash drawer
+
+- *Settings → Integrations → Cash drawer → Plugged into the receipt printer* (per business, branch or till). The drawer is wired to the printer's drawer port, so it needs a direct receipt printer (USB, serial or RawBT).
+- The drawer opens when a sale **took cash** (a cash payment above zero, including the cash part of a split payment), before the receipt prints. It never opens for a reprint, or for a sale paid only by M-PESA, card or on account.
+- **Test drawer** (till menu → *Printer*) is for the **owner only** (permission `sales.drawer.test`; not admins or Tessera support). The API refuses it when the till has no drawer and writes `sales.drawer.tested` to the audit log before the drawer opens. On an existing database, run `php artisan db:seed --class="Modules\Authorization\Database\Seeders\AuthorizationDatabaseSeeder"` once to add the permission to the Owner role.
+- Opening the drawer without a sale from the sales screen (*Open drawer* quick button, *Open cash drawer without a sale* approval) is still *Coming later*.
+
+## Sharing receipts by link
+
+- **Share receipt** on the till's *Sale complete* screen (online sales only) and on a sale in *Sales* (permission `sales.view` at that branch) makes a private link such as `https://<your Tessera>/r/<48 random letters and digits>`. Send it on WhatsApp (the button opens WhatsApp with the message ready) or copy it into an SMS or email.
+- The link opens the receipt **without signing in**: what the paper receipt shows (business, branch, licence line, lines, promotions, payments and change, VAT, the eTIMS invoice and QR) and nothing else. It never shows database ids, costs or margins, approvers, return reasons, M-PESA or card references, or the cashier's name unless *Receipts → Show on receipt → Cashier name* is ticked. The page is not indexed by search engines and sends no referrer.
+- **Security:** only the SHA-256 hash of the token is stored (`sale_receipt_links`, append-only by a DB trigger), so even the database cannot rebuild a link. Each share makes a new link. Opening links is limited to 20 a minute per address (`throttle:receipt-link`). Every link made (`sales.receipt_link.created`) and every open (`sales.receipt_link.opened`, with the visitor's address) is in the audit log.
+- A link cannot be switched off once sent: share it only with the customer. An offline sale gets its link after it reaches the server.
+
+## PDF exports (A4)
+
+- **Reports:** every report has **Download PDF** next to *Export CSV* (permission `reports.export`; both are logged as `reports.exported` with the format). The PDF shows exactly the columns on screen: cost of goods, gross profit and margin appear only for users with `reports.profit.view`. Long reports stop at 2,000 rows (the PDF says so; the CSV has them all). More than 7 columns prints landscape.
+- **Statements:** *Customers → customer → Credit account → Statement* and *Purchasing → Supplier accounts → Statement* have a **PDF** button for the dates chosen (same permissions as the statement; each download is logged as `customers.statement.downloaded` / `purchasing.statement.downloaded`). Customer statements show the balance due, credit limit and what is still available.
+- **Letterhead:** the business name (*Branding → Business display name*), legal name, address, phone, email and KRA PIN (*Settings → Business*), the *App logo* (PNG or JPEG) and the *Primary colour*. Every page has who generated it, when, and "Page x of y".
+- Rendered on the server with `barryvdh/laravel-dompdf` (pure PHP, no system binaries); the shared layout is `backend/app/Services/BrandedPdf.php` and `backend/resources/views/pdf/document.blade.php`. *Print* still prints the screen as before.
+
+## Nightly stock ledger check
+
+Stock on hand (`stock_balances`) is a projection of the append-only stock ledger (`stock_movements`), updated in the same transaction as every movement. Every night at **23:30** the scheduler runs:
+
+```bash
+php artisan inventory:check-ledger
+```
+
+It compares each balance with the sum of its movements, both ways (a balance with no movements, movements with no balance row). If everything agrees it prints *All stock balances agree with the stock ledger.* and exits 0. Otherwise it lists each difference (branch, location, SKU, item, balance, ledger) and **exits 1**, so cron or CI can catch it, and the owners get an alert (*Stock ledger check*, always on, once a day) linking to the stock ledger. A difference means data was changed outside Tessera: ask Tessera support before any stock count. Run it by hand at any time; it only reads.
 
 ## Cash control
 
@@ -223,7 +311,7 @@ When the connection drops the till keeps selling **cash and card** from a copy o
 
 ## Notifications (Phase 2)
 
-- **Alerts** (switch each on or off in *Settings → Notifications*): low stock (when a sale takes an item to or below its reorder level, plus a nightly digest at 06:00), large refund (from *A refund is "large" from*, default KES 5,000), cash variance (a cash-up outside the allowed variance), eTIMS failure (KRA refused an invoice, or invoices waiting over an hour), and the owner's end-of-day summary at *Daily report time* (default 21:00).
+- **Alerts** (switch each on or off in *Settings → Notifications*): low stock (when a sale takes an item to or below its reorder level, plus a nightly digest at 06:00), large refund (from *A refund is "large" from*, default KES 5,000), cash variance (a cash-up outside the allowed variance), eTIMS failure (KRA refused an invoice, or invoices waiting over an hour), and the owner's end-of-day summary at *Daily report time* (default 21:00). *Offline M-PESA not confirmed* and the nightly *Stock ledger check* cannot be switched off.
 - **Who gets them:** the bell in the header shows each alert to everyone who can act on it at that branch (e.g. managers and storekeepers for low stock); owners get everything. The bell's polling does not keep an idle session alive.
 - **SMS / WhatsApp / email** go to owners (phone and email from *Users & roles*), per *Channels*. Email uses Laravel mail (`MAIL_MAILER`, `log` in development). SMS and WhatsApp use the `log` driver (`NOTIFY_SMS_DRIVER`, `NOTIFY_WHATSAPP_DRIVER`): messages are written to the server log, not delivered, until a provider (e.g. Africa's Talking) and a registered sender ID are set up. *Administration → Messages sent* lists every message and marks demo ones.
 - The scheduler runs `notifications:run` every minute (daily summary, eTIMS waiting, sending the outbox) and `notifications:low-stock` nightly — keep `php artisan schedule:work` running in development. `php artisan notifications:run --summary-now` sends today's summary straight away.

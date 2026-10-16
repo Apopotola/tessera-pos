@@ -11,6 +11,7 @@ use Modules\Auth\Models\User;
 use Modules\Authorization\Support\Permissions;
 use Modules\Payments\Models\MpesaConfirmation;
 use Modules\Sales\Models\SaleTender;
+use Modules\Settings\Services\SettingsService;
 
 /**
  * Ties an M-PESA confirmation to a tender — the only way an M-PESA tender becomes
@@ -19,7 +20,10 @@ use Modules\Sales\Models\SaleTender;
  */
 class MpesaAllocator
 {
-    public function __construct(private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly AuditLogger $audit,
+        private readonly SettingsService $settings,
+    ) {}
 
     /** Checks a confirmation before the sale is written. */
     public function assertUsable(int $confirmationId, int $amountCents, int $branchId, string $field): MpesaConfirmation
@@ -38,6 +42,33 @@ class MpesaAllocator
         }
 
         return $confirmation;
+    }
+
+    /**
+     * An M-PESA code typed at an offline till, checked when the sale reaches the server: the customer's
+     * payment must be in the pool (C2B confirmation), unused, for the same amount, not taken at another
+     * branch, and paid to this shop's till or paybill number when that is set.
+     *
+     * @return array{confirmation: MpesaConfirmation|null, problem: string|null} confirmation when usable;
+     *                                                                           neither when it has not arrived yet
+     */
+    public function matchOfflineCode(string $receipt, int $amountCents, int $branchId): array
+    {
+        $confirmation = MpesaConfirmation::query()->where('receipt', $receipt)->first();
+        if (! $confirmation) {
+            return ['confirmation' => null, 'problem' => null];
+        }
+
+        $ours = array_filter([$this->settings->get('payments.mpesa_shortcode'), $this->settings->get('payments.mpesa_number')]);
+        $problem = match (true) {
+            $confirmation->tender_id !== null => "M-PESA code {$receipt} is already used on another sale.",
+            $confirmation->branch_id !== null && $confirmation->branch_id !== $branchId => "M-PESA code {$receipt} was taken at another branch.",
+            $confirmation->amount_cents !== $amountCents => "M-PESA code {$receipt} is for KES ".number_format($confirmation->amount_cents / 100, 2).', not KES '.number_format($amountCents / 100, 2).'.',
+            $ours !== [] && $confirmation->shortcode !== null && ! in_array($confirmation->shortcode, $ours, true) => "M-PESA code {$receipt} was paid to another till or paybill ({$confirmation->shortcode}).",
+            default => null,
+        };
+
+        return ['confirmation' => $problem ? null : $confirmation, 'problem' => $problem];
     }
 
     /** Inside the sale transaction, after the tender row exists. */

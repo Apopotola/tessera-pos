@@ -22,6 +22,8 @@ export const customersApi = {
   account: (id: number) => api.get<CustomerAccount>(U.account(id)),
   setCredit: (id: number, creditLimitCents: number | null, creditTermsDays: number) => api.put<CustomerAccount>(U.credit(id), { creditLimitCents, creditTermsDays }),
   statement: (id: number, from: string, to: string) => api.get<Statement>(U.statement(id), { from, to }),
+  /** A4 PDF with the letterhead; logged on the server. */
+  statementPdf: (id: number, from: string, to: string) => downloadFile(U.statementPdf(id), { from, to }, `statement-${from}-${to}.pdf`),
   payments: (id: number) => api.get<AccountPayment[]>(U.payments(id)),
   receivePayment: (id: number, payload: CustomerPaymentPayload) => api.post<AccountPayment>(U.payments(id), payload),
   reversePayment: (paymentId: number, reason: string) => api.post<AccountPayment>(U.reversePayment(paymentId), { reason }),

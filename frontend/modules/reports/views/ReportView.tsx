@@ -3,7 +3,7 @@
 import { Alert, Button, Group, Select, SegmentedControl, Stack, Table, Text } from "@mantine/core";
 import { DateInput } from "@mantine/dates";
 import { notifications } from "@mantine/notifications";
-import { IconDownload, IconPrinter } from "@tabler/icons-react";
+import { IconDownload, IconFileTypePdf, IconPrinter } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { useCallback, useMemo, useState } from "react";
 import { ApiError, reportsApi } from "@/api";
@@ -18,11 +18,11 @@ import { formatKes } from "@/utils/money";
 
 const today = () => dayjs().format("YYYY-MM-DD");
 
-/** One report: filters, table with totals, notes, CSV export and print (Save as PDF). */
+/** One report: filters, table with totals, notes, CSV and A4 PDF export, and print. */
 export default function ReportView({ title, section, props }: WorkspaceViewProps) {
   const reportKey = String(props?.reportKey ?? "");
   const [query, setQuery] = useState<ReportQuery>({ from: dayjs().startOf("month").format("YYYY-MM-DD"), to: today(), asAt: today() });
-  const [exporting, setExporting] = useState(false);
+  const [exporting, setExporting] = useState<"csv" | "pdf" | null>(null);
 
   const fetchReport = useCallback(() => reportsApi.run(reportKey, query), [reportKey, query]);
   const report = useApiQuery(fetchReport);
@@ -34,14 +34,16 @@ export default function ReportView({ title, section, props }: WorkspaceViewProps
   const filters = useMemo(() => definition?.filters ?? [], [definition]);
   const set = (patch: ReportQuery) => setQuery((q) => ({ ...q, ...patch }));
 
-  const exportCsv = async () => {
-    setExporting(true);
+  /** CSV (plain numbers for spreadsheets) or an A4 PDF with the letterhead; both logged on the server. */
+  const exportAs = async (format: "csv" | "pdf") => {
+    if (exporting) return;
+    setExporting(format);
     try {
-      await reportsApi.exportCsv(reportKey, query);
+      await (format === "pdf" ? reportsApi.exportPdf(reportKey, query) : reportsApi.exportCsv(reportKey, query));
     } catch (e) {
       notifications.show({ color: "red", message: e instanceof ApiError ? e.message : "Export failed." });
     } finally {
-      setExporting(false);
+      setExporting(null);
     }
   };
 
@@ -61,12 +63,17 @@ export default function ReportView({ title, section, props }: WorkspaceViewProps
       actions={
         <>
           {catalogue.data?.canExport && (
-            <Button leftSection={<IconDownload size={16} />} loading={exporting} disabled={!report.data?.rows.length} onClick={() => void exportCsv()}>
-              Export CSV
-            </Button>
+            <>
+              <Button leftSection={<IconDownload size={16} />} loading={exporting === "csv"} disabled={!report.data?.rows.length || exporting === "pdf"} onClick={() => void exportAs("csv")}>
+                Export CSV
+              </Button>
+              <Button variant="default" leftSection={<IconFileTypePdf size={16} />} loading={exporting === "pdf"} disabled={!report.data || exporting === "csv"} onClick={() => void exportAs("pdf")}>
+                Download PDF
+              </Button>
+            </>
           )}
           <Button variant="default" leftSection={<IconPrinter size={16} />} disabled={!report.data} onClick={() => window.print()}>
-            Print / PDF
+            Print
           </Button>
         </>
       }

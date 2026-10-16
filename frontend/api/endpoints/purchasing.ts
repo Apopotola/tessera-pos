@@ -1,4 +1,4 @@
-import { api } from "@/api/client";
+import { api, downloadFile } from "@/api/client";
 import { PURCHASING_URLS as U } from "@/api/urls";
 import type { AccountPayment, AccountsList, Statement, SupplierAccount, SupplierPaymentPayload } from "@/types/accounts";
 import type { Paginated } from "@/types/api";
@@ -50,6 +50,8 @@ export const purchasingApi = {
   payables: (asAt?: string) => api.get<AccountsList<SupplierAccount>>(U.payables, asAt ? { asAt } : undefined),
   supplierAccount: (id: number) => api.get<SupplierAccount>(U.supplierAccount(id)),
   supplierStatement: (id: number, from: string, to: string) => api.get<Statement>(U.supplierStatement(id), { from, to }),
+  /** A4 PDF with the letterhead; logged on the server. */
+  supplierStatementPdf: (id: number, from: string, to: string) => downloadFile(U.supplierStatementPdf(id), { from, to }, `supplier-statement-${from}-${to}.pdf`),
   supplierPayments: (id: number) => api.get<AccountPayment[]>(U.supplierPayments(id)),
   paySupplier: (id: number, payload: SupplierPaymentPayload) => api.post<AccountPayment>(U.supplierPayments(id), payload),
   reverseSupplierPayment: (paymentId: number, reason: string) => api.post<AccountPayment>(U.reverseSupplierPayment(paymentId), { reason }),

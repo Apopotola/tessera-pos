@@ -139,6 +139,8 @@ class TillSaleController extends Controller
             'tenders.*.reference' => ['nullable', 'string', 'alpha_num', 'max:30'],
             'tenders.*.confirmationId' => ['nullable', 'integer'],
             'tenders.*.cardLast4' => ['nullable', 'digits:4'],
+            // Offline M-PESA code: record now as unverified instead of waiting for Safaricom (a manager is told).
+            'mpesaUnconfirmedOk' => ['nullable', 'boolean'],
         ]);
 
         ['sale' => $sale, 'replayed' => $replayed] = $this->sales->complete($this->till($request), $request->user(), $data);
@@ -211,6 +213,25 @@ class TillSaleController extends Controller
         ], reason: $data['reason'] ?? null, userId: $request->user()->id, approverId: $approverId, branchId: $till->branch_id, reference: "till:{$till->id}");
 
         return $this->success('Line removed.');
+    }
+
+    #[OA\Post(path: '/api/v1/sales/till/drawer-test', summary: 'Owner only: log a test opening of the cash drawer (the till then sends the pulse to its printer)', tags: ['Till'], responses: [
+        new OA\Response(response: 200, description: 'Logged; open the drawer'),
+        new OA\Response(response: 403, description: 'Not the owner'),
+        new OA\Response(response: 422, description: 'This till has no cash drawer'),
+    ])]
+    public function drawerTest(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->can(Permissions::SALES_DRAWER_TEST), 403);
+        $till = $this->till($request);
+
+        if (! $this->policy->forTill($till)['printer']['cashDrawer']) {
+            return $this->error('This till has no cash drawer. Set Settings → Integrations → Cash drawer first.', 422, ['drawer' => ['No cash drawer on this till.']]);
+        }
+
+        $this->audit->log('sales.drawer.tested', $till, reason: 'Drawer test (no sale)', userId: $request->user()->id, branchId: $till->branch_id, reference: "till:{$till->id}");
+
+        return $this->success('Open the drawer.');
     }
 
     #[OA\Get(path: '/api/v1/sales/till/parked', summary: 'Sales parked on this till', tags: ['Till'], responses: [new OA\Response(response: 200, description: 'Parked sales')])]
