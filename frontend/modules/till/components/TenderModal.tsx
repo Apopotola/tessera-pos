@@ -27,6 +27,8 @@ interface TenderModalProps {
   offline?: boolean;
   /** M-PESA codes this till has already used offline (one use per till). */
   usedMpesaCodes?: string[];
+  /** The method picked on the sale panel (M-PESA / Cash / Card), used when it is available. */
+  initialMethod?: TenderMethod | null;
   pending: boolean;
   serverError: string | null;
   onClose: () => void;
@@ -53,12 +55,12 @@ function quickCash(totalCents: number): number[] {
  * (the same rule the API applies). M-PESA codes are checked against the statement until the
  * Payments module confirms them automatically.
  */
-export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, methods, splitAllowed, cashRoundingCents, stkPush, customer, offline = false, usedMpesaCodes = [], pending, serverError, onClose, onPay }: TenderModalProps) {
+export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, methods, splitAllowed, cashRoundingCents, stkPush, customer, offline = false, usedMpesaCodes = [], initialMethod = null, pending, serverError, onClose, onPay }: TenderModalProps) {
   const modes: Mode[] = [...methods, ...(splitAllowed && methods.length > 1 ? (["split"] as const) : [])];
   // On account: only for a picked account customer, and never offline (the limit cannot be checked).
   const creditAvailable = customer?.creditAvailableCents ?? null;
   const usable = (m: Mode) => !(offline && m === "credit") && !(m === "credit" && creditAvailable === null);
-  const [mode, setMode] = useState<Mode>(() => modes.find(usable) ?? "cash");
+  const [mode, setMode] = useState<Mode>(() => (initialMethod && modes.includes(initialMethod) && usable(initialMethod) ? initialMethod : (modes.find(usable) ?? "cash")));
   const [cashKes, setCashKes] = useState<number | string>(roundTo(totalCents, cashRoundingCents) / 100);
   const [mpesaKes, setMpesaKes] = useState<number | string>("");
   const [mpesaCode, setMpesaCode] = useState("");

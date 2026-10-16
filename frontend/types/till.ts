@@ -120,6 +120,8 @@ export interface TillSnapshot {
   generatedAt: string;
   items: (TillItem & { search: string })[];
   barcodes: { code: string; variantId: number; units: number; packName: string | null }[];
+  /** Category chips: top-level categories of the items sold here, in catalogue order. */
+  categories: { id: number; name: string }[];
   /** First-screen favourites, in order. */
   favouriteIds: number[];
   /** Promotions approved for the day the snapshot was taken. */

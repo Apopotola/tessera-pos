@@ -133,12 +133,27 @@ class TillCatalogueService
                 ]))),
             ], $this->present($till, $variants->all())),
             'barcodes' => $barcodes,
+            'categories' => $this->topCategories($variants->all()),
             'favouriteIds' => $this->favouriteIds($till),
             'promotions' => $this->promotions($till),
             'customers' => DB::table('customers')->where('is_active', true)->whereNull('anonymised_at')->orderBy('name')
                 ->get(['id', 'name', 'kra_pin', 'is_wholesale'])
                 ->map(fn ($c) => ['id' => (int) $c->id, 'name' => $c->name, 'kraPin' => $c->kra_pin, 'isWholesale' => (bool) $c->is_wholesale])->all(),
         ];
+    }
+
+    /**
+     * The till's category chips: the top-level categories of the items it sells, in catalogue order.
+     *
+     * @param  list<ProductVariant>  $variants
+     * @return list<array{id: int, name: string}>
+     */
+    private function topCategories(array $variants): array
+    {
+        $ids = array_unique(array_filter(array_map(fn (ProductVariant $v) => $v->product->category?->parent_id ?? $v->product->category_id, $variants)));
+
+        return DB::table('categories')->whereIn('id', $ids)->orderBy('sort_order')->orderBy('name')->get(['id', 'name'])
+            ->map(fn ($c) => ['id' => (int) $c->id, 'name' => $c->name])->all();
     }
 
     /** @return array{item: array<string, mixed>, units: int, packName: string|null}|null */
@@ -181,6 +196,8 @@ class TillCatalogueService
                 // For promotions that target a category (or its parent) or a brand.
                 'categoryIds' => array_values(array_filter([$v->product->category_id, $v->product->category?->parent_id])),
                 'brandId' => $v->product->brand_id,
+                // Product photo (null: the till shows a plain bottle tile).
+                'imageUrl' => $v->product->imageUrl(),
                 // Licensed hours: only items recorded with 0% ABV (soft drinks, mixers) sell at any time.
                 'alcoholic' => $v->product->isAlcoholic(),
                 'sku' => $v->sku,

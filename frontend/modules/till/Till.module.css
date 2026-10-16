@@ -106,30 +106,64 @@
   }
 }
 
-/* Selling screen: products (left) + cart (right). */
+/* Selling screen ("New sale"): category chips + product grid (left), current sale (right).
+   Light surfaces on brand cream; the till header keeps the navy brand band. */
 .sell {
   display: grid;
   grid-template-columns: 1fr;
   min-height: 100vh;
-  background: #1c1d2e;
+  background: #f4f2ec;
+  color: #1c1d2e;
 }
 
 .sellMain {
   display: flex;
   flex-direction: column;
-  gap: 20px;
+  gap: 14px;
   min-width: 0;
-  padding: 24px 20px;
+  padding: 16px;
+}
+
+.sellHeader {
+  padding: 14px 18px;
+  border-radius: 14px;
+  background: #1c1d2e;
 }
 
 .searchInput {
-  background: #262739;
-  border-color: #3b3c55;
-  color: #fff;
+  background: var(--mantine-color-white);
+  border-color: var(--mantine-color-gray-3);
 }
 
 .searchInput:focus {
+  border-color: var(--mantine-color-tessera-5);
+}
+
+.chips {
+  flex-shrink: 0;
+}
+
+.chip {
+  flex-shrink: 0;
+  padding: 8px 16px;
+  border-radius: 999px;
+  border: 1px solid var(--mantine-color-gray-3);
+  background: var(--mantine-color-white);
+  color: #1c1d2e;
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 120ms ease, border-color 120ms ease, color 120ms ease;
+}
+
+.chip:hover {
   border-color: var(--mantine-color-tessera-4);
+}
+
+.chip[data-active] {
+  background: #1c1d2e;
+  border-color: #1c1d2e;
+  color: var(--mantine-color-white);
 }
 
 .results {
@@ -139,74 +173,97 @@
 
 .itemGrid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 12px;
+  padding-bottom: 4px;
 }
 
 .item {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  min-height: 116px;
-  padding: 14px 16px;
+  gap: 6px;
+  padding: 10px;
   border-radius: 14px;
-  background: #262739;
-  border: 2px solid transparent;
-  transition: background 120ms ease, border-color 120ms ease;
+  background: var(--mantine-color-white);
+  border: 1px solid var(--mantine-color-gray-2);
+  box-shadow: 0 1px 2px rgb(28 29 46 / 6%);
+  transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 
 .item:hover {
-  border-color: var(--mantine-color-tessera-7);
-}
-
-.itemMain {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.totButton {
-  margin: 4px -8px -6px;
-  padding: 8px;
-  border-radius: 10px;
-  background: var(--mantine-color-tessera-9);
-  color: #fff;
-}
-
-.totButton:hover {
-  background: var(--mantine-color-tessera-7);
+  border-color: var(--mantine-color-tessera-3);
+  box-shadow: 0 4px 12px rgb(28 29 46 / 10%);
 }
 
 .item[data-disabled] {
   opacity: 0.55;
 }
 
+.itemMain {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.itemPhoto {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  aspect-ratio: 4 / 3;
+  overflow: hidden;
+  border-radius: 10px;
+  background: #f4f2ec;
+  color: var(--mantine-color-tessera-4);
+}
+
+.itemText {
+  min-width: 0;
+}
+
+.itemFoot {
+  margin-top: auto;
+}
+
+.totButton {
+  padding: 8px;
+  border-radius: 10px;
+  background: var(--mantine-color-tessera-0);
+  color: var(--mantine-color-tessera-8);
+}
+
+.totButton:hover {
+  background: var(--mantine-color-tessera-1);
+}
+
 .cart {
   display: flex;
   flex-direction: column;
-  gap: 16px;
-  padding: 24px 20px;
-  background: #262739;
+  gap: 12px;
+  min-width: 0;
+  padding: 18px 16px;
+  background: var(--mantine-color-white);
+  border-left: 1px solid var(--mantine-color-gray-2);
 }
 
 .cartLines {
   flex: 1;
-  min-height: 200px;
+  min-height: 160px;
 }
 
 .cartLine {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
+  gap: 8px;
+  padding: 8px 10px;
   border-radius: 10px;
-  background: #1c1d2e;
+  background: #f4f2ec;
 }
 
 .cartTotals {
   padding-top: 12px;
-  border-top: 1px solid #3b3c55;
+  border-top: 1px solid var(--mantine-color-gray-3);
 }
 
 .receiptPreview {
@@ -216,55 +273,76 @@
   border-radius: 8px;
 }
 
-@media (min-width: $mantine-breakpoint-md) {
+/* Tablet and up: products and the sale side by side, each scrolling on its own. */
+@media (min-width: $mantine-breakpoint-sm) {
   .sell {
-    grid-template-columns: 1fr 420px;
+    grid-template-columns: 1fr 340px;
     height: 100vh;
   }
 
-  .sellMain {
-    padding: 32px 40px;
-    overflow: hidden;
-  }
-
+  .sellMain,
   .cart {
     overflow: hidden;
   }
 }
 
-/* Settings → Sales screen: list layout and standard (smaller) buttons. */
+@media (min-width: $mantine-breakpoint-md) {
+  .sell {
+    grid-template-columns: 1fr 400px;
+  }
+
+  .sellMain {
+    padding: 20px 28px;
+  }
+
+  .cart {
+    padding: 22px 22px;
+  }
+
+  .itemGrid {
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  }
+}
+
+/* Settings → Sales screen: list layout and large touch buttons. */
 .itemList {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.itemList .item {
-  min-height: 0;
-  padding: 10px 14px;
-}
-
 .itemList .itemMain {
   flex-direction: row;
   align-items: center;
+  gap: 14px;
+}
+
+.itemList .itemPhoto {
+  width: 52px;
+  flex-shrink: 0;
+}
+
+.itemList .itemText {
+  flex: 1;
+}
+
+.itemList .itemFoot {
+  margin-top: 0;
   gap: 16px;
 }
 
-.sell[data-touch="standard"] .item {
-  min-height: 92px;
-  padding: 10px 12px;
+.sell[data-touch="large"] .itemGrid {
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
 }
 
-.sell[data-touch="standard"] .itemGrid {
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 8px;
+.sell[data-touch="large"] .chip {
+  padding: 11px 20px;
+  font-size: 16px;
 }
 
-.sectionLabel {
-  margin: 4px 0 10px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--mantine-color-gray-5);
+/* Narrow sale panel (tablet portrait): payment method names only, so M-PESA fits. */
+@media (max-width: $mantine-breakpoint-md) {
+  .methodButton :global(.mantine-Button-section) {
+    display: none;
+  }
 }
