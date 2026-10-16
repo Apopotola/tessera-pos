@@ -1,7 +1,7 @@
 import { api } from "@/api/client";
 import { PING_URL, SALES_URLS as U } from "@/api/urls";
 import type { Paginated } from "@/types/api";
-import type { Approval, ApprovalAction, OpenBottle, ParkedLine, ParkedSale, PromotionRule, ReturnPayload, Sale, SalePayload, ScanResult, ShiftDetail, ShiftRow, TillItem } from "@/types/sales";
+import type { Approval, ApprovalAction, OpenBottle, ParkedLine, ParkedSale, PromotionRule, PublicReceipt, ReturnPayload, Sale, SalePayload, ScanResult, ShiftDetail, ShiftRow, TillItem } from "@/types/sales";
 import type { Shift, TillSnapshot } from "@/types/till";
 
 export const salesApi = {
@@ -28,6 +28,10 @@ export const salesApi = {
   approve: (approverId: number, pin: string, action: ApprovalAction) => api.post<Approval>(U.tillApprovals, { approverId, pin, action }),
   completeSale: (payload: SalePayload) => api.post<Sale>(U.tillSales, payload),
   findSale: (number: string) => api.get<Sale>(U.tillSale(number)),
+  /** A new shareable link (/r/{token}); the token is only ever returned here. */
+  shareFromTill: (number: string) => api.post<{ token: string }>(U.tillShareLink(number)).then((r) => r.token),
+  shareSale: (id: number) => api.post<{ token: string }>(U.saleShareLink(id)).then((r) => r.token),
+  publicReceipt: (token: string) => api.get<PublicReceipt>(U.publicReceipt(token)),
   returnItems: (payload: ReturnPayload) => api.post<Sale>(U.tillReturns, payload),
   logVoid: (variantId: number, quantity: number, valueCents: number, reason: string | null, approvalToken: string | null) =>
     api.post<null>(U.tillVoids, { variantId, quantity, valueCents, reason, approvalToken }),

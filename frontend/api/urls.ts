@@ -84,6 +84,7 @@ export const SALES_URLS = {
   tillApprovals: "/sales/till/approvals",
   tillSales: "/sales/till/sales",
   tillSale: (number: string) => `/sales/till/sales/${encodeURIComponent(number)}`,
+  tillShareLink: (number: string) => `/sales/till/sales/${encodeURIComponent(number)}/share-link`,
   tillReturns: "/sales/till/returns",
   tillVoids: "/sales/till/voids",
   tillDrawerTest: "/sales/till/drawer-test",
@@ -92,6 +93,9 @@ export const SALES_URLS = {
   openBottles: "/sales/open-bottles",
   writeOffBottle: (id: number) => `/sales/open-bottles/${id}/write-off`,
   sales: "/sales/sales",
+  saleShareLink: (id: number) => `/sales/sales/${id}/share-link`,
+  /** Public, no sign-in: the receipt behind a shared link. */
+  publicReceipt: (token: string) => `/sales/public/receipts/${encodeURIComponent(token)}`,
   shiftHistory: "/sales/shifts",
 } as const;
 

@@ -214,6 +214,13 @@ Each till prints its receipts the way *Settings → Integrations → Receipt pri
 - **Test drawer** (till menu → *Printer*) is for the **owner only** (permission `sales.drawer.test`; not admins or Tessera support). The API refuses it when the till has no drawer and writes `sales.drawer.tested` to the audit log before the drawer opens. On an existing database, run `php artisan db:seed --class="Modules\Authorization\Database\Seeders\AuthorizationDatabaseSeeder"` once to add the permission to the Owner role.
 - Opening the drawer without a sale from the sales screen (*Open drawer* quick button, *Open cash drawer without a sale* approval) is still *Coming later*.
 
+## Sharing receipts by link
+
+- **Share receipt** on the till's *Sale complete* screen (online sales only) and on a sale in *Sales* (permission `sales.view` at that branch) makes a private link such as `https://<your Tessera>/r/<48 random letters and digits>`. Send it on WhatsApp (the button opens WhatsApp with the message ready) or copy it into an SMS or email.
+- The link opens the receipt **without signing in**: what the paper receipt shows (business, branch, licence line, lines, promotions, payments and change, VAT, the eTIMS invoice and QR) and nothing else. It never shows database ids, costs or margins, approvers, return reasons, M-PESA or card references, or the cashier's name unless *Receipts → Show on receipt → Cashier name* is ticked. The page is not indexed by search engines and sends no referrer.
+- **Security:** only the SHA-256 hash of the token is stored (`sale_receipt_links`, append-only by a DB trigger), so even the database cannot rebuild a link. Each share makes a new link. Opening links is limited to 20 a minute per address (`throttle:receipt-link`). Every link made (`sales.receipt_link.created`) and every open (`sales.receipt_link.opened`, with the visitor's address) is in the audit log.
+- A link cannot be switched off once sent: share it only with the customer. An offline sale gets its link after it reaches the server.
+
 ## Cash control
 
 - **Cash drops:** during a shift the cashier moves excess notes to the safe from the till menu (*Cash drop to safe*); a manager witnesses it with their PIN. A drop can never exceed what the drawer should hold, and drops are append-only.

@@ -9,6 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, authApi, salesApi } from "@/api";
 import { brand } from "@/app/theme";
 import Receipt, { ReceiptPrint } from "@/modules/sales/components/Receipt";
+import ShareReceiptButton from "@/modules/sales/components/ShareReceiptButton";
 import { openDrawerForSale, printReceipt } from "@/modules/sales/printer";
 import { type ApprovalRules, type CartLine, cartTotals, withPromotions, fromParked, lineKey, lineName, lineTotal, looksLikeBarcode, needsApproval, newClientId, newLine, repriceForCustomer, sameLine, toParked, toPayload } from "@/modules/till/cart";
 import CustomerPicker from "@/modules/till/components/CustomerPicker";
@@ -812,6 +813,10 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
               <Button variant="default" leftSection={<IconPrinter size={18} />} onClick={() => void printSale(completed, false, true)}>
                 Print receipt
               </Button>
+              {/* An offline sale has no official number yet, so nothing to link to. */}
+              {!completed.pendingSync && isOnline && (
+                <ShareReceiptButton saleNumber={completed.number} businessName={completed.business.name} createToken={() => salesApi.shareFromTill(completed.number)} />
+              )}
               <Button
                 data-autofocus
                 onClick={() => {
