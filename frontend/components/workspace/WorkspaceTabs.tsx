@@ -5,8 +5,12 @@ import { IconX } from "@tabler/icons-react";
 import { useState, type MouseEvent } from "react";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { closeOtherTabs, closeTab, closeTabsToRight, setActiveTab } from "@/store/slices/tabsSlice";
+import classes from "./WorkspaceTabs.module.css";
 
-/** Tab strip: click to switch, × or middle-click to close, right-click for bulk close. */
+/**
+ * Slim light tab strip (inside the workspace bar): click to switch, × or middle-click to close,
+ * right-click for bulk close. Every open tab stays mounted (WorkspaceTabRenderer).
+ */
 export default function WorkspaceTabs() {
   const dispatch = useAppDispatch();
   const { tabs, activeTabId } = useAppSelector((state) => state.tabs);
@@ -17,9 +21,9 @@ export default function WorkspaceTabs() {
   };
 
   return (
-    <ScrollArea type="never" offsetScrollbars={false} bg="white" style={{ borderBottom: "1px solid var(--mantine-color-gray-3)" }}>
-      <Tabs value={activeTabId} onChange={(value) => value && dispatch(setActiveTab(value))} variant="pills" radius="md" px="sm" py={8}>
-        <Tabs.List style={{ flexWrap: "nowrap", gap: 4 }}>
+    <ScrollArea type="never" offsetScrollbars={false} style={{ flex: 1, minWidth: 0 }}>
+      <Tabs value={activeTabId} onChange={(value) => value && dispatch(setActiveTab(value))} variant="unstyled" classNames={{ list: classes.list, tab: classes.tab }}>
+        <Tabs.List>
           {tabs.map((tab) => (
             <Menu
               key={tab.id}
@@ -38,7 +42,7 @@ export default function WorkspaceTabs() {
                   }}
                 >
                   <Group gap={6} wrap="nowrap">
-                    <Text size="sm" truncate maw={180}>
+                    <Text size="xs" fw={600} truncate maw={180}>
                       {tab.title}
                     </Text>
                     {tab.isClosable && (
@@ -46,8 +50,7 @@ export default function WorkspaceTabs() {
                         component="span"
                         size="xs"
                         variant="transparent"
-                        // Inherit the tab's text colour so the × stays visible on the active (filled) pill.
-                        style={{ color: "inherit", opacity: 0.75 }}
+                        style={{ color: "inherit", opacity: 0.6 }}
                         aria-label={`Close ${tab.title}`}
                         onClick={(event: MouseEvent) => {
                           event.stopPropagation();

@@ -1,6 +1,6 @@
 "use client";
 
-import { Badge, Button, Group, Paper, SimpleGrid, Stack, Text, ThemeIcon, Title } from "@mantine/core";
+import { Badge, Button, Group, SimpleGrid, Stack, Text, ThemeIcon } from "@mantine/core";
 import { IconAlertTriangle, IconCalculator, IconCircleCheck, IconClock } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import Link from "next/link";
@@ -11,6 +11,7 @@ import DataCard from "@/components/shared/DataCard";
 import QueryState from "@/components/shared/QueryState";
 import StatTile from "@/components/shared/StatTile";
 import WorkspacePage from "@/components/shared/WorkspacePage";
+import type { WorkspaceViewProps } from "@/components/workspace/types";
 import { useApiQuery } from "@/hooks/useApiQuery";
 import { BranchesCard, CashVarianceCard, ExceptionsCard, LowStockCard, MoversCard } from "@/modules/dashboard/components/KpiCards";
 import { usePermissions } from "@/hooks/usePermissions";
@@ -60,7 +61,7 @@ function greeting(): string {
  * Operational snapshot from real data only. Sales, stock-gap and eTIMS figures
  * join these tiles when the Sales and Inventory modules record them.
  */
-export default function DashboardView() {
+export default function DashboardView({ section }: WorkspaceViewProps) {
   const dispatch = useAppDispatch();
   const { can } = usePermissions();
   const user = useAppSelector((state) => state.auth.user);
@@ -72,41 +73,36 @@ export default function DashboardView() {
   const tile = (key: string) => !chosenTiles?.length || chosenTiles.includes(key);
 
   return (
-    <WorkspacePage>
+    <WorkspacePage
+      section={section}
+      title={`${greeting()}, ${firstName}`}
+      description={data ? `${data.branches.length === 1 ? data.branches[0].name : `${data.branches.length} branches`} · ${dayjs().format("dddd D MMMM")}` : dayjs().format("dddd D MMMM")}
+      actions={
+        can(PERMISSIONS.SALES_SELL) && (
+          <Button component={Link} href="/till" leftSection={<IconCalculator size={18} />}>
+            Open till
+          </Button>
+        )
+      }
+    >
       <QueryState loading={loading && !data} error={error} isEmpty={false} onRetry={reload}>
         {data && (
           <>
-            <Paper radius="xl" p="xl" style={{ background: brand.navyRaised }}>
-              <Group justify="space-between" align="flex-start" mb="lg">
-                <div>
-                  <Text size="sm" c="gray.5">
-                    {data.branches.length === 1 ? data.branches[0].name : `${data.branches.length} branches`} · {dayjs().format("dddd D MMMM")}
-                  </Text>
-                  <Title order={2} c="white" fz={34} className="tessera-display">
-                    {greeting()}, {firstName}
-                  </Title>
-                </div>
-                {can(PERMISSIONS.SALES_SELL) && (
-                  <Button component={Link} href="/till" color="amber.5" c={brand.navy} leftSection={<IconCalculator size={18} />}>
-                    Open till
-                  </Button>
-                )}
-              </Group>
+            {/* Today's money first, then the shop at a glance (white tiles; amber = needs attention). */}
+            <Stack gap="md">
               {data.salesToday && (
-                <SimpleGrid cols={{ base: 2, md: 4 }} mb="md">
+                <SimpleGrid cols={{ base: 1, xs: 2, lg: 4 }}>
                   {tile("sales_today") && (
                     <StatTile
-                      tone="dark"
                       label="Sales today"
                       value={formatKes(data.salesToday.netCents)}
                       hint={`${data.salesToday.transactions} ${data.salesToday.transactions === 1 ? "sale" : "sales"} · ${versusLastWeek(data.salesToday.netCents, data.salesToday.lastWeekNetCents)}`}
                       onClick={() => dispatch(openTab(SALES_TAB))}
                     />
                   )}
-                  {tile("takings") && <StatTile tone="dark" label="Cash" value={formatKes(data.salesToday.cashCents)} />}
+                  {tile("takings") && <StatTile label="Cash" value={formatKes(data.salesToday.cashCents)} />}
                   {tile("takings") && (
                     <StatTile
-                      tone="dark"
                       label="M-PESA · card"
                       value={formatKes(data.salesToday.mpesaCents + data.salesToday.cardCents)}
                       hint={`Card ${formatKes(data.salesToday.cardCents)}${data.salesToday.creditCents ? ` · on account ${formatKes(data.salesToday.creditCents)}` : ""}`}
@@ -114,7 +110,6 @@ export default function DashboardView() {
                   )}
                   {tile("gross_profit") && data.salesToday.grossProfitCents !== null && (
                     <StatTile
-                      tone="dark"
                       label="Gross profit today"
                       value={formatKes(data.salesToday.grossProfitCents)}
                       hint={data.salesToday.marginPercent !== null ? `${data.salesToday.marginPercent}% margin, after VAT and cost of goods` : "After VAT and cost of goods"}
@@ -122,25 +117,23 @@ export default function DashboardView() {
                   )}
                 </SimpleGrid>
               )}
-              <SimpleGrid cols={{ base: 2, md: 4 }}>
-                {tile("shifts") && data.openShifts && <StatTile tone="dark" label="Shifts open now" value={data.openShifts.length} />}
-                {tile("tills") && data.tills && <StatTile tone="dark" label="Tills connected" value={`${data.tills.connected} / ${data.tills.total}`} />}
+              <SimpleGrid cols={{ base: 1, xs: 2, lg: 4 }}>
+                {tile("shifts") && data.openShifts && <StatTile label="Shifts open now" value={data.openShifts.length} />}
+                {tile("tills") && data.tills && <StatTile label="Tills connected" value={`${data.tills.connected} / ${data.tills.total}`} />}
                 {tile("catalogue") && data.catalogue && (
-                  <StatTile tone="dark" label="Items on sale" value={data.catalogue.activeVariants} hint={`${data.catalogue.activeProducts} products`} />
+                  <StatTile label="Items on sale" value={data.catalogue.activeVariants} hint={`${data.catalogue.activeProducts} products`} />
                 )}
                 {tile("low_stock") && data.inventory && (
                   <StatTile
-                    tone="dark"
                     highlight={data.inventory.lowStock > 0}
                     label="Items low on stock"
                     value={data.inventory.lowStock}
                     onClick={() => dispatch(openTab(STOCK_TAB))}
                   />
                 )}
-                {tile("stock_value") && data.inventory?.stockValueCents != null && <StatTile tone="dark" label="Stock value (at cost)" value={formatKes(data.inventory.stockValueCents)} />}
+                {tile("stock_value") && data.inventory?.stockValueCents != null && <StatTile label="Stock value (at cost)" value={formatKes(data.inventory.stockValueCents)} />}
                 {tile("losses") && data.inventory?.lossesThisMonthCents != null && (
                   <StatTile
-                    tone="dark"
                     label="Shrinkage this month"
                     value={formatKes(data.inventory.lossesThisMonthCents)}
                     hint={data.shrinkage?.percentOfCogs != null ? `${data.shrinkage.percentOfCogs}% of cost of goods sold · breakage and missing` : "Breakage and missing stock at cost"}
@@ -149,7 +142,6 @@ export default function DashboardView() {
                 )}
                 {tile("receivables") && data.receivables && data.receivables.customers > 0 && (
                   <StatTile
-                    tone="dark"
                     highlight={data.receivables.over90Cents > 0}
                     label="Owed by customers"
                     value={formatKes(data.receivables.balanceCents)}
@@ -159,7 +151,6 @@ export default function DashboardView() {
                 )}
                 {tile("payables") && data.payables && data.payables.suppliers > 0 && (
                   <StatTile
-                    tone="dark"
                     label="Owed to suppliers"
                     value={formatKes(data.payables.balanceCents)}
                     hint={`${formatKes(data.payables.dueCents)} past due${data.payables.onQueryCents ? ` · ${formatKes(data.payables.onQueryCents)} on query` : ""}`}
@@ -168,7 +159,6 @@ export default function DashboardView() {
                 )}
                 {tile("etims") && data.compliance && (
                   <StatTile
-                    tone="dark"
                     highlight={data.compliance.waitingOverThreshold > 0 || data.compliance.rejected > 0}
                     label="eTIMS invoices not yet signed"
                     value={data.compliance.pending + data.compliance.failed + data.compliance.rejected}
@@ -184,7 +174,6 @@ export default function DashboardView() {
                 )}
                 {tile("price_changes") && data.pendingPriceChanges !== null && (
                   <StatTile
-                    tone="dark"
                     highlight={data.pendingPriceChanges > 0}
                     label="Price changes waiting"
                     value={data.pendingPriceChanges}
@@ -192,7 +181,7 @@ export default function DashboardView() {
                   />
                 )}
               </SimpleGrid>
-            </Paper>
+            </Stack>
 
             <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
               {data.openShifts && <OpenShiftsCard shifts={data.openShifts} />}

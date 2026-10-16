@@ -72,6 +72,7 @@ The generator (custom stubs in `stubs/nwidart-stubs`) creates an API-only module
 
 - Menus come from the API. Each leaf carries a `viewType` and `path`.
 - `components/workspace/ViewRegistry.tsx` maps `viewType` to a lazily loaded screen. Unknown types fall back to `PlaceholderView`.
+- The shell (`components/layout/ContentLayout.tsx`) is the sidebar plus `WorkspaceBar`: open tabs (`WorkspaceTabs`), the alert bell and the account menu.
 - `store/slices/tabsSlice.ts` holds open tabs (max 8). `WorkspaceTabRenderer` keeps every tab mounted and hides inactive ones.
 - `WorkspaceUrlSync` maps the URL to a tab (deep links, reload, back/forward) and the active tab back to the URL.
 

@@ -3,35 +3,25 @@
 import { AppShell } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { brand } from "@/app/theme";
-import Header from "@/components/layout/Header";
 import Sidebar from "@/components/layout/Sidebar";
+import WorkspaceBar from "@/components/layout/WorkspaceBar";
 import WorkspaceTabRenderer from "@/components/workspace/WorkspaceTabRenderer";
-import WorkspaceTabs from "@/components/workspace/WorkspaceTabs";
 import WorkspaceUrlSync from "@/components/workspace/WorkspaceUrlSync";
 import sidebarClasses from "@/components/layout/Sidebar.module.css";
 
-/** Authenticated shell: header, permission-filtered sidebar, and the tab workspace. */
+/** Authenticated shell: navy sidebar with the shop name, a slim light bar (tabs, alerts, account) and the page. */
 export default function ContentLayout() {
   const [navOpened, { toggle, close }] = useDisclosure();
 
   return (
-    <AppShell
-      header={{ height: 60 }}
-      navbar={{ width: 250, breakpoint: "sm", collapsed: { mobile: !navOpened } }}
-      padding={0}
-      styles={{ main: { background: brand.cream }, header: { borderBottom: 0 } }}
-    >
-      <AppShell.Header>
-        <Header navOpened={navOpened} onToggleNav={toggle} />
-      </AppShell.Header>
-
-      <AppShell.Navbar p="sm" className={sidebarClasses.navbar}>
+    <AppShell navbar={{ width: 240, breakpoint: "sm", collapsed: { mobile: !navOpened } }} padding={0} styles={{ main: { background: brand.surface } }}>
+      <AppShell.Navbar className={sidebarClasses.navbar}>
         <Sidebar onNavigate={close} />
       </AppShell.Navbar>
 
       <AppShell.Main>
         <WorkspaceUrlSync />
-        <WorkspaceTabs />
+        <WorkspaceBar navOpened={navOpened} onToggleNav={toggle} />
         <WorkspaceTabRenderer />
       </AppShell.Main>
     </AppShell>

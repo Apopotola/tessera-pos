@@ -33,6 +33,8 @@ export const brand = {
   navy: "#1c1d2e",
   navyRaised: "#262739",
   cream: "#f4f2ec",
+  /** Back-office page background: near-white, so white cards and tables stand out. */
+  surface: "#f6f6f9",
   purple: "#5b3fa3",
   lilac: "#8f74db",
   amber: "#f2a93b",
