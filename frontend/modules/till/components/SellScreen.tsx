@@ -1,17 +1,17 @@
 "use client";
 
-import { ActionIcon, Alert, Badge, Button, Group, Loader, Menu, Modal, ScrollArea, Stack, Text, TextInput, UnstyledButton } from "@mantine/core";
+import { ActionIcon, Alert, Button, Group, Loader, Menu, Modal, ScrollArea, SimpleGrid, Stack, Text, TextInput, UnstyledButton } from "@mantine/core";
 import { useIdle } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import { IconBarcode, IconBuildingBank, IconClockOff, IconDiscount, IconDots, IconUser, IconGlassFull, IconLock, IconLogout, IconMinus, IconPlayerPause, IconPlus, IconPrinter, IconReceipt2, IconReceiptRefund, IconSearch, IconTag, IconTrash, IconUsers } from "@tabler/icons-react";
+import { IconBarcode, IconBuildingBank, IconCash, IconClockOff, IconCreditCard, IconDeviceMobile, IconDiscount, IconDots, IconUser, IconLock, IconLogout, IconMinus, IconPlayerPause, IconPlus, IconPrinter, IconReceipt2, IconReceiptRefund, IconSearch, IconTag, IconTrash, IconUsers } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, authApi, salesApi } from "@/api";
 import { brand } from "@/app/theme";
 import Receipt, { ReceiptPrint } from "@/modules/sales/components/Receipt";
 import ShareReceiptButton from "@/modules/sales/components/ShareReceiptButton";
 import { openDrawerForSale, printReceipt } from "@/modules/sales/printer";
-import { type ApprovalRules, type CartLine, cartTotals, withPromotions, fromParked, lineKey, lineName, lineTotal, looksLikeBarcode, needsApproval, newClientId, newLine, repriceForCustomer, sameLine, toParked, toPayload } from "@/modules/till/cart";
+import { type ApprovalRules, type CartLine, cartTotals, cartVat, itemsInCategory, withPromotions, fromParked, lineKey, lineName, lineTotal, looksLikeBarcode, needsApproval, newClientId, newLine, repriceForCustomer, sameLine, toParked, toPayload } from "@/modules/till/cart";
 import CustomerPicker from "@/modules/till/components/CustomerPicker";
 import type { TillCustomer } from "@/types/customers";
 import { useApprovalPrompt } from "@/modules/till/components/ApprovalModal";
@@ -22,6 +22,7 @@ import { ParkModal, RecallModal } from "@/modules/till/components/ParkedSales";
 import PayoutModal from "@/modules/till/components/PayoutModal";
 import PriceCheckModal from "@/modules/till/components/PriceCheck";
 import PrinterModal from "@/modules/till/components/PrinterModal";
+import ProductTile from "@/modules/till/components/ProductTile";
 import ReturnModal from "@/modules/till/components/ReturnModal";
 import TenderModal from "@/modules/till/components/TenderModal";
 import TillHeader from "@/modules/till/components/TillHeader";
@@ -31,7 +32,7 @@ import { buildOfflineReceipt } from "@/modules/till/offline/offlineReceipt";
 import { useOfflineTill } from "@/modules/till/offline/useOfflineTill";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logout } from "@/store/slices/authSlice";
-import type { ParkedSale, Sale, SaleUnit, ScanResult, TenderPayload, TillItem, PromotionRule } from "@/types/sales";
+import { type ParkedSale, type PromotionRule, type Sale, type SaleUnit, type ScanResult, TENDER_LABELS, type TenderMethod, type TenderPayload, type TillItem } from "@/types/sales";
 import type { Shift, TillContext } from "@/types/till";
 import { formatKes } from "@/utils/money";
 import { onTillLocked } from "@/utils/sessionEvents";
@@ -44,7 +45,8 @@ interface SellScreenProps {
 }
 
 /**
- * The selling screen: scan or search on the left, the cart and Pay on the right.
+ * The selling screen ("New sale"): scan, search or tap a product in the category grid on the
+ * left; the current sale, payment method and Complete sale on the right.
  * The till shows prices for speed; the API re-prices every line from the approved price list.
  */
 export default function SellScreen({ context, shift, onEnded }: SellScreenProps) {
@@ -89,6 +91,10 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   const [payingOut, setPayingOut] = useState(false);
   const [favourites, setFavourites] = useState<TillItem[]>([]);
   const [locked, setLocked] = useState(false);
+  // Category chip over the product grid: "all", "favourites" or a category id.
+  const [chip, setChip] = useState<"all" | "favourites" | number | null>(null);
+  // Payment method picked on the sale panel; the tender screen opens on it.
+  const [method, setMethod] = useState<TenderMethod | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
 
   // Screen lock (Settings → Staff → till locks after N idle minutes). The server refuses
@@ -137,6 +143,9 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   const priced = useMemo(() => withPromotions(lines, promotionRules, clock, context.branch.id), [lines, promotionRules, clock, context.branch.id]);
 
   const totals = cartTotals(priced);
+  const snapshotItems = offline.snapshot?.items;
+  const taxRates = useMemo(() => new Map((snapshotItems ?? []).map((i) => [i.variantId, i.taxRatePercent])), [snapshotItems]);
+  const vat = cartVat(priced, (variantId) => taxRates.get(variantId));
   const refocus = () => window.setTimeout(() => searchRef.current?.focus(), 0);
 
   // Live search as the cashier types (scanner input is handled on Enter instead).
@@ -387,6 +396,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     loadFavourites();
     setLines([]);
     setCustomer(null);
+    setMethod(null);
     setClientId(newClientId());
   };
 
@@ -498,52 +508,32 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     });
   };
 
-  /** Settings → Sales screen → Quick buttons ("customer" is the customer button above). */
-  const quick = policy.quickButtons.filter((b) => b !== "customer" && b !== "open_drawer");
+  /** Settings → Sales screen → Quick buttons ("customer" is the customer button; Hold sale is always on the panel). */
+  const quick = policy.quickButtons.filter((b) => b !== "customer" && b !== "open_drawer" && b !== "hold");
   const editLastLine = () => {
     const last = lines.at(-1);
     if (last) setEditing(last);
   };
 
+  // The product grid (Settings → Sales screen → layout "tiles" or "list"; "barcode" is scan-only).
+  // Every item comes from the saved catalogue, so the grid works offline too.
+  const showGrid = policy.layout !== "barcode";
+  const categories = offline.snapshot?.categories ?? [];
+  const favouritesLabel = policy.favouritesMode === "top" ? "Best sellers" : "Favourites";
+  const hasFavourites = showFavourites && favourites.length > 0;
+  // First screen (Settings → Sales screen): favourites when there are any, else everything.
+  const activeChip = chip ?? (hasFavourites ? "favourites" : "all");
+  const gridItems: TillItem[] =
+    activeChip === "favourites" ? favourites : snapshotItems ? itemsInCategory(snapshotItems, activeChip === "all" ? null : activeChip) : favourites;
+  const searchingNow = query.trim().length >= 2;
+
+  // Settings → Payments: M-PESA, Cash and Card as buttons on the panel (split and on account are on the tender screen).
+  const quickMethods = (["mpesa", "cash", "card"] as const).filter((m) => policy.paymentMethods.includes(m));
+
   const renderItems = (items: TillItem[]) => (
     <div className={policy.layout === "list" ? classes.itemList : classes.itemGrid}>
       {items.map((item) => (
-        <div key={item.variantId} className={classes.item} data-disabled={item.priceCents == null || undefined}>
-          <UnstyledButton className={classes.itemMain} onClick={() => addItem(item)}>
-            <Text c="white" fw={600} lineClamp={2} style={{ flex: policy.layout === "list" ? 1 : undefined }}>
-              {item.displayName}
-            </Text>
-            <Text c="gray.5" size="xs" ff="monospace">
-              {item.sku}
-            </Text>
-            <Group justify="space-between" mt={policy.layout === "list" ? 0 : "auto"} gap="sm" wrap="nowrap">
-              <Text c="amber.4" fw={700}>
-                {item.priceCents == null ? "No price" : formatKes(item.priceCents)}
-              </Text>
-              <Badge variant="light" color={item.onFloor > 0 ? "gray" : "red"} size="sm">
-                {item.onFloor} on floor
-              </Badge>
-            </Group>
-          </UnstyledButton>
-          {item.totMl && item.totPriceCents != null && (
-            <UnstyledButton className={classes.totButton} onClick={() => addItem(item, 1, "tot")}>
-              <Group justify="space-between" wrap="nowrap" gap={6}>
-                <Group gap={6} wrap="nowrap">
-                  <IconGlassFull size={16} />
-                  <Text size="sm" fw={600}>
-                    Tot {item.totMl}ml
-                  </Text>
-                </Group>
-                <Text size="sm" fw={700}>
-                  {formatKes(item.totPriceCents)}
-                </Text>
-              </Group>
-              <Text size="xs" c="gray.5">
-                {item.openBottleMl == null ? "Opens a new bottle" : `${item.openBottleMl}ml left in open bottle`}
-              </Text>
-            </UnstyledButton>
-          )}
-        </div>
+        <ProductTile key={item.variantId} item={item} onAdd={addItem} />
       ))}
     </div>
   );
@@ -556,17 +546,19 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   return (
     <div className={classes.sell} data-touch={policy.touchMode}>
       <section className={classes.sellMain}>
-        <TillHeader context={context} />
+        <div className={classes.sellHeader}>
+          <TillHeader context={context} />
+        </div>
         <OfflineBanner offline={offline} />
         {alcoholClosed && (
-          <Alert color="yellow" icon={<IconClockOff size={18} />} mb="sm">
+          <Alert color="yellow" icon={<IconClockOff size={18} />}>
             Outside licensed hours: alcohol cannot be sold.{alcoholOpens ? ` Sales open again ${alcoholOpens}.` : ""} Soft drinks can still be sold.
           </Alert>
         )}
 
         <TextInput
           ref={searchRef}
-          size="xl"
+          size="lg"
           radius="md"
           autoFocus
           placeholder={policy.layout === "barcode" ? "Scan a barcode" : "Scan a barcode or type a name / SKU"}
@@ -578,59 +570,43 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
           classNames={{ input: classes.searchInput }}
         />
 
+        {showGrid && !searchingNow && (hasFavourites || categories.length > 0) && (
+          <ScrollArea type="never" className={classes.chips}>
+            <Group gap={8} wrap="nowrap" role="tablist" aria-label="Categories">
+              {hasFavourites && <CategoryChip label={favouritesLabel} active={activeChip === "favourites"} onClick={() => setChip("favourites")} />}
+              <CategoryChip label="All" active={activeChip === "all"} onClick={() => setChip("all")} />
+              {categories.map((c) => (
+                <CategoryChip key={c.id} label={c.name} active={activeChip === c.id} onClick={() => setChip(c.id)} />
+              ))}
+            </Group>
+          </ScrollArea>
+        )}
+
         <ScrollArea className={classes.results} type="auto">
-          {results.length > 0 ? (
+          {searchingNow && results.length > 0 ? (
             renderItems(results)
-          ) : query.trim().length < 2 && showFavourites && favourites.length > 0 ? (
-            <>
-              <div className={classes.sectionLabel}>{policy.favouritesMode === "top" ? "Best sellers this week" : "Favourites"}</div>
-              {renderItems(favourites)}
-            </>
+          ) : !searchingNow && showGrid && gridItems.length > 0 ? (
+            renderItems(gridItems)
           ) : (
             <Stack align="center" justify="center" h={240} gap={6}>
-              <IconBarcode size={48} color="#7c7d95" stroke={1.2} />
-              <Text c="gray.5">{query.trim().length >= 2 && !searching ? "No matching items." : "Scan or search to add items."}</Text>
+              <IconBarcode size={48} color={brand.slate} stroke={1.2} />
+              <Text c="dimmed">
+                {searchingNow && !searching ? "No matching items." : showGrid && typeof activeChip === "number" ? "Nothing in this category." : "Scan or search to add items."}
+              </Text>
             </Stack>
           )}
         </ScrollArea>
       </section>
 
       <aside className={classes.cart}>
-        <Group justify="space-between">
+        <Group justify="space-between" align="flex-start" wrap="nowrap">
           <div>
-            <Text c="white" fw={700}>
-              {user?.name}
+            <Text className="tessera-display" fz={22} lh={1.2}>
+              Current sale
             </Text>
-            <Text c="gray.5" size="xs">
-              Shift since {new Date(shift.openedAt).toLocaleTimeString("en-KE", { hour: "numeric", minute: "2-digit" })}
+            <Text c="dimmed" size="xs">
+              {user?.name} · shift since {new Date(shift.openedAt).toLocaleTimeString("en-KE", { hour: "numeric", minute: "2-digit" })}
             </Text>
-            <Button variant="light" color={customer ? "amber" : "tessera"} c={customer ? "amber.4" : "gray.3"} size="compact-sm" mt={6} leftSection={<IconUser size={14} />} onClick={() => setPickingCustomer(true)}>
-              {customer ? `${customer.name}${customer.isWholesale ? " · wholesale" : ""}` : "Walk-in customer"}
-            </Button>
-            {quick.length > 0 && (
-              <Group gap={6} mt={8}>
-                {quick.includes("hold") && (
-                  <Button size="compact-sm" variant="default" leftSection={<IconPlayerPause size={14} />} disabled={lines.length === 0 || !isOnline} onClick={() => setParking(true)}>
-                    Hold
-                  </Button>
-                )}
-                {quick.includes("discount") && (
-                  <Button size="compact-sm" variant="default" leftSection={<IconDiscount size={14} />} disabled={lines.length === 0} onClick={editLastLine}>
-                    Discount
-                  </Button>
-                )}
-                {quick.includes("returns") && (
-                  <Button size="compact-sm" variant="default" leftSection={<IconReceiptRefund size={14} />} disabled={!isOnline} onClick={() => setReturning(true)}>
-                    Returns
-                  </Button>
-                )}
-                {quick.includes("price_check") && (
-                  <Button size="compact-sm" variant="default" leftSection={<IconTag size={14} />} disabled={!isOnline} onClick={() => setCheckingPrice(true)}>
-                    Price check
-                  </Button>
-                )}
-              </Group>
-            )}
           </div>
           <Menu position="bottom-end">
             <Menu.Target>
@@ -674,9 +650,30 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
           </Menu>
         </Group>
 
+        <Group gap={6}>
+          <Button variant="light" color={customer ? "amber" : "tessera"} size="compact-sm" leftSection={<IconUser size={14} />} onClick={() => setPickingCustomer(true)}>
+            {customer ? `${customer.name}${customer.isWholesale ? " · wholesale" : ""}` : "Walk-in customer"}
+          </Button>
+          {quick.includes("discount") && (
+            <Button size="compact-sm" variant="default" leftSection={<IconDiscount size={14} />} disabled={lines.length === 0} onClick={editLastLine}>
+              Discount
+            </Button>
+          )}
+          {quick.includes("returns") && (
+            <Button size="compact-sm" variant="default" leftSection={<IconReceiptRefund size={14} />} disabled={!isOnline} onClick={() => setReturning(true)}>
+              Returns
+            </Button>
+          )}
+          {quick.includes("price_check") && (
+            <Button size="compact-sm" variant="default" leftSection={<IconTag size={14} />} disabled={!isOnline} onClick={() => setCheckingPrice(true)}>
+              Price check
+            </Button>
+          )}
+        </Group>
+
         <ScrollArea className={classes.cartLines} type="auto">
           {lines.length === 0 ? (
-            <Text c="gray.6" ta="center" mt="xl">
+            <Text c="dimmed" ta="center" mt="xl">
               Cart is empty
             </Text>
           ) : (
@@ -684,16 +681,16 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
               {priced.map((line) => (
                 <div key={lineKey(line)} className={classes.cartLine}>
                   <UnstyledButton onClick={() => setEditing(line)} style={{ flex: 1, minWidth: 0 }}>
-                    <Text c="white" fw={600} size="sm" truncate>
+                    <Text fw={600} size="sm" truncate>
                       {lineName(line)}
                     </Text>
-                    <Text c="gray.5" size="xs">
+                    <Text c="dimmed" size="xs">
                       {formatKes(line.unitPriceCents)} each
                       {line.discountCents > 0 && ` · −${formatKes(line.discountCents)}`}
                       {line.approvedBy && ` · approved by ${line.approvedBy}`}
                     </Text>
                     {(line.promotionCents ?? 0) > 0 && (
-                      <Text c="amber.4" size="xs" truncate>
+                      <Text c="tessera.7" size="xs" truncate>
                         {line.promotionName} · −{formatKes(line.promotionCents)}
                       </Text>
                     )}
@@ -702,14 +699,14 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
                     <ActionIcon variant="default" size="md" aria-label="One less" onClick={() => changeQty(line, -1)}>
                       <IconMinus size={14} />
                     </ActionIcon>
-                    <Text c="white" fw={700} w={28} ta="center">
+                    <Text fw={700} w={28} ta="center">
                       {line.quantity}
                     </Text>
                     <ActionIcon variant="default" size="md" aria-label="One more" onClick={() => changeQty(line, 1)}>
                       <IconPlus size={14} />
                     </ActionIcon>
                   </Group>
-                  <Text c="white" fw={700} w={96} ta="right">
+                  <Text fw={700} w={92} ta="right" size="sm">
                     {formatKes(lineTotal(line))}
                   </Text>
                 </div>
@@ -719,49 +716,53 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
         </ScrollArea>
 
         <Stack gap={4} className={classes.cartTotals}>
-          <Group justify="space-between">
-            <Text c="gray.5" size="sm">
-              {totals.items} {totals.items === 1 ? "item" : "items"}
-            </Text>
-            <Text c="gray.4" size="sm">
-              {formatKes(totals.subtotal)}
-            </Text>
-          </Group>
-          {totals.discount > 0 && (
-            <Group justify="space-between">
-              <Text c="gray.5" size="sm">
-                {totals.promotions > 0 ? "Discounts & promotions" : "Discounts"}
-              </Text>
-              <Text c="gray.4" size="sm">
-                −{formatKes(totals.discount)}
-              </Text>
-            </Group>
-          )}
-          <Group justify="space-between" align="baseline">
-            <Text c="white" fw={600}>
-              Total (VAT incl.)
-            </Text>
-            <Text c="white" className="tessera-display" fz={36}>
+          <TotalRow label={`Subtotal · ${totals.items} ${totals.items === 1 ? "item" : "items"}`} value={formatKes(totals.subtotal)} />
+          <TotalRow label={totals.promotions > 0 ? "Discounts & promotions" : "Discount"} value={totals.discount > 0 ? `−${formatKes(totals.discount)}` : formatKes(0)} />
+          <TotalRow label="VAT (included)" value={formatKes(vat)} />
+          <Group justify="space-between" align="baseline" mt={4} wrap="nowrap">
+            <Text fw={700}>Total</Text>
+            <Text className="tessera-display" fz={38} c={brand.navy} aria-label="Sale total">
               {formatKes(totals.total)}
             </Text>
           </Group>
         </Stack>
+
+        {quickMethods.length > 0 && (
+          <SimpleGrid cols={quickMethods.length} spacing={8}>
+            {quickMethods.map((m) => (
+              <Button
+                key={m}
+                size="md"
+                px={8}
+                className={classes.methodButton}
+                variant={method === m ? "filled" : "default"}
+                color="tessera"
+                leftSection={METHOD_ICON[m]}
+                aria-pressed={method === m}
+                onClick={() => setMethod((current) => (current === m ? null : m))}
+              >
+                {TENDER_LABELS[m]}
+              </Button>
+            ))}
+          </SimpleGrid>
+        )}
 
         {parked.length > 0 && lines.length === 0 && (
           <Button variant="light" color="tessera" leftSection={<IconPlayerPause size={16} />} onClick={() => setRecalling(true)}>
             {parked.length} parked {parked.length === 1 ? "sale" : "sales"} — recall
           </Button>
         )}
-        <Button
-          size="xl"
-          fullWidth
-          color="amber.5"
-          c={brand.navy}
-          disabled={lines.length === 0}
-          onClick={startPayment}
-        >
-          Pay {lines.length > 0 && formatKes(totals.total)}
+        <Button size="xl" fullWidth color={brand.navy} disabled={lines.length === 0} onClick={startPayment}>
+          Complete sale
         </Button>
+        <Group grow gap={8}>
+          <Button variant="default" leftSection={<IconPlayerPause size={16} />} disabled={lines.length === 0 || !isOnline} onClick={() => setParking(true)}>
+            Hold sale
+          </Button>
+          <Button variant="light" color="red" leftSection={<IconTrash size={16} />} disabled={lines.length === 0} onClick={() => void clearCart()}>
+            Void
+          </Button>
+        </Group>
       </aside>
 
       {editing && (
@@ -790,6 +791,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
           customer={customer}
           offline={!isOnline}
           usedMpesaCodes={offline.usedMpesaCodes}
+          initialMethod={method}
           pending={payPending}
           serverError={payError}
           onClose={() => setPaying(false)}
@@ -944,5 +946,28 @@ function ChangeDue({ sale }: { sale: Sale }) {
         </Text>
       )}
     </Stack>
+  );
+}
+
+const METHOD_ICON = { mpesa: <IconDeviceMobile size={18} />, cash: <IconCash size={18} />, card: <IconCreditCard size={18} /> } as const;
+
+function CategoryChip({ label, active, onClick }: { label: string; active: boolean; onClick: () => void }) {
+  return (
+    <UnstyledButton className={classes.chip} data-active={active || undefined} role="tab" aria-selected={active} onClick={onClick}>
+      {label}
+    </UnstyledButton>
+  );
+}
+
+function TotalRow({ label, value }: { label: string; value: string }) {
+  return (
+    <Group justify="space-between" wrap="nowrap">
+      <Text c="dimmed" size="sm">
+        {label}
+      </Text>
+      <Text size="sm" fw={500}>
+        {value}
+      </Text>
+    </Group>
   );
 }

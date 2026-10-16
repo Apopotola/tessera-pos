@@ -24,6 +24,8 @@ export interface TillItem {
   /** For promotions targeting a category (or its parent) or a brand. */
   categoryIds: number[];
   brandId: number | null;
+  /** Product photo; null shows a plain bottle tile. */
+  imageUrl: string | null;
   /** Anything not recorded as 0% ABV: sold only in licensed hours when the lock is on. */
   alcoholic: boolean;
   /** Sell by tot: null when the item is not poured. */

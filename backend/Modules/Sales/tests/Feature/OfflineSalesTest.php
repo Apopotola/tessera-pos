@@ -70,6 +70,20 @@ class OfflineSalesTest extends InventoryTestCase
             ->assertJsonPath('data.barcodes.0.units', 1);
     }
 
+    public function test_snapshot_has_product_photos_and_category_chips(): void
+    {
+        $this->till()->getJson('/api/v1/sales/till/catalogue')
+            ->assertOk()
+            ->assertJsonPath('data.items.0.imageUrl', null)
+            ->assertJsonPath('data.categories', [['id' => $this->whisky->product->category_id, 'name' => 'Whisky']]);
+
+        $this->whisky->product->update(['image_path' => 'products/1-abcdef123456.webp']);
+
+        $this->till()->getJson('/api/v1/sales/till/catalogue')
+            ->assertOk()
+            ->assertJsonPath('data.items.0.imageUrl', route('api.v1.catalogue.product-images', ['path' => 'products/1-abcdef123456.webp']));
+    }
+
     public function test_offline_sale_keeps_its_time_and_the_price_that_applied_then(): void
     {
         // The price went up 20 minutes ago; the offline sale was 40 minutes ago.

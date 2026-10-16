@@ -22,6 +22,8 @@ export interface CartLine {
   /** For promotions (unknown on recalled parked lines: only item-targeted promotions apply then). */
   categoryIds: number[];
   brandId: number | null;
+  /** VAT rate on the line (unknown on recalled parked lines: taken from the saved catalogue). */
+  taxRatePercent: number | null;
   /** Set by withPromotions(): the promotion's discount on this line. */
   promotionCents?: number;
   promotionName?: string | null;
@@ -57,6 +59,7 @@ export function newLine(item: TillItem, quantity: number, unit: SaleUnit = "bott
     approvedBy: null,
     categoryIds: item.categoryIds ?? [],
     brandId: item.brandId ?? null,
+    taxRatePercent: item.taxRatePercent,
   };
 }
 
@@ -126,7 +129,7 @@ export function toParked(line: CartLine): ParkedLine {
  * line that needed a manager returns at list price with no discount.
  */
 export function fromParked(line: ParkedLine, rules: ApprovalRules): { line: CartLine; reset: boolean } {
-  const restored: CartLine = { ...line, retailPriceCents: line.listPriceCents, wholesalePriceCents: null, onFloor: 0, approvalToken: null, approvedBy: null, categoryIds: [], brandId: null };
+  const restored: CartLine = { ...line, retailPriceCents: line.listPriceCents, wholesalePriceCents: null, onFloor: 0, approvalToken: null, approvedBy: null, categoryIds: [], brandId: null, taxRatePercent: null };
   if (needsApproval(restored, rules)) {
     return { line: { ...restored, unitPriceCents: restored.listPriceCents, discountCents: 0 }, reset: true };
   }
@@ -150,4 +153,20 @@ export const looksLikeBarcode = (value: string) => /^\d{6,}$/.test(value.trim())
 
 export function newClientId(): string {
   return crypto.randomUUID();
+}
+
+/**
+ * VAT included in the cart (prices are VAT-inclusive), for the sale panel. The receipt's VAT
+ * comes from the server; `rateOf` supplies the rate for lines that do not carry one.
+ */
+export function cartVat(lines: CartLine[], rateOf: (variantId: number) => number | undefined): number {
+  return lines.reduce((sum, line) => {
+    const rate = line.taxRatePercent ?? rateOf(line.variantId) ?? 0;
+    return sum + Math.round((lineTotal(line) * rate) / (100 + rate));
+  }, 0);
+}
+
+/** The product grid: items in the chosen category chip (null = all), by name. */
+export function itemsInCategory<T extends Pick<TillItem, "categoryIds" | "displayName">>(items: T[], categoryId: number | null): T[] {
+  return items.filter((item) => categoryId === null || item.categoryIds.includes(categoryId)).sort((a, b) => a.displayName.localeCompare(b.displayName));
 }

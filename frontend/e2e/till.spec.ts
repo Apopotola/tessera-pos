@@ -33,7 +33,7 @@ async function addToCart(query: string, sku: string) {
 
 /** Opens the tender screen, answering the age check when Settings asks for it. */
 async function startPayment() {
-  await page.getByRole("button", { name: /^Pay / }).click();
+  await page.getByRole("button", { name: "Complete sale", exact: true }).click();
   const ageCheck = page.getByRole("button", { name: "Yes, 18 or over" });
   const tender = page.getByRole("dialog", { name: "Take payment" });
   await expect(ageCheck.or(tender)).toBeVisible();
@@ -93,7 +93,10 @@ test("a wrong PIN is refused and the right one starts the shift", async () => {
 });
 
 test("a cash sale gives the right change", async () => {
-  await addToCart("Tusker", "TUS-500");
+  // Tapped from the product grid: the category chip, then the tile.
+  await page.getByRole("tab", { name: "Beer & Cider" }).click();
+  await page.getByText("TUS-500", { exact: true }).click();
+  await expect(page.getByLabel("Sale total")).toHaveText(/250\.00/);
   const tender = await startPayment();
 
   await tender.getByText("Cash", { exact: true }).click();
@@ -112,7 +115,7 @@ test("two bottles of wine get the wine-weekend promotion and are paid by M-PESA"
 
   // 2 × KES 1,050 less 10%.
   await expect(page.getByText("Discounts & promotions")).toBeVisible();
-  await expect(page.getByRole("button", { name: /^Pay .*1,890\.00/ })).toBeVisible();
+  await expect(page.getByLabel("Sale total")).toHaveText(/1,890\.00/);
 
   // Demo M-PESA: the customer "approves" the prompt after a few seconds.
   const tender = await startPayment();
@@ -153,7 +156,7 @@ test("a locked till keeps the sale and needs the cashier's PIN", async () => {
   await page.keyboard.press("Enter");
   await expect(page.getByText("Till locked")).toBeHidden();
   // The sale is still there; clear it before the cash-up.
-  await expect(page.getByRole("button", { name: /^Pay .*250\.00/ })).toBeVisible();
+  await expect(page.getByLabel("Sale total")).toHaveText(/250\.00/);
   await page.getByRole("button", { name: "Till menu" }).click();
   await page.getByRole("menuitem", { name: "Clear sale" }).click();
   await expect(page.getByText("Cart is empty")).toBeVisible();
