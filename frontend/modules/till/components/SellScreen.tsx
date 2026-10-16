@@ -393,8 +393,9 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   /** Records the sale on this device and prints a provisional receipt; it is sent when the connection is back. */
   const payOffline = async (tenders: TenderPayload[], customerPin: string | null) => {
     if (!user) return;
-    if (tenders.some((t) => t.method === "mpesa")) {
-      setPayError("The connection dropped. M-PESA needs the connection — take cash or card instead.");
+    // A payment request or a picked payment needs the connection; a typed code is checked on sync.
+    if (tenders.some((t) => t.method === "mpesa" && t.confirmationId)) {
+      setPayError("The connection dropped. Ask the customer for the M-PESA code from their message, or take cash or card.");
       return;
     }
     const occurredAt = new Date().toISOString();
@@ -786,7 +787,9 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
           splitAllowed={policy.splitAllowed}
           cashRoundingCents={policy.cashRoundingCents}
           stkPush={policy.stkPush}
-          customer={customer}           offline={!isOnline}
+          customer={customer}
+          offline={!isOnline}
+          usedMpesaCodes={offline.usedMpesaCodes}
           pending={payPending}
           serverError={payError}
           onClose={() => setPaying(false)}

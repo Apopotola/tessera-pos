@@ -73,6 +73,8 @@ export interface SalePayload {
   stockApprovalToken?: string | null;
   /** Manager approval for a sale on account over the limit (or any, per Settings). */
   creditApprovalToken?: string | null;
+  /** Offline M-PESA code: record now as unverified instead of waiting for Safaricom (a manager is told). */
+  mpesaUnconfirmedOk?: boolean;
   lines: SaleLinePayload[];
   tenders: TenderPayload[];
 }

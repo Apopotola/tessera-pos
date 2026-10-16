@@ -25,6 +25,7 @@ use Modules\Organisation\Enums\LocationType;
 use Modules\Organisation\Models\Location;
 use Modules\Organisation\Models\Till;
 use Modules\Payments\Services\MpesaAllocator;
+use Modules\Sales\Events\OfflineMpesaFlagged;
 use Modules\Sales\Events\SaleCompleted;
 use Modules\Sales\Models\Sale;
 use Modules\Sales\Models\SaleLine;
@@ -80,11 +81,12 @@ class SaleService
         $offline = isset($data['occurredAt']);
         if ($offline) {
             $this->assertOfflineTenders($data['tenders']);
+            $data['tenders'] = $this->matchOfflineMpesa($till, $data['tenders'], $occurredAt, (bool) ($data['mpesaUnconfirmedOk'] ?? false));
         }
         $lines = $this->priceLines($till, $cashier, $data['lines'], (bool) $customer?->is_wholesale, $occurredAt);
         $outsideLicensedHours = $this->checkLicensedHours($till, $lines, $occurredAt, $offline);
         $total = array_sum(array_column($lines, 'line_total_cents'));
-        ['tenders' => $tenders, 'rounding' => $rounding] = $this->settle($till, $data['tenders'], $total);
+        ['tenders' => $tenders, 'rounding' => $rounding] = $this->settle($till, $data['tenders'], $total, $offline);
         $creditApprovedBy = $this->checkCredit($till, $cashier, $customer, $tenders, $data['creditApprovalToken'] ?? null);
         $etims = $this->policy->etimsEnabled($till);
 
@@ -142,10 +144,23 @@ class SaleService
             }
             foreach ($tenders as $tender) {
                 $confirmationId = $tender['confirmation_id'] ?? null;
-                unset($tender['confirmation_id']);
+                $offlineCode = $tender['offline_code'] ?? false;
+                $offlineProblem = $tender['offline_problem'] ?? null;
+                unset($tender['confirmation_id'], $tender['offline_code'], $tender['offline_problem']);
                 $row = $sale->tenders()->create([...$tender, 'shift_id' => $shift->id]);
                 if ($confirmationId) {
                     $this->mpesa->allocate($confirmationId, $row, $cashier);
+                }
+                if ($offlineCode) {
+                    // Once per till (unique index), confirmed or not.
+                    DB::table('offline_mpesa_codes')->insert([
+                        'till_id' => $till->id, 'receipt' => $row->reference, 'sale_id' => $sale->id, 'tender_id' => $row->id, 'problem' => $offlineProblem,
+                    ]);
+                }
+                if ($offlineProblem) {
+                    $this->audit->log('sales.offline_mpesa.flagged', $sale, after: ['number' => $number, 'receipt' => $row->reference, 'amount_cents' => $row->amount_cents],
+                        reason: $offlineProblem, userId: $cashier->id, branchId: $till->branch_id, reference: "till:{$till->id}");
+                    OfflineMpesaFlagged::dispatch($sale->id, (string) $row->reference, $offlineProblem);
                 }
             }
 
@@ -223,14 +238,70 @@ class SaleService
         return $at;
     }
 
-    /** Offline there is no Safaricom confirmation: cash and card only. @param list<array<string, mixed>> $tenders */
+    /** Offline: cash, card, or an M-PESA code the customer paid to the till (checked on sync). @param list<array<string, mixed>> $tenders */
     private function assertOfflineTenders(array $tenders): void
     {
         foreach ($tenders as $tender) {
+            if ($tender['method'] === SaleTender::MPESA) {
+                if (! preg_match('/^[A-Z0-9]{10}$/', mb_strtoupper(trim((string) ($tender['reference'] ?? ''))))) {
+                    throw ValidationException::withMessages(['tenders' => 'An offline M-PESA payment needs the 10-character code from the customer\'s message.']);
+                }
+
+                continue;
+            }
             if (! in_array($tender['method'], [SaleTender::CASH, SaleTender::CARD], true)) {
-                throw ValidationException::withMessages(['tenders' => 'Offline sales can only be paid in cash or by card.']);
+                throw ValidationException::withMessages(['tenders' => 'Offline sales can only be paid in cash, by card or with an M-PESA code.']);
             }
         }
+    }
+
+    /**
+     * M-PESA codes typed at an offline till, matched against the payments that reached the shop.
+     * A code is used once per till. A confirmed payment confirms the tender. One that has not
+     * arrived yet makes the till try again later (`mpesaPending`), up to `offline_mpesa_wait_hours`
+     * after the sale; then, or when the code is used, for another amount or another till, the sale
+     * is recorded with the tender unverified and a manager is told (the customer has already left).
+     *
+     * @param  list<array<string, mixed>>  $tenders
+     * @return list<array<string, mixed>>
+     */
+    private function matchOfflineMpesa(Till $till, array $tenders, CarbonImmutable $occurredAt, bool $dontWait = false): array
+    {
+        $waitHours = (int) config('sales.offline_mpesa_wait_hours', 24);
+        $seen = [];
+
+        foreach ($tenders as $i => $tender) {
+            if ($tender['method'] !== SaleTender::MPESA || ! empty($tender['confirmationId'])) {
+                continue;
+            }
+            $receipt = mb_strtoupper(trim((string) $tender['reference']));
+            $tenders[$i]['reference'] = $receipt;
+            if (isset($seen[$receipt])) {
+                throw ValidationException::withMessages(['tenders' => "M-PESA code {$receipt} is entered twice on this sale."]);
+            }
+            $seen[$receipt] = true;
+
+            $used = DB::table('offline_mpesa_codes as c')->join('sales as s', 's.id', '=', 'c.sale_id')
+                ->where('c.till_id', $till->id)->where('c.receipt', $receipt)->value('s.number');
+            if ($used) {
+                throw ValidationException::withMessages(['tenders' => "M-PESA code {$receipt} was already used on sale {$used} at this till."]);
+            }
+
+            ['confirmation' => $confirmation, 'problem' => $problem] = $this->mpesa->matchOfflineCode($receipt, (int) $tender['amountCents'], $till->branch_id);
+            if ($confirmation) {
+                $tenders[$i]['confirmationId'] = $confirmation->id;
+
+                continue;
+            }
+            if ($problem === null && ! $dontWait && $occurredAt->gt(CarbonImmutable::now()->subHours($waitHours))) {
+                throw ValidationException::withMessages(['mpesaPending' => "Waiting for Safaricom to confirm M-PESA code {$receipt}. The till tries again automatically."]);
+            }
+            $tenders[$i]['offlineProblem'] = $problem ?? ($dontWait
+                ? "M-PESA code {$receipt} was recorded before Safaricom confirmed it (sent without waiting)."
+                : "Safaricom did not confirm M-PESA code {$receipt} within {$waitHours} hours.");
+        }
+
+        return $tenders;
     }
 
     private function customer(?int $id): ?Customer
@@ -457,7 +528,7 @@ class SaleService
      * @param  list<array{method: string, amountCents: int, reference?: string|null, cardLast4?: string|null, confirmationId?: int|null}>  $input
      * @return array{tenders: list<array<string, mixed>>, rounding: int}
      */
-    private function settle(Till $till, array $input, int $total): array
+    private function settle(Till $till, array $input, int $total, bool $offlineSale = false): array
     {
         $branchId = $till->branch_id;
         $methods = array_values(array_unique(array_column($input, 'method')));
@@ -497,7 +568,7 @@ class SaleService
             if ($t['method'] === SaleTender::MPESA && ! empty($t['confirmationId'])) {
                 $confirmation = $this->mpesa->assertUsable((int) $t['confirmationId'], (int) $t['amountCents'], $branchId, 'tenders');
                 $reference = $confirmation->receipt;
-            } elseif ($t['method'] === SaleTender::MPESA && ! $manualMpesa) {
+            } elseif ($t['method'] === SaleTender::MPESA && ! $manualMpesa && empty($t['offlineProblem'])) {
                 throw ValidationException::withMessages(['tenders' => 'M-PESA must be confirmed by Safaricom: send a payment request or pick the customer\'s payment.']);
             }
             if (! $reference) {
@@ -511,6 +582,9 @@ class SaleService
                 'card_last4' => $t['cardLast4'] ?? null,
                 'status' => $confirmation ? SaleTender::CONFIRMED : SaleTender::UNVERIFIED,
                 'confirmation_id' => $confirmation?->id,
+                // Offline M-PESA code: recorded at this till (and why it is unverified, if it is).
+                'offline_code' => $offlineSale && $t['method'] === SaleTender::MPESA,
+                'offline_problem' => $t['offlineProblem'] ?? null,
             ];
         }
         $confirmationIds = array_filter(array_column($tenders, 'confirmation_id'));

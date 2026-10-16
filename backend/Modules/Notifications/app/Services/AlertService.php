@@ -27,7 +27,11 @@ class AlertService
         Alert::ETIMS_FAILURE => ['label' => 'eTIMS failure', 'permission' => Permissions::COMPLIANCE_VIEW, 'link' => ['title' => 'eTIMS monitor', 'path' => '/compliance/etims', 'view' => 'etimsMonitor']],
         Alert::LICENCE_EXPIRY => ['label' => 'Licence expiry', 'permission' => Permissions::COMPLIANCE_VIEW, 'link' => ['title' => 'Licences & permits', 'path' => '/compliance/licences', 'view' => 'licences']],
         Alert::DAILY_SUMMARY => ['label' => 'End-of-day summary', 'permission' => null, 'link' => ['title' => 'Dashboard', 'path' => '/dashboard', 'view' => 'dashboard']],
+        Alert::MPESA_UNVERIFIED => ['label' => 'Offline M-PESA not confirmed', 'permission' => Permissions::PAYMENTS_RECONCILE, 'link' => ['title' => 'M-PESA reconciliation', 'path' => '/payments/mpesa', 'view' => 'mpesaReconciliation']],
     ];
+
+    /** Integrity alerts: raised whatever Settings → Notifications → Alert recipients says. */
+    public const ALWAYS_ON = [Alert::MPESA_UNVERIFIED];
 
     public function __construct(
         private readonly SettingsService $settings,
@@ -36,7 +40,7 @@ class AlertService
 
     public function enabled(string $type): bool
     {
-        return in_array($type, (array) $this->settings->get('notifications.recipients'), true);
+        return in_array($type, self::ALWAYS_ON, true) || in_array($type, (array) $this->settings->get('notifications.recipients'), true);
     }
 
     /**

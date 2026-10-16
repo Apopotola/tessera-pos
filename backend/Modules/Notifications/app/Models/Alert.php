@@ -22,6 +22,9 @@ class Alert extends Model
 
     public const LICENCE_EXPIRY = 'licence_expiry';
 
+    /** An offline sale's M-PESA code could not be confirmed on sync (always on). */
+    public const MPESA_UNVERIFIED = 'mpesa_unverified';
+
     protected $fillable = ['type', 'branch_id', 'title', 'body', 'data', 'dedupe_key'];
 
     protected function casts(): array

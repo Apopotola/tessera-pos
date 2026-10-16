@@ -138,8 +138,10 @@ export type QueuedEntry =
       totalCents: number;
       queuedAt: string;
       payload: SalePayload;
-      status: "pending" | "failed";
+      /** waiting: an offline M-PESA code Safaricom has not confirmed yet; sent again at retryAt. */
+      status: "pending" | "failed" | "waiting";
       error: string | null;
+      retryAt?: string | null;
     }
   | {
       kind: "void";

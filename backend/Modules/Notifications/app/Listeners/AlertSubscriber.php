@@ -9,6 +9,7 @@ use Modules\Compliance\Models\EtimsSubmission;
 use Modules\Inventory\Services\StockQueryService;
 use Modules\Notifications\Models\Alert;
 use Modules\Notifications\Services\AlertService;
+use Modules\Sales\Events\OfflineMpesaFlagged;
 use Modules\Sales\Events\SaleCompleted;
 use Modules\Sales\Events\SaleReturned;
 use Modules\Sales\Events\ShiftClosed;
@@ -94,6 +95,19 @@ class AlertSubscriber
             ['submissionId' => $submission->id], "etims_rejected:{$submission->id}", 24 * 365);
     }
 
+    /** An offline sale was recorded with an M-PESA code Safaricom has not confirmed: a manager checks it. */
+    public function onOfflineMpesaFlagged(OfflineMpesaFlagged $event): void
+    {
+        $sale = Sale::query()->with(['branch', 'till', 'cashier'])->find($event->saleId);
+        if (! $sale) {
+            return;
+        }
+
+        $this->alerts->raise(Alert::MPESA_UNVERIFIED, $sale->branch_id, "M-PESA code {$event->receipt} not confirmed",
+            "Offline sale {$sale->number} on {$sale->till->name} by {$sale->cashier->name}: {$event->problem} Check the payment and match it on the M-PESA reconciliation screen.",
+            ['saleNumber' => $sale->number, 'receipt' => $event->receipt], "offline_mpesa:{$sale->id}:{$event->receipt}", 24 * 365);
+    }
+
     /** @return array<class-string, string> */
     public function subscribe(Dispatcher $events): array
     {
@@ -102,6 +116,7 @@ class AlertSubscriber
             SaleReturned::class => 'onReturn',
             ShiftClosed::class => 'onShiftClosed',
             EtimsDocumentRejected::class => 'onEtimsRejected',
+            OfflineMpesaFlagged::class => 'onOfflineMpesaFlagged',
         ];
     }
 }

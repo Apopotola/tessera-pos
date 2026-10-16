@@ -139,6 +139,8 @@ class TillSaleController extends Controller
             'tenders.*.reference' => ['nullable', 'string', 'alpha_num', 'max:30'],
             'tenders.*.confirmationId' => ['nullable', 'integer'],
             'tenders.*.cardLast4' => ['nullable', 'digits:4'],
+            // Offline M-PESA code: record now as unverified instead of waiting for Safaricom (a manager is told).
+            'mpesaUnconfirmedOk' => ['nullable', 'boolean'],
         ]);
 
         ['sale' => $sale, 'replayed' => $replayed] = $this->sales->complete($this->till($request), $request->user(), $data);
