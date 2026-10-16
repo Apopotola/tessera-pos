@@ -3,11 +3,15 @@
 namespace Modules\Purchasing\Http\Controllers;
 
 use App\Http\Controllers\Controller;
+use App\Services\BrandedPdf;
 use App\Support\Aging;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
+use Modules\AuditTrail\Services\AuditLogger;
 use Modules\Authorization\Support\Permissions;
 use Modules\Purchasing\Models\Supplier;
 use Modules\Purchasing\Models\SupplierPayment;
@@ -54,6 +58,35 @@ class SupplierAccountController extends Controller
         $data = $request->validate(['from' => ['required', 'date'], 'to' => ['required', 'date', 'after_or_equal:from']]);
 
         return $this->success('Statement.', $this->accounts->statement($supplier, CarbonImmutable::parse($data['from'])->startOfDay(), CarbonImmutable::parse($data['to'])->endOfDay()));
+    }
+
+    #[OA\Get(path: '/api/v1/purchasing/suppliers/{supplier}/statement/pdf', summary: 'The supplier statement as an A4 PDF with the business letterhead (logged)', tags: ['Purchasing'], responses: [new OA\Response(response: 200, description: 'application/pdf')])]
+    public function statementPdf(Request $request, Supplier $supplier, BrandedPdf $pdf, AuditLogger $audit): Response
+    {
+        $this->requireAccess($request);
+        $data = $request->validate(['from' => ['required', 'date'], 'to' => ['required', 'date', 'after_or_equal:from']]);
+        $from = CarbonImmutable::parse($data['from'])->startOfDay();
+        $to = CarbonImmutable::parse($data['to'])->endOfDay();
+        $statement = $this->accounts->statement($supplier, $from, $to);
+
+        $audit->log('purchasing.statement.downloaded', $supplier, after: ['from' => $from->toDateString(), 'to' => $to->toDateString()], userId: $request->user()->id);
+
+        return $pdf->download([
+            'title' => 'Supplier statement',
+            'subtitle' => $from->format('j M Y').' to '.$to->format('j M Y'),
+            'meta' => array_values(array_filter([
+                ['Supplier', $supplier->name],
+                $supplier->kra_pin ? ['KRA PIN', $supplier->kra_pin] : null,
+                $supplier->contact_person ? ['Contact', $supplier->contact_person] : null,
+                ['Payment terms', "{$supplier->payment_terms_days} days"],
+            ])),
+            'summary' => [
+                ['Opening balance (KES)', BrandedPdf::money($statement['openingCents'])],
+                ['We owe (KES)', BrandedPdf::money($statement['closingCents'])],
+            ],
+            ...BrandedPdf::statementTable($statement, 'Invoiced', 'Paid / credited'),
+            'notes' => ['Amounts in Kenya shillings. Supplier invoices, payments, reversals and credit notes in the period.'],
+        ], 'supplier-statement-'.Str::slug($supplier->name).'-'.$from->toDateString().'-'.$to->toDateString().'.pdf', $request->user());
     }
 
     #[OA\Get(path: '/api/v1/purchasing/suppliers/{supplier}/payments', summary: 'Payments made to the supplier (newest first)', tags: ['Purchasing'], responses: [new OA\Response(response: 200, description: 'Payments')])]

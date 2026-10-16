@@ -104,7 +104,7 @@ function SupplierAccountModal({ supplier, onClose }: { supplier: { id: number; n
                 </Button>
               </Group>
             )}
-            <StatementCard load={loadStatement} subject={`you owe ${supplier.name}`} />
+            <StatementCard load={loadStatement} subject={`you owe ${supplier.name}`} downloadPdf={(from, to) => purchasingApi.supplierStatementPdf(supplier.id, from, to)} />
             <PaymentsCard
               load={loadPayments}
               refreshKey={version}

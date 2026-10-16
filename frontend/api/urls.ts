@@ -157,6 +157,7 @@ export const PURCHASING_URLS = {
   payables: "/purchasing/payables",
   supplierAccount: (id: number) => `/purchasing/suppliers/${id}/account`,
   supplierStatement: (id: number) => `/purchasing/suppliers/${id}/statement`,
+  supplierStatementPdf: (id: number) => `/purchasing/suppliers/${id}/statement/pdf`,
   supplierPayments: (id: number) => `/purchasing/suppliers/${id}/payments`,
   reverseSupplierPayment: (paymentId: number) => `/purchasing/payments/${paymentId}/reverse`,
   orders: "/purchasing/orders",
@@ -218,6 +219,7 @@ export const CUSTOMERS_URLS = {
   account: (id: number) => `/customers/${id}/account`,
   credit: (id: number) => `/customers/${id}/credit`,
   statement: (id: number) => `/customers/${id}/statement`,
+  statementPdf: (id: number) => `/customers/${id}/statement/pdf`,
   payments: (id: number) => `/customers/${id}/payments`,
   reversePayment: (paymentId: number) => `/customers/payments/${paymentId}/reverse`,
 } as const;

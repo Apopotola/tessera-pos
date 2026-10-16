@@ -7,4 +7,6 @@ export const reportsApi = {
   run: (key: string, query: ReportQuery) => api.get<ReportRun>(U.report(key), query),
   /** CSV download; needs reports.export and is logged on the server. */
   exportCsv: (key: string, query: ReportQuery) => downloadFile(U.export(key), query, `${key}.csv`),
+  /** A4 PDF with the letterhead; same permission, log and cost-column rules as CSV. */
+  exportPdf: (key: string, query: ReportQuery) => downloadFile(U.export(key), { ...query, format: "pdf" }, `${key}.pdf`),
 };

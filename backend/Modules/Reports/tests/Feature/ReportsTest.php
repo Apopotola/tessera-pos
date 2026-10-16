@@ -14,6 +14,7 @@ use Modules\Inventory\Services\StockEntry;
 use Modules\Inventory\Services\StockLedger;
 use Modules\Inventory\Tests\Feature\InventoryTestCase;
 use Modules\Reports\ReportRegistry;
+use Modules\Reports\Services\ReportRunner;
 
 /**
  * Scenario: 20 bottles at KES 3,000 cost; sell 2 at KES 4,800 (cash), refund 1 (back on
@@ -167,5 +168,34 @@ class ReportsTest extends InventoryTestCase
         $this->assertStringContainsString('4800.00', $csv);
         $this->assertStringContainsString('Total', $csv);
         $this->assertDatabaseHas('audit_logs', ['action' => 'reports.exported', 'user_id' => $this->owner->id]);
+    }
+
+    public function test_pdf_export_is_logged_and_keeps_cost_columns_from_users_without_the_profit_permission(): void
+    {
+        $response = $this->actingAs($this->owner)->get('/api/v1/reports/sales-summary/export?format=pdf');
+        $response->assertOk()->assertHeader('content-type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF-', $response->getContent());
+        $logged = DB::table('audit_logs')->where('action', 'reports.exported')->where('user_id', $this->owner->id)->latest('id')->value('after');
+        $this->assertSame('pdf', json_decode($logged, true)['format']);
+        $this->actingAs($this->owner)->getJson('/api/v1/reports/sales-summary/export?format=xlsx')->assertUnprocessable();
+
+        $viewer = User::factory()->create();
+        $viewer->givePermissionTo(['reports.view', 'reports.export']);
+        $viewer->branches()->attach($this->main->id);
+        $this->actingAs($viewer)->get('/api/v1/reports/sales-summary/export?format=pdf')->assertOk();
+
+        $labels = function (User $user) {
+            $runner = app(ReportRunner::class);
+            $report = $runner->authorize($user, app(ReportRegistry::class)->find('sales-summary'));
+            $filters = $runner->filters($report, $user, []);
+            $document = $runner->pdfDocument($report, $filters, $runner->run($report, $filters, $user));
+
+            return array_column($document['columns'], 'label');
+        };
+        $this->assertContains('Cost of goods (KES)', $labels($this->owner));
+        $this->assertContains('Net sales (KES)', $labels($viewer));
+        $this->assertNotContains('Cost of goods (KES)', $labels($viewer));
+        $this->assertNotContains('Gross profit (KES)', $labels($viewer));
+        $this->assertNotContains('Margin', $labels($viewer));
     }
 }

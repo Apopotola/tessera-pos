@@ -2,8 +2,11 @@
 
 import { Badge, Button, Group, Modal, NumberInput, Select, SimpleGrid, Stack, Table, Text, TextInput, Textarea } from "@mantine/core";
 import { isNotEmpty, useForm } from "@mantine/form";
+import { notifications } from "@mantine/notifications";
+import { IconFileTypePdf } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { useCallback, useState } from "react";
+import { ApiError } from "@/api";
 import DataCard from "@/components/shared/DataCard";
 import NoteModal from "@/components/shared/NoteModal";
 import QueryState from "@/components/shared/QueryState";
@@ -95,11 +98,24 @@ export function AgingTable<T extends { id: number; name: string; balanceCents: n
 }
 
 /** Statement for a period: opening balance, every document with a running balance, closing balance. */
-export function StatementCard({ load, subject }: { load: (from: string, to: string) => Promise<Statement>; subject: string }) {
+export function StatementCard({ load, subject, downloadPdf }: { load: (from: string, to: string) => Promise<Statement>; subject: string; downloadPdf?: (from: string, to: string) => Promise<void> }) {
   const [from, setFrom] = useState(dayjs().subtract(3, "month").startOf("month").format("YYYY-MM-DD"));
   const [to, setTo] = useState(dayjs().format("YYYY-MM-DD"));
   const fetchStatement = useCallback(() => load(from, to), [load, from, to]);
   const { data, loading, error, reload } = useApiQuery(fetchStatement);
+  const [downloading, setDownloading] = useState(false);
+
+  const pdf = async () => {
+    if (!downloadPdf || downloading) return;
+    setDownloading(true);
+    try {
+      await downloadPdf(from, to);
+    } catch (e) {
+      notifications.show({ color: "red", message: e instanceof ApiError ? e.message : "Could not download the statement." });
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <DataCard
@@ -109,6 +125,11 @@ export function StatementCard({ load, subject }: { load: (from: string, to: stri
         <Group gap="xs">
           <TextInput type="date" size="xs" aria-label="From" value={from} max={to} onChange={(e) => e.currentTarget.value && setFrom(e.currentTarget.value)} />
           <TextInput type="date" size="xs" aria-label="To" value={to} min={from} onChange={(e) => e.currentTarget.value && setTo(e.currentTarget.value)} />
+          {downloadPdf && (
+            <Button size="xs" variant="default" leftSection={<IconFileTypePdf size={14} />} loading={downloading} onClick={() => void pdf()}>
+              PDF
+            </Button>
+          )}
         </Group>
       }
     >

@@ -163,6 +163,13 @@ class CreditAccountTest extends InventoryTestCase
         $this->assertSame(660000, $statement['closingCents']);
         $this->assertSame(['sale', 'payment'], array_column($statement['lines'], 'type'));
 
+        // The same statement as an A4 PDF, logged; the till's cashier has no access to accounts.
+        $pdf = $this->backOffice($this->owner)->get("/api/v1/customers/{$this->customer->id}/statement/pdf?from=".now()->toDateString().'&to='.now()->toDateString());
+        $pdf->assertOk()->assertHeader('content-type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF-', $pdf->getContent());
+        $this->assertDatabaseHas('audit_logs', ['action' => 'customers.statement.downloaded', 'entity_id' => (string) $this->customer->id, 'user_id' => $this->owner->id]);
+        $this->backOffice($this->cashier)->get("/api/v1/customers/{$this->customer->id}/statement/pdf?from=".now()->toDateString().'&to='.now()->toDateString())->assertForbidden();
+
         $this->backOffice($this->owner)->postJson("/api/v1/customers/payments/{$payment['id']}/reverse", ['reason' => 'Wrong customer'])->assertCreated();
         $this->backOffice($this->owner)->postJson("/api/v1/customers/payments/{$payment['id']}/reverse", ['reason' => 'Again'])->assertUnprocessable();
         $this->assertSame(960000, $this->account()['balanceCents']);

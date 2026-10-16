@@ -23,6 +23,7 @@ Route::middleware('auth:sanctum')->prefix('customers')->name('customers.')->grou
     Route::get('{customer}/account', [CustomerAccountController::class, 'show'])->whereNumber('customer')->name('account');
     Route::put('{customer}/credit', [CustomerAccountController::class, 'updateCredit'])->whereNumber('customer')->name('credit');
     Route::get('{customer}/statement', [CustomerAccountController::class, 'statement'])->whereNumber('customer')->name('statement');
+    Route::get('{customer}/statement/pdf', [CustomerAccountController::class, 'statementPdf'])->whereNumber('customer')->middleware('throttle:30,1')->name('statement.pdf');
     Route::get('{customer}/payments', [CustomerAccountController::class, 'payments'])->whereNumber('customer')->name('payments.index');
     Route::post('{customer}/payments', [CustomerAccountController::class, 'receive'])->whereNumber('customer')->name('payments.store');
 

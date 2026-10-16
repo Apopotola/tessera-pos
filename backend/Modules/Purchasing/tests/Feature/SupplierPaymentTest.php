@@ -71,6 +71,11 @@ class SupplierPaymentTest extends InventoryTestCase
         $this->assertSame(['invoice', 'invoice', 'payment', 'reversal'], array_column($statement['lines'], 'type'));
         $this->assertSame(1500000, $statement['closingCents']);
 
+        $pdf = $this->actingAs($this->accountant)->get("/api/v1/purchasing/suppliers/{$this->supplier->id}/statement/pdf?from=".now()->subDays(60)->toDateString().'&to='.now()->toDateString());
+        $pdf->assertOk()->assertHeader('content-type', 'application/pdf');
+        $this->assertStringStartsWith('%PDF-', $pdf->getContent());
+        $this->assertDatabaseHas('audit_logs', ['action' => 'purchasing.statement.downloaded', 'entity_id' => (string) $this->supplier->id]);
+
         $this->expectException(QueryException::class);
         DB::table('supplier_payments')->delete();
     }

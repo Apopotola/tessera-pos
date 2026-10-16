@@ -29,6 +29,8 @@ class RunReportRequest extends FormRequest
             'userId' => ['nullable', 'integer'],
             'groupBy' => ['nullable', Rule::in(array_keys($report?->groupings() ?? []))],
             'status' => ['nullable', Rule::in(array_filter(array_keys($report?->statuses() ?? [])))],
+            // Export only: csv (default) or an A4 pdf.
+            'format' => ['nullable', Rule::in(['csv', 'pdf'])],
         ];
     }
 }
