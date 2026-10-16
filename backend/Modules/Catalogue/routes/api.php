@@ -30,6 +30,8 @@ Route::middleware('auth:sanctum')->prefix('catalogue')->name('catalogue.')->grou
     Route::post('products', [ProductController::class, 'store'])->name('products.store');
     Route::get('products/{product}', [ProductController::class, 'show'])->name('products.show');
     Route::put('products/{product}', [ProductController::class, 'update'])->name('products.update');
+    Route::post('products/{product}/image', [ProductController::class, 'storeImage'])->name('products.image.store');
+    Route::delete('products/{product}/image', [ProductController::class, 'destroyImage'])->name('products.image.destroy');
 
     Route::post('products/{product}/variants', [VariantController::class, 'store'])->name('variants.store');
     Route::put('variants/{variant}', [VariantController::class, 'update'])->name('variants.update');
@@ -51,3 +53,8 @@ Route::middleware('auth:sanctum')->prefix('catalogue')->name('catalogue.')->grou
     Route::post('promotions/{promotion}/reject', [PromotionController::class, 'reject'])->name('promotions.reject');
     Route::post('promotions/{promotion}/end', [PromotionController::class, 'end'])->name('promotions.end');
 });
+
+// Product photos load in <img> tags on the till and back office, so they are public like branding images.
+Route::get('catalogue/product-images/{path}', [ProductController::class, 'image'])
+    ->where('path', 'products/[0-9]+-[a-z0-9]{12}\.webp')
+    ->name('catalogue.product-images');

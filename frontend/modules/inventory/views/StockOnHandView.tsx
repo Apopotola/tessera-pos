@@ -1,8 +1,8 @@
 "use client";
 
-import { ActionIcon, Badge, Button, Group, Menu, Modal, NumberInput, Pagination, Select, SimpleGrid, Stack, Switch, Table, Text, TextInput } from "@mantine/core";
+import { ActionIcon, Avatar, Button, Chip, Group, Menu, Modal, NumberInput, Pagination, Select, SimpleGrid, Stack, Table, Text, TextInput } from "@mantine/core";
 import { useDebouncedValue } from "@mantine/hooks";
-import { IconAdjustmentsHorizontal, IconAlertTriangle, IconDots, IconPlus, IconSearch } from "@tabler/icons-react";
+import { IconAdjustmentsHorizontal, IconBottle, IconDots, IconPlus, IconSearch } from "@tabler/icons-react";
 import { useCallback, useMemo, useState } from "react";
 import { inventoryApi, organisationApi } from "@/api";
 import DataCard from "@/components/shared/DataCard";
@@ -14,11 +14,25 @@ import { useApiQuery } from "@/hooks/useApiQuery";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useCatalogueReference } from "@/modules/catalogue/hooks/useCatalogueReference";
 import AdjustmentFormModal from "@/modules/inventory/components/AdjustmentFormModal";
-import type { StockRow } from "@/types/inventory";
+import StockStatusBadge from "@/modules/inventory/components/StockStatusBadge";
+import type { StockFilters, StockRow } from "@/types/inventory";
 import { PERMISSIONS } from "@/types/permissions";
 import { formatKes } from "@/utils/money";
 
 const fetchBranches = () => organisationApi.branches();
+
+type StatusFilter = "all" | NonNullable<StockFilters["stockStatus"]>;
+
+/** Where the available units are, plus stock that cannot be sold yet. */
+function whereabouts(row: StockRow): string {
+  return [
+    `Floor ${row.onFloor} · Store ${row.inStore}`,
+    row.quarantined ? `${row.quarantined} quarantined` : null,
+    row.inTransit ? `${row.inTransit} in transit` : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+}
 
 export default function StockOnHandView({ title, section }: WorkspaceViewProps) {
   const { can } = usePermissions();
@@ -28,7 +42,7 @@ export default function StockOnHandView({ title, section }: WorkspaceViewProps) 
   const [debouncedSearch] = useDebouncedValue(search.trim(), 350);
   const [branchId, setBranchId] = useState<string | null>(null);
   const [categoryId, setCategoryId] = useState<string | null>(null);
-  const [lowOnly, setLowOnly] = useState(false);
+  const [status, setStatus] = useState<StatusFilter>("all");
   const [page, setPage] = useState(1);
   const [reorderRow, setReorderRow] = useState<StockRow | null>(null);
   const [reporting, setReporting] = useState(false);
@@ -39,19 +53,26 @@ export default function StockOnHandView({ title, section }: WorkspaceViewProps) 
         search: debouncedSearch || undefined,
         branchId: branchId ? Number(branchId) : undefined,
         categoryId: categoryId ? Number(categoryId) : undefined,
-        lowOnly,
+        stockStatus: status === "all" ? undefined : status,
         page,
       }),
-    [debouncedSearch, branchId, categoryId, lowOnly, page],
+    [debouncedSearch, branchId, categoryId, status, page],
   );
+  const fetchOverview = useCallback(() => inventoryApi.overview(branchId ? Number(branchId) : undefined), [branchId]);
   const { data, loading, error, reload } = useApiQuery(fetchStock);
+  const overview = useApiQuery(fetchOverview);
   const showValue = can(PERMISSIONS.REPORTS_PROFIT_VIEW);
   const multiBranch = (branches.data?.length ?? 0) > 1;
   const branchOptions = useMemo(() => (branches.data ?? []).map((b) => ({ value: String(b.id), label: `${b.code} · ${b.name}` })), [branches.data]);
+  const counts = overview.data;
 
   const reset = <T,>(setter: (v: T) => void) => (v: T) => {
     setter(v);
     setPage(1);
+  };
+  const reloadAll = () => {
+    reload();
+    overview.reload();
   };
 
   return (
@@ -67,27 +88,48 @@ export default function StockOnHandView({ title, section }: WorkspaceViewProps) 
         ) : undefined
       }
     >
-      <Group gap="sm" wrap="wrap">
-        <TextInput placeholder="Search name, SKU or barcode" leftSection={<IconSearch size={16} />} value={search} onChange={(e) => reset(setSearch)(e.currentTarget.value)} w={280} />
-        {multiBranch && <Select placeholder="All branches" data={branchOptions} value={branchId} onChange={reset(setBranchId)} clearable w={200} />}
-        <Select placeholder="All categories" data={categoryOptions} value={categoryId} onChange={reset(setCategoryId)} searchable clearable w={220} />
-        <Switch label="Low stock only" checked={lowOnly} onChange={(e) => reset(setLowOnly)(e.currentTarget.checked)} />
+      <Group gap="sm" wrap="wrap" justify="space-between">
+        <Group gap="sm" wrap="wrap">
+          <TextInput placeholder="Search product, SKU or barcode" leftSection={<IconSearch size={16} />} value={search} onChange={(e) => reset(setSearch)(e.currentTarget.value)} w={280} />
+          {multiBranch && <Select placeholder="All branches" data={branchOptions} value={branchId} onChange={reset(setBranchId)} clearable w={200} />}
+          <Select placeholder="All categories" data={categoryOptions} value={categoryId} onChange={reset(setCategoryId)} searchable clearable w={220} />
+        </Group>
+        <Chip.Group multiple={false} value={status} onChange={(v) => reset(setStatus)(v as StatusFilter)}>
+          <Group gap="xs">
+            <Chip value="all" variant="outline">
+              All{counts ? ` (${counts.items + counts.outCount})` : ""}
+            </Chip>
+            <Chip value="low" variant="outline" color="amber">
+              Low stock{counts ? ` (${counts.lowCount})` : ""}
+            </Chip>
+            <Chip value="out" variant="outline" color="red">
+              Out of stock{counts ? ` (${counts.outCount})` : ""}
+            </Chip>
+          </Group>
+        </Chip.Group>
       </Group>
 
       <DataCard>
-        <QueryState loading={loading} error={error} isEmpty={!data?.items.length} emptyMessage={lowOnly ? "Nothing is below its reorder level." : "No items match."} onRetry={reload}>
+        <QueryState
+          loading={loading}
+          error={error}
+          isEmpty={!data?.items.length}
+          emptyMessage={status === "low" ? "Nothing is low on stock." : status === "out" ? "Nothing is out of stock." : "No items match."}
+          onRetry={reload}
+        >
           <Table highlightOnHover verticalSpacing="sm">
             <Table.Thead>
               <Table.Tr>
-                <Table.Th>Item</Table.Th>
+                <Table.Th>Product</Table.Th>
+                <Table.Th>Category</Table.Th>
                 {multiBranch && <Table.Th>Branch</Table.Th>}
-                <Table.Th ta="right">Floor</Table.Th>
-                <Table.Th ta="right">Store</Table.Th>
-                <Table.Th ta="right">Available</Table.Th>
-                <Table.Th ta="right">Quarantine</Table.Th>
-                <Table.Th ta="right">In transit</Table.Th>
+                <Table.Th ta="right">In stock</Table.Th>
                 <Table.Th ta="right">Reorder at</Table.Th>
-                {showValue && <Table.Th ta="right">Value</Table.Th>}
+                {showValue && <Table.Th ta="right">Buying</Table.Th>}
+                <Table.Th ta="right">Selling</Table.Th>
+                {showValue && <Table.Th ta="right">Margin</Table.Th>}
+                {showValue && <Table.Th ta="right">Value (cost)</Table.Th>}
+                <Table.Th>Status</Table.Th>
                 <Table.Th />
               </Table.Tr>
             </Table.Thead>
@@ -95,8 +137,10 @@ export default function StockOnHandView({ title, section }: WorkspaceViewProps) 
               {data?.items.map((row) => (
                 <Table.Tr key={`${row.variantId}-${row.branchId}`}>
                   <Table.Td>
-                    <Group gap={6} wrap="nowrap">
-                      {row.isLow && <IconAlertTriangle size={16} color="var(--mantine-color-amber-6)" aria-label="Low stock" />}
+                    <Group gap="sm" wrap="nowrap">
+                      <Avatar src={row.imageUrl} alt="" radius="md" size={40} color="tessera">
+                        <IconBottle size={20} />
+                      </Avatar>
                       <div>
                         <Text size="sm" fw={600}>
                           {row.displayName}
@@ -107,22 +151,24 @@ export default function StockOnHandView({ title, section }: WorkspaceViewProps) 
                       </div>
                     </Group>
                   </Table.Td>
+                  <Table.Td>{row.categoryName}</Table.Td>
                   {multiBranch && <Table.Td>{row.branchCode}</Table.Td>}
-                  <Table.Td ta="right">{row.onFloor}</Table.Td>
-                  <Table.Td ta="right">{row.inStore}</Table.Td>
                   <Table.Td ta="right">
-                    <Badge color={row.isLow ? "amber" : row.available > 0 ? "tessera" : "gray"} variant={row.isLow ? "filled" : "light"} size="lg" radius="sm">
+                    <Text size="sm" fw={700} c={row.status === "out" ? "red.7" : row.status === "low" ? "amber.8" : undefined}>
                       {row.available}
-                    </Badge>
-                  </Table.Td>
-                  <Table.Td ta="right" c={row.quarantined ? undefined : "dimmed"}>
-                    {row.quarantined}
-                  </Table.Td>
-                  <Table.Td ta="right" c={row.inTransit ? undefined : "dimmed"}>
-                    {row.inTransit}
+                    </Text>
+                    <Text size="xs" c="dimmed" style={{ whiteSpace: "nowrap" }}>
+                      {whereabouts(row)}
+                    </Text>
                   </Table.Td>
                   <Table.Td ta="right">{row.reorderLevel ?? "—"}</Table.Td>
+                  {showValue && <Table.Td ta="right">{formatKes(row.avgCostCents)}</Table.Td>}
+                  <Table.Td ta="right">{formatKes(row.sellingPriceCents)}</Table.Td>
+                  {showValue && <Table.Td ta="right">{row.marginPercent !== null ? `${row.marginPercent}%` : "—"}</Table.Td>}
                   {showValue && <Table.Td ta="right">{formatKes(row.valueCents)}</Table.Td>}
+                  <Table.Td>
+                    <StockStatusBadge status={row.status} />
+                  </Table.Td>
                   <Table.Td>
                     {can(PERMISSIONS.INVENTORY_ADJUST_APPROVE) && (
                       <Menu position="bottom-end" withinPortal>
@@ -146,12 +192,13 @@ export default function StockOnHandView({ title, section }: WorkspaceViewProps) 
         </QueryState>
       </DataCard>
 
-      {data && data.meta.lastPage > 1 && (
+      {data && (
         <Group justify="space-between">
           <Text size="sm" c="dimmed">
             {data.meta.total} rows
+            {showValue && counts?.costValueCents != null ? ` · total stock value ${formatKes(counts.costValueCents)} at cost` : ""}
           </Text>
-          <Pagination value={page} onChange={setPage} total={data.meta.lastPage} size="sm" />
+          {data.meta.lastPage > 1 && <Pagination value={page} onChange={setPage} total={data.meta.lastPage} size="sm" />}
         </Group>
       )}
 
@@ -161,7 +208,7 @@ export default function StockOnHandView({ title, section }: WorkspaceViewProps) 
           onClose={() => setReorderRow(null)}
           onSaved={() => {
             setReorderRow(null);
-            reload();
+            reloadAll();
           }}
         />
       )}
@@ -170,7 +217,7 @@ export default function StockOnHandView({ title, section }: WorkspaceViewProps) 
           onClose={() => setReporting(false)}
           onSaved={() => {
             setReporting(false);
-            reload();
+            reloadAll();
           }}
         />
       )}

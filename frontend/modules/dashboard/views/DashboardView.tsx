@@ -24,7 +24,7 @@ import { formatKes } from "@/utils/money";
 const PRICE_CHANGES_TAB: OpenTabConfig = { title: "Price changes", path: "/catalogue/prices", view: "priceChanges" };
 const USERS_TAB: OpenTabConfig = { title: "Users & roles", path: "/admin/users", view: "usersList" };
 const BRANCHES_TAB: OpenTabConfig = { title: "Branches", path: "/admin/branches", view: "branchesList" };
-const STOCK_TAB: OpenTabConfig = { title: "Stock on hand", path: "/inventory/stock", view: "stockOnHand" };
+const STOCK_TAB: OpenTabConfig = { title: "Stock levels", path: "/inventory/stock", view: "stockOnHand" };
 const SALES_TAB: OpenTabConfig = { title: "Sales", path: "/sales", view: "salesList" };
 const SHIFTS_TAB: OpenTabConfig = { title: "Shifts & cash-ups", path: "/sales/shifts", view: "shiftsList" };
 const ETIMS_TAB: OpenTabConfig = { title: "eTIMS monitor", path: "/compliance/etims", view: "etimsMonitor" };

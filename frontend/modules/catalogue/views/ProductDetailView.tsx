@@ -16,6 +16,7 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { BarcodeModal, PackModal } from "@/modules/catalogue/components/BarcodePackModals";
 import PriceChangeModal from "@/modules/catalogue/components/PriceChangeModal";
 import PriceHistoryDrawer from "@/modules/catalogue/components/PriceHistoryDrawer";
+import ProductPhotoCard from "@/modules/catalogue/components/ProductPhotoCard";
 import ProductFormModal from "@/modules/catalogue/components/ProductFormModal";
 import VariantFormModal from "@/modules/catalogue/components/VariantFormModal";
 import { useAppDispatch } from "@/store/hooks";
@@ -110,6 +111,7 @@ export default function ProductDetailView({ tabId, title, section, props }: Work
       <QueryState loading={loading && !product} error={error} isEmpty={false} onRetry={reload}>
         {product && (
           <>
+            <ProductPhotoCard product={product} canManage={canManage} onChanged={reload} />
             <DataCard title="Sizes" description="Each size is sold, stocked and priced separately.">
               <Table verticalSpacing="sm">
                 <Table.Thead>

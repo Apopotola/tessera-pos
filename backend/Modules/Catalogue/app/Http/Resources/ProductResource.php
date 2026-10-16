@@ -19,6 +19,7 @@ class ProductResource extends JsonResource
             'category' => $this->whenLoaded('category', fn () => ['id' => $this->category->id, 'name' => $this->category->name]),
             'abv' => $this->abv !== null ? (float) $this->abv : null,
             'description' => $this->description,
+            'imageUrl' => $this->imageUrl(),
             'isActive' => $this->is_active,
             'variants' => VariantResource::collection($this->whenLoaded('variants')),
         ];

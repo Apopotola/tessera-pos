@@ -7,8 +7,10 @@ use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Modules\Auth\Models\User;
 use Modules\Authorization\Support\Permissions;
+use Modules\Catalogue\Enums\PriceTier;
 use Modules\Catalogue\Models\Category;
 use Modules\Catalogue\Models\ProductVariant;
+use Modules\Catalogue\Services\PriceResolver;
 use Modules\Inventory\Enums\AdjustmentType;
 use Modules\Inventory\Enums\CountStatus;
 use Modules\Inventory\Enums\DocumentStatus;
@@ -28,6 +30,7 @@ class StockQueryService
     public function __construct(
         private readonly BranchAccessService $branches,
         private readonly SettingsService $settings,
+        private readonly PriceResolver $prices,
     ) {}
 
     /**
@@ -78,21 +81,30 @@ class StockQueryService
             $query->whereIn('p.category_id', $ids);
         }
 
-        if (! empty($filters['lowOnly'])) {
-            $query->havingRaw('COALESCE(SUM(CASE WHEN l.type IN '.self::AVAILABLE.' THEN sb.quantity END), 0) <= '.$level);
-        }
+        $availableSql = 'COALESCE(SUM(CASE WHEN l.type IN '.self::AVAILABLE.' THEN sb.quantity END), 0)';
+        // lowOnly = at or below the level (out of stock included); stockStatus splits low from out.
+        match ($filters['stockStatus'] ?? (! empty($filters['lowOnly']) ? 'atOrBelow' : null)) {
+            'atOrBelow' => $query->havingRaw("{$availableSql} <= {$level}"),
+            'low' => $query->havingRaw("{$availableSql} > 0 AND {$availableSql} <= {$level}"),
+            'out' => $query->havingRaw("{$availableSql} <= 0"),
+            default => null,
+        };
 
         $page = $query->paginate($filters['perPage'] ?? 50, ['*'], 'page', $filters['page'] ?? 1);
 
-        $variants = ProductVariant::query()->with('product')->findMany(collect($page->items())->pluck('variant_id')->unique())->keyBy('id');
+        $rows = collect($page->items());
+        $variants = ProductVariant::query()->with(['product.category', 'taxRate'])->findMany($rows->pluck('variant_id')->unique())->keyBy('id');
         $branchCodes = DB::table('branches')->whereIn('id', $branchIds)->pluck('code', 'id');
         $showCost = $user->can(Permissions::REPORTS_PROFIT_VIEW);
+        $prices = $rows->groupBy('branch_id')->map(fn ($r, $branchId) => $this->prices->currentForVariants($r->pluck('variant_id')->unique()->values()->all(), (int) $branchId));
 
-        $page->setCollection(collect($page->items())->map(function ($row) use ($variants, $branchCodes, $showCost) {
+        $page->setCollection($rows->map(function ($row) use ($variants, $branchCodes, $showCost, $prices) {
             $available = (int) $row->available;
             $level = $row->reorder_level !== null ? (int) $row->reorder_level : null;
             $effective = (int) $row->effective_level;
             $variant = $variants[$row->variant_id];
+            $selling = $prices[$row->branch_id][$row->variant_id][PriceTier::Retail->value]->price_cents ?? null;
+            $cost = (int) $row->avg_cost_cents;
 
             return [
                 'variantId' => $row->variant_id,
@@ -109,12 +121,71 @@ class StockQueryService
                 'reorderQuantity' => $row->reorder_quantity !== null ? (int) $row->reorder_quantity : null,
                 // Items without their own level use the branch default (Settings → Products and stock).
                 'isLow' => $available <= $effective,
-                'avgCostCents' => $showCost ? (int) $row->avg_cost_cents : null,
-                'valueCents' => $showCost ? $available * (int) $row->avg_cost_cents : null,
+                'status' => $available <= 0 ? 'out' : ($available <= $effective ? 'low' : 'in_stock'),
+                'categoryName' => $variant->product->category->name,
+                'imageUrl' => $variant->product->imageUrl(),
+                'avgCostCents' => $showCost ? $cost : null,
+                'valueCents' => $showCost ? $available * $cost : null,
+                'sellingPriceCents' => $selling,
+                // Gross margin on the VAT-exclusive price, like the profit report.
+                'marginPercent' => $showCost && $selling ? self::marginPercent($selling, $cost, $variant->taxRate->rate_bp) : null,
             ];
         }));
 
         return $page;
+    }
+
+    /**
+     * Stock totals for the stock dashboard: value at cost and at selling price, potential gross
+     * profit (VAT-exclusive selling value − cost) and how many items are low or out.
+     *
+     * @return array{items: int, units: int, lowCount: int, outCount: int, costValueCents: int|null, sellingValueCents: int, potentialProfitCents: int|null, marginPercent: float|null}
+     */
+    public function overview(User $user, ?int $branchId): array
+    {
+        $branchIds = $this->branchIds($user, $branchId);
+        $level = $this->levelSql($branchIds);
+
+        $rows = DB::table('product_variants as v')
+            ->join('tax_rates as t', 't.id', '=', 'v.tax_rate_id')
+            ->crossJoin('branches as b')
+            ->leftJoinSub($this->availableQuery($branchIds), 'a', fn ($j) => $j->on('a.branch_id', '=', 'b.id')->on('a.variant_id', '=', 'v.id'))
+            ->leftJoin('reorder_levels as rl', fn ($j) => $j->on('rl.variant_id', '=', 'v.id')->on('rl.branch_id', '=', 'b.id'))
+            ->leftJoin('branch_variant_costs as c', fn ($j) => $j->on('c.variant_id', '=', 'v.id')->on('c.branch_id', '=', 'b.id'))
+            ->where('v.is_active', true)
+            ->whereIn('b.id', $branchIds)
+            ->get(['v.id as variant_id', 'b.id as branch_id', 't.rate_bp', DB::raw('COALESCE(a.qty, 0) AS qty'), DB::raw("{$level} AS level"), DB::raw('COALESCE(c.avg_cost_cents, 0) AS cost')]);
+
+        $prices = $rows->groupBy('branch_id')->map(fn ($r, $id) => $this->prices->currentForVariants($r->pluck('variant_id')->unique()->values()->all(), (int) $id));
+        $cost = $selling = $sellingExVat = $units = 0;
+        foreach ($rows as $r) {
+            $qty = max(0, (int) $r->qty);
+            $price = $prices[$r->branch_id][$r->variant_id][PriceTier::Retail->value]->price_cents ?? 0;
+            $units += $qty;
+            $cost += $qty * (int) $r->cost;
+            $selling += $qty * $price;
+            $sellingExVat += intdiv($qty * $price * 10000, 10000 + (int) $r->rate_bp);
+        }
+
+        $showCost = $user->can(Permissions::REPORTS_PROFIT_VIEW);
+
+        return [
+            'items' => $rows->where('qty', '>', 0)->count(),
+            'units' => $units,
+            'lowCount' => $rows->filter(fn ($r) => $r->qty > 0 && $r->qty <= $r->level)->count(),
+            'outCount' => $rows->filter(fn ($r) => $r->qty <= 0)->count(),
+            'costValueCents' => $showCost ? $cost : null,
+            'sellingValueCents' => $selling,
+            'potentialProfitCents' => $showCost ? $sellingExVat - $cost : null,
+            'marginPercent' => $showCost && $sellingExVat > 0 ? round(($sellingExVat - $cost) * 100 / $sellingExVat, 1) : null,
+        ];
+    }
+
+    private static function marginPercent(int $priceCents, int $costCents, int $rateBp): float
+    {
+        $exVat = $priceCents * 10000 / (10000 + $rateBp);
+
+        return round(($exVat - $costCents) * 100 / $exVat, 1);
     }
 
     /**

@@ -2,7 +2,6 @@
 
 import { NavLink, ScrollArea, Stack } from "@mantine/core";
 import { createElement } from "react";
-import BottleSkyline from "@/components/brand/BottleSkyline";
 import { menuIcon } from "@/components/layout/menuIcons";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { openTab } from "@/store/slices/tabsSlice";
@@ -68,9 +67,6 @@ export default function Sidebar({ onNavigate }: { onNavigate?: () => void }) {
         <div className={classes.caption}>Menu</div>
         {menus.map((item) => renderItem(item, 0))}
       </ScrollArea>
-      <div className={classes.footer} aria-hidden="true">
-        <BottleSkyline height={56} withShelf={false} />
-      </div>
     </Stack>
   );
 }

@@ -6,8 +6,10 @@ use App\Http\Controllers\Controller;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
 use Modules\Authorization\Support\Permissions;
+use Modules\Catalogue\Http\Requests\ProductImageRequest;
 use Modules\Catalogue\Http\Requests\StoreProductRequest;
 use Modules\Catalogue\Http\Requests\UpdateProductRequest;
 use Modules\Catalogue\Http\Resources\ProductResource;
@@ -16,6 +18,7 @@ use Modules\Catalogue\Models\Product;
 use Modules\Catalogue\Services\CatalogueService;
 use Modules\Catalogue\Services\PriceResolver;
 use OpenApi\Attributes as OA;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ProductController extends Controller
 {
@@ -107,6 +110,38 @@ class ProductController extends Controller
         $product = $this->catalogue->updateProduct($product, $request->validated());
 
         return $this->success('Product updated.', new ProductResource($this->loadDetail($product, null)));
+    }
+
+    #[OA\Post(path: '/api/v1/catalogue/products/{product}/image', summary: 'Upload or replace the product photo (JPEG, PNG or WebP, up to 4 MB; stored as 800 px WebP)', tags: ['Catalogue'], responses: [
+        new OA\Response(response: 200, description: 'Updated product'),
+        new OA\Response(response: 422, description: 'Not a usable photo'),
+    ])]
+    public function storeImage(ProductImageRequest $request, Product $product): JsonResponse
+    {
+        $product = $this->catalogue->setProductImage($product, $request->file('file'));
+
+        return $this->success('Photo saved.', new ProductResource($this->loadDetail($product, null)));
+    }
+
+    #[OA\Delete(path: '/api/v1/catalogue/products/{product}/image', summary: 'Remove the product photo', tags: ['Catalogue'], responses: [new OA\Response(response: 200, description: 'Updated product')])]
+    public function destroyImage(Request $request, Product $product): JsonResponse
+    {
+        abort_unless($request->user()->can(Permissions::CATALOGUE_MANAGE), 403);
+        $product = $this->catalogue->removeProductImage($product);
+
+        return $this->success('Photo removed.', new ProductResource($this->loadDetail($product, null)));
+    }
+
+    #[OA\Get(path: '/api/v1/catalogue/product-images/{path}', summary: 'A product photo (public, cached)', tags: ['Catalogue'], responses: [new OA\Response(response: 200, description: 'WebP image')])]
+    public function image(string $path): StreamedResponse
+    {
+        abort_unless(Storage::disk('local')->exists($path), 404);
+
+        return Storage::disk('local')->response($path, null, [
+            // Each upload gets a new file name, so a photo never changes under its URL.
+            'Cache-Control' => 'public, max-age=31536000, immutable',
+            'X-Content-Type-Options' => 'nosniff',
+        ]);
     }
 
     private function loadDetail(Product $product, ?int $branchId): Product
