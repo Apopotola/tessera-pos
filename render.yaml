@@ -28,7 +28,7 @@ services:
       - key: DB_CONNECTION
         value: pgsql
       - key: DB_HOST
-        sync: false             # Neon host, e.g. ep-xxxx-pooler.eu-central-1.aws.neon.tech
+        sync: false             # Neon direct host (Connection pooling off), e.g. ep-xxxx.eu-central-1.aws.neon.tech
       - key: DB_PORT
         value: "5432"
       - key: DB_DATABASE

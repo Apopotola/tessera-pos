@@ -124,7 +124,7 @@ Open **http://localhost:8080** and sign in as `owner@tessera.test` / `password` 
 
 `render.yaml` is a Render **Blueprint**: one free Docker web service built from the `Dockerfile`, with the health check on `/api/v1/ping`. The database is a free **Neon** PostgreSQL project (Render's own free PostgreSQL is deleted after 30 days); `DB_SSLMODE=require`.
 
-1. **Neon** (neon.tech): create a project in *AWS Europe Central 1 (Frankfurt)*, PostgreSQL 16. From *Connect*, note the host, user and password (database `neondb`).
+1. **Neon** (neon.tech): create a project in *AWS Europe Central 1 (Frankfurt)*, PostgreSQL 16. From *Connect*, switch *Connection pooling* off and note the host, user and password (database `neondb`).
 2. **APP_KEY:** run `php -r "echo 'base64:'.base64_encode(random_bytes(32)), PHP_EOL;"` once and keep the value.
 3. **Render** (render.com): *New → Blueprint*, pick this repository and branch `main`. Fill in `APP_KEY`, `DB_HOST`, `DB_USERNAME` and `DB_PASSWORD` when asked, then *Apply*. The first build takes about 10 minutes.
 4. Open the service URL (`https://tessera-pos-demo.onrender.com` or similar) and sign in as `owner@tessera.test` / `password`. `APP_URL` defaults to Render's public URL.
