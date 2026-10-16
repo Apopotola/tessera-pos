@@ -51,7 +51,7 @@ export default function NotificationBell() {
         <Indicator label={unread > 99 ? "99+" : unread} size={16} color="amber.5" disabled={unread === 0} offset={4}>
           <ActionIcon
             variant="subtle"
-            color="gray.0"
+            color="gray"
             size="lg"
             aria-label={unread ? `${unread} unread notifications` : "Notifications"}
             onClick={() => {
