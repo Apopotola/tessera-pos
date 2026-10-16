@@ -84,6 +84,8 @@ export interface Product {
   category?: EntityRef;
   abv: number | null;
   description: string | null;
+  /** Product photo (800 px WebP), or null. */
+  imageUrl: string | null;
   isActive: boolean;
   variants?: Variant[];
 }

@@ -116,6 +116,7 @@ export const CATALOGUE_URLS = {
   category: (id: number) => `/catalogue/categories/${id}`,
   products: "/catalogue/products",
   product: (id: number) => `/catalogue/products/${id}`,
+  productImage: (id: number) => `/catalogue/products/${id}/image`,
   productVariants: (productId: number) => `/catalogue/products/${productId}/variants`,
   variant: (id: number) => `/catalogue/variants/${id}`,
   variantBarcodes: (variantId: number) => `/catalogue/variants/${variantId}/barcodes`,
@@ -131,6 +132,7 @@ export const CATALOGUE_URLS = {
 
 export const INVENTORY_URLS = {
   stock: "/inventory/stock",
+  stockOverview: "/inventory/overview",
   movements: "/inventory/movements",
   locations: "/inventory/locations",
   reorderLevels: "/inventory/reorder-levels",

@@ -33,7 +33,9 @@ const ViewRegistry: Record<string, ComponentType<WorkspaceViewProps>> = {
   catalogueSetup: lazyView(() => import("@/modules/catalogue/views/CatalogueSetupView")),
 
   // Inventory
+  stockDashboard: lazyView(() => import("@/modules/inventory/views/StockDashboardView")),
   stockOnHand: lazyView(() => import("@/modules/inventory/views/StockOnHandView")),
+  receiveStock: lazyView(() => import("@/modules/purchasing/views/ReceiveStockView")),
   stockAdjustments: lazyView(() => import("@/modules/inventory/views/AdjustmentsView")),
   stockTransfers: lazyView(() => import("@/modules/inventory/views/TransfersView")),
   stockCounts: lazyView(() => import("@/modules/inventory/views/StockCountsView")),

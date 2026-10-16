@@ -11,6 +11,7 @@ import type {
   StockCount,
   StockFilters,
   StockLocation,
+  StockOverview,
   StockRow,
   Transfer,
   TransferPayload,
@@ -22,6 +23,7 @@ type LineQuantities = Record<number, number>;
 
 export const inventoryApi = {
   stock: (filters: StockFilters = {}) => api.get<Paginated<StockRow>>(U.stock, { ...filters, lowOnly: filters.lowOnly ? 1 : undefined }),
+  overview: (branchId?: number) => api.get<StockOverview>(U.stockOverview, branchId ? { branchId } : undefined),
   movements: (filters: MovementFilters = {}) => api.get<Paginated<Movement>>(U.movements, filters),
   locations: () => api.get<StockLocation[]>(U.locations),
   setReorderLevel: (branchId: number, variantId: number, reorderLevel: number | null, reorderQuantity: number | null) =>

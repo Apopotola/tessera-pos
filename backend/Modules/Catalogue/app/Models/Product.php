@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Product extends Model
 {
-    protected $fillable = ['brand_id', 'category_id', 'name', 'abv', 'description', 'is_active'];
+    protected $fillable = ['brand_id', 'category_id', 'name', 'abv', 'description', 'image_path', 'is_active'];
 
     protected function casts(): array
     {
@@ -16,6 +16,18 @@ class Product extends Model
             'abv' => 'decimal:1',
             'is_active' => 'boolean',
         ];
+    }
+
+    /** Public URL of the product photo, or null when there is none. */
+    public function imageUrl(): ?string
+    {
+        return self::imageUrlFor($this->image_path);
+    }
+
+    /** For query-builder rows that carry products.image_path. */
+    public static function imageUrlFor(?string $path): ?string
+    {
+        return $path ? route('api.v1.catalogue.product-images', ['path' => $path]) : null;
     }
 
     /** Alcohol for licensed hours: anything not recorded as 0% ABV (a missing ABV counts as alcohol). */

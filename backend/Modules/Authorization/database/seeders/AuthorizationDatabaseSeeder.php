@@ -51,7 +51,9 @@ class AuthorizationDatabaseSeeder extends Seeder
                 ['key' => 'catalogue.setup', 'title' => 'Brands & categories', 'view_type' => 'catalogueSetup', 'path' => '/catalogue/setup', 'permission' => P::CATALOGUE_MANAGE],
             ]],
             ['key' => 'inventory', 'title' => 'Inventory', 'icon' => 'IconBuildingWarehouse', 'children' => [
-                ['key' => 'inventory.stock', 'title' => 'Stock on hand', 'view_type' => 'stockOnHand', 'path' => '/inventory/stock', 'permission' => P::INVENTORY_VIEW],
+                ['key' => 'inventory.dashboard', 'title' => 'Stock dashboard', 'view_type' => 'stockDashboard', 'path' => '/inventory/dashboard', 'permission' => P::INVENTORY_VIEW],
+                ['key' => 'inventory.stock', 'title' => 'Stock levels', 'view_type' => 'stockOnHand', 'path' => '/inventory/stock', 'permission' => P::INVENTORY_VIEW],
+                ['key' => 'inventory.receive', 'title' => 'Receive stock', 'view_type' => 'receiveStock', 'path' => '/inventory/receive', 'permission' => P::INVENTORY_RECEIVE],
                 ['key' => 'inventory.adjustments', 'title' => 'Breakages & adjustments', 'view_type' => 'stockAdjustments', 'path' => '/inventory/adjustments', 'permission' => P::INVENTORY_VIEW],
                 ['key' => 'inventory.transfers', 'title' => 'Transfers', 'view_type' => 'stockTransfers', 'path' => '/inventory/transfers', 'permission' => P::INVENTORY_VIEW],
                 ['key' => 'inventory.counts', 'title' => 'Stock counts', 'view_type' => 'stockCounts', 'path' => '/inventory/counts', 'permission' => P::INVENTORY_VIEW],

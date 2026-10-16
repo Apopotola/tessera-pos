@@ -1,4 +1,4 @@
-import { api } from "@/api/client";
+import { api, uploadFile } from "@/api/client";
 import { CATALOGUE_URLS as U } from "@/api/urls";
 import type { Paginated } from "@/types/api";
 import type {
@@ -39,6 +39,8 @@ export const catalogueApi = {
   product: (id: number, branchId?: number) => api.get<Product>(U.product(id), branchId ? { branchId } : undefined),
   createProduct: (payload: CreateProductPayload) => api.post<{ product: Product } & WithWarnings>(U.products, payload),
   updateProduct: (id: number, payload: ProductPayload) => api.put<Product>(U.product(id), payload),
+  uploadProductImage: (id: number, file: File) => uploadFile<Product>(U.productImage(id), file),
+  removeProductImage: (id: number) => api.delete<Product>(U.productImage(id)),
 
   createVariant: (productId: number, payload: NewVariantPayload) =>
     api.post<{ variant: Variant } & WithWarnings>(U.productVariants(productId), payload),

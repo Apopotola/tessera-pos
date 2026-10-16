@@ -23,7 +23,13 @@ class StockController extends Controller
         private readonly ReorderService $reorder,
     ) {}
 
-    #[OA\Get(path: '/api/v1/inventory/stock', summary: 'Stock on hand per item per branch (zero stock included); cost/value only with reports.profit.view', tags: ['Inventory'], responses: [new OA\Response(response: 200, description: 'Paginated rows')])]
+    #[OA\Get(
+        path: '/api/v1/inventory/stock',
+        summary: 'Stock on hand per item per branch (zero stock included) with category, photo, selling price and status; cost, value and margin only with reports.profit.view',
+        tags: ['Inventory'],
+        parameters: [new OA\Parameter(name: 'stockStatus', in: 'query', required: false, description: 'low = above 0 and at or below the reorder level; out = 0 or less', schema: new OA\Schema(type: 'string', enum: ['low', 'out']))],
+        responses: [new OA\Response(response: 200, description: 'Paginated rows')],
+    )]
     public function onHand(Request $request): JsonResponse
     {
         abort_unless($request->user()->can(Permissions::INVENTORY_VIEW), 403);
@@ -33,11 +39,21 @@ class StockController extends Controller
             'search' => ['nullable', 'string', 'max:100'],
             'categoryId' => ['nullable', 'integer'],
             'lowOnly' => ['nullable', 'boolean'],
+            'stockStatus' => ['nullable', Rule::in(['low', 'out'])],
             'page' => ['nullable', 'integer', 'min:1'],
             'perPage' => ['nullable', 'integer', 'min:1', 'max:200'],
         ]);
 
         return $this->success('Stock on hand.', $this->paginated($this->stock->onHand($request->user(), $filters)));
+    }
+
+    #[OA\Get(path: '/api/v1/inventory/overview', summary: 'Stock dashboard totals: value at cost and selling price, potential profit (cost figures only with reports.profit.view), low and out-of-stock counts', tags: ['Inventory'], responses: [new OA\Response(response: 200, description: 'Totals')])]
+    public function overview(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->can(Permissions::INVENTORY_VIEW), 403);
+        $filters = $request->validate(['branchId' => ['nullable', 'integer']]);
+
+        return $this->success('Stock overview.', $this->stock->overview($request->user(), $filters['branchId'] ?? null));
     }
 
     #[OA\Get(path: '/api/v1/inventory/movements', summary: 'Stock ledger (newest first)', tags: ['Inventory'], responses: [new OA\Response(response: 200, description: 'Paginated movements')])]

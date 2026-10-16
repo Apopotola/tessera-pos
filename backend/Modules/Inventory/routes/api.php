@@ -16,6 +16,7 @@ use Modules\Inventory\Http\Controllers\TransferController;
 
 Route::middleware('auth:sanctum')->prefix('inventory')->name('inventory.')->group(function () {
     Route::get('stock', [StockController::class, 'onHand'])->name('stock');
+    Route::get('overview', [StockController::class, 'overview'])->name('overview');
     Route::get('movements', [StockController::class, 'movements'])->name('movements');
     Route::get('locations', [StockController::class, 'locations'])->name('locations');
     Route::put('reorder-levels', [StockController::class, 'setReorder'])->name('reorder-levels');

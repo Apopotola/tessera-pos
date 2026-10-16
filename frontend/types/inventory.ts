@@ -57,16 +57,40 @@ export interface StockRow {
   reorderLevel: number | null;
   reorderQuantity: number | null;
   isLow: boolean;
+  /** low = above 0 and at or below the reorder level. */
+  status: StockStatus;
+  categoryName: string;
+  imageUrl: string | null;
+  /** Cost figures need reports.profit.view. */
   avgCostCents: number | null;
   valueCents: number | null;
+  /** Current retail price incl. VAT; null when the item has no price yet. */
+  sellingPriceCents: number | null;
+  /** Gross margin on the VAT-exclusive price. */
+  marginPercent: number | null;
 }
+
+export type StockStatus = "in_stock" | "low" | "out";
 
 export interface StockFilters {
   branchId?: number;
   search?: string;
   categoryId?: number;
   lowOnly?: boolean;
+  stockStatus?: Exclude<StockStatus, "in_stock">;
   page?: number;
+}
+
+/** GET /inventory/overview — cost, profit and margin are null without reports.profit.view. */
+export interface StockOverview {
+  items: number;
+  units: number;
+  lowCount: number;
+  outCount: number;
+  costValueCents: number | null;
+  sellingValueCents: number;
+  potentialProfitCents: number | null;
+  marginPercent: number | null;
 }
 
 export interface Movement {

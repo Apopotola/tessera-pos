@@ -2,9 +2,12 @@
 
 namespace Modules\Catalogue\Services;
 
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Modules\AuditTrail\Services\AuditLogger;
 use Modules\Auth\Models\User;
 use Modules\Catalogue\Models\Barcode;
@@ -100,6 +103,63 @@ class CatalogueService
         return $this->auditedUpdate('catalogue.product.updated', $product, $this->productAttributes($data) + [
             'is_active' => $data['isActive'] ?? $product->is_active,
         ]);
+    }
+
+    /**
+     * Replace the product photo: resized to fit 800 px and stored as WebP on the local disk.
+     * The old file is removed only after the change is committed.
+     */
+    public function setProductImage(Product $product, UploadedFile $file): Product
+    {
+        $old = $product->image_path;
+        $path = 'products/'.$product->id.'-'.Str::lower(Str::random(12)).'.webp';
+        Storage::disk('local')->put($path, $this->webp($file));
+
+        try {
+            $product = $this->auditedUpdate('catalogue.product.image_changed', $product, ['image_path' => $path]);
+        } catch (\Throwable $e) {
+            Storage::disk('local')->delete($path);
+            throw $e;
+        }
+
+        if ($old) {
+            Storage::disk('local')->delete($old);
+        }
+
+        return $product;
+    }
+
+    public function removeProductImage(Product $product): Product
+    {
+        $old = $product->image_path;
+        $product = $this->auditedUpdate('catalogue.product.image_removed', $product, ['image_path' => null]);
+
+        if ($old) {
+            Storage::disk('local')->delete($old);
+        }
+
+        return $product;
+    }
+
+    /** Re-encode with GD: strips metadata (e.g. GPS) and caps the size for the till grid. */
+    private function webp(UploadedFile $file, int $max = 800): string
+    {
+        $source = @imagecreatefromstring((string) file_get_contents($file->getRealPath()));
+        if ($source === false) {
+            throw ValidationException::withMessages(['file' => 'That file is not a photo we can read.']);
+        }
+
+        $width = imagesx($source);
+        $height = imagesy($source);
+        $scale = min(1, $max / max($width, $height));
+        $image = imagescale($source, max(1, (int) round($width * $scale)), max(1, (int) round($height * $scale)), IMG_BICUBIC);
+        imagedestroy($source);
+
+        ob_start();
+        imagewebp($image, null, 80);
+        imagedestroy($image);
+
+        return (string) ob_get_clean();
     }
 
     /**
