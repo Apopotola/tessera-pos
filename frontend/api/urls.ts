@@ -16,6 +16,10 @@ function resolveBackendOrigin(): string {
     return envOrigin || `http://localhost:${localPort}`;
   }
 
+  // Docker / hosting: Nginx serves the API on the page's own origin (set at build time in the Dockerfile),
+  // so even http://localhost:8080 must not be treated as local dev with a separate API port.
+  if (process.env.NEXT_PUBLIC_API_SAME_ORIGIN === "true") return "";
+
   const browserHost = window.location.hostname;
   const isBrowserLocal = LOCAL_HOSTS.includes(browserHost);
 
