@@ -1,8 +1,11 @@
+/* Colours come from brand tokens set as __vars on .page (--login-navy, --login-navy-raised, --login-cream, --login-photo, --login-photo-sm). */
+
 /* Desktop: brand panel left, form right (≈ 52/48). Phones: brand panel on top, form below. */
 .page {
   display: grid;
   grid-template-columns: 1fr;
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 .brandPanel {
@@ -12,6 +15,55 @@
   padding: 28px 24px 0;
   overflow: hidden;
   color: #fff;
+  background-color: var(--login-navy);
+}
+
+/* Logo, headline and skyline sit above the photo and its overlay. */
+.brandPanel > :not(.photo) {
+  position: relative;
+  z-index: 1;
+}
+
+/* Full-bleed photo (Tessera's shop photos or the uploaded image) under a navy brand overlay. */
+.photo {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image: var(--login-photo-sm);
+  background-size: cover;
+  background-position: center;
+  animation: photoIn 700ms ease-out both;
+}
+
+.photo::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 45%, color-mix(in srgb, var(--login-navy) 35%, transparent) 0%, transparent 70%),
+    linear-gradient(
+      165deg,
+      color-mix(in srgb, var(--login-navy) 80%, transparent) 0%,
+      color-mix(in srgb, var(--login-navy) 42%, color-mix(in srgb, var(--mantine-color-tessera-9) 20%, transparent)) 50%,
+      color-mix(in srgb, var(--login-navy) 88%, transparent) 100%
+    );
+}
+
+@keyframes photoIn {
+  from {
+    opacity: 0;
+    transform: scale(1.04);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .photo {
+    animation: none;
+  }
 }
 
 .headline {
@@ -44,11 +96,20 @@
   display: flex;
   justify-content: center;
   padding: 32px 24px 40px;
+  background: light-dark(var(--login-cream), var(--login-navy-raised));
 }
 
 .form {
   width: 100%;
   max-width: 420px;
+}
+
+.heading {
+  color: light-dark(var(--login-navy), var(--mantine-color-white));
+}
+
+.cardLogo {
+  display: none;
 }
 
 @media (min-width: $mantine-breakpoint-md) {
@@ -58,6 +119,10 @@
 
   .brandPanel {
     padding: 56px 72px 0;
+  }
+
+  .photo {
+    background-image: var(--login-photo);
   }
 
   .headline {
@@ -96,10 +161,11 @@
   background-size: 72px 72px;
 }
 
-/* Centred card: brand background fills the page, the form floats in a card on top. */
+/* Centred card: the brand background fills the page, the form floats in a card in the middle. */
 .centred {
   grid-template-columns: 1fr !important;
   grid-template-areas: "stack";
+  place-items: center;
 }
 
 .centred > .brandPanel,
@@ -107,22 +173,51 @@
   grid-area: stack;
 }
 
-.centred > .brandPanel .headline,
-.centred > .brandPanel .skyline {
+.centred > .brandPanel {
+  align-self: stretch;
+  justify-self: stretch;
+  padding: 0;
+}
+
+.centred > .brandPanel > :not(.photo, .skyline) {
   display: none;
 }
 
-.centred > .brandPanel {
-  padding: 24px;
+/* The bottle shelf runs along the foot of the page behind the card. */
+.centred > .brandPanel .skyline {
+  position: absolute;
+  inset: auto 0 0;
+  max-width: none;
+  margin: 0;
+  opacity: 0.55;
 }
 
 .centred > .formPanel {
-  align-self: center;
-  justify-self: center;
+  position: relative;
+  z-index: 1;
   width: calc(100% - 32px);
-  max-width: 480px;
-  margin: 96px 0 40px;
-  padding: 32px;
-  border-radius: 16px;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.35);
+  max-width: 460px;
+  flex-direction: column;
+  align-items: center;
+  margin: 24px 0;
+  padding: 28px 24px;
+  border-radius: 20px;
+  background: color-mix(in srgb, light-dark(var(--login-cream), var(--login-navy-raised)) 97%, transparent);
+  backdrop-filter: blur(10px);
+  box-shadow:
+    0 1px 0 color-mix(in srgb, var(--mantine-color-white) 40%, transparent) inset,
+    0 30px 80px rgba(0, 0, 0, 0.45);
+}
+
+.centred .cardLogo {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 20px;
+}
+
+@media (min-width: $mantine-breakpoint-sm) {
+  .centred > .formPanel {
+    margin: 48px 0;
+    padding: 40px 44px 32px;
+  }
 }
