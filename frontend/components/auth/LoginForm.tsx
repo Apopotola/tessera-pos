@@ -1,12 +1,12 @@
 "use client";
 
-import { Alert, Anchor, Box, Button, Checkbox, Divider, Group, Modal, PasswordInput, Stack, Text, TextInput, Title } from "@mantine/core";
+import { Alert, Anchor, Box, Button, Checkbox, Divider, Group, Modal, PasswordInput, Stack, Text, TextInput, Title, useComputedColorScheme } from "@mantine/core";
 import { isNotEmpty, useForm } from "@mantine/form";
 import { useDisclosure } from "@mantine/hooks";
 import { IconAlertCircle, IconCalculator } from "@tabler/icons-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
 import { brand } from "@/app/theme";
 import BottleSkyline from "@/components/brand/BottleSkyline";
 import Logo from "@/components/brand/Logo";
@@ -18,7 +18,23 @@ import type { LoginPayload } from "@/types/auth";
 import { safeRedirectPath } from "@/utils/menu";
 import classes from "./LoginForm.module.css";
 
-/** Back-office sign-in: brand panel (left / top on phones) and the form. */
+/** Tessera's login photos in public/login (credits in CREDITS.md there), one a day. */
+const PHOTOS = ["backbar", "wine", "butchery"] as const;
+const DAY_MS = 86_400_000;
+const noSubscribe = () => () => {};
+
+/** Today's photo on the client; null while rendering on the server so hydration matches. */
+function useDailyPhoto() {
+  return useSyncExternalStore(
+    noSubscribe,
+    () => PHOTOS[Math.floor(Date.now() / DAY_MS) % PHOTOS.length],
+    () => null,
+  );
+}
+
+const cssUrl = (src: string) => `url("${src}")`;
+
+/** Back-office sign-in: a centred card over the shop photo (default), or the split brand panel and form. */
 export default function LoginForm() {
   const dispatch = useAppDispatch();
   const router = useRouter();
@@ -30,9 +46,17 @@ export default function LoginForm() {
   const next = safeRedirectPath(searchParams.get("next"));
   const branding = useAppSelector((state) => state.settings.branding);
   const { poweredBy } = useBrand();
-  const centred = branding?.loginStyle === "centered";
-  const background = branding?.loginBackground ?? "bottles";
-  const backgroundImage = background === "image" && branding?.loginBackgroundImage ? `url("${branding.loginBackgroundImage}")` : undefined;
+  const scheme = useComputedColorScheme("light");
+  const dailyPhoto = useDailyPhoto();
+  // Same defaults as Settings → Branding until the public branding arrives.
+  const centred = (branding?.loginStyle ?? "centered") === "centered";
+  const background = branding?.loginBackground ?? "photo";
+  const uploaded = background === "image" && branding?.loginBackgroundImage ? cssUrl(branding.loginBackgroundImage) : null;
+  const photo = uploaded
+    ? { lg: uploaded, sm: uploaded }
+    : background === "photo" && dailyPhoto
+      ? { lg: cssUrl(`/login/${dailyPhoto}-1920.webp`), sm: cssUrl(`/login/${dailyPhoto}-960.webp`) }
+      : null;
 
   const form = useForm<Required<LoginPayload>>({
     mode: "uncontrolled",
@@ -71,11 +95,18 @@ export default function LoginForm() {
   };
 
   return (
-    <div className={`${classes.page} ${centred ? classes.centred : ""}`}>
-      <section
-        className={`${classes.brandPanel} ${background === "mosaic" ? classes.mosaic : ""}`}
-        style={{ backgroundColor: brand.navy, backgroundImage, backgroundSize: "cover", backgroundPosition: "center" }}
-      >
+    <Box
+      className={`${classes.page} ${centred ? classes.centred : ""}`}
+      __vars={{
+        "--login-navy": brand.navy,
+        "--login-navy-raised": brand.navyRaised,
+        "--login-cream": brand.cream,
+        "--login-photo": photo?.lg,
+        "--login-photo-sm": photo?.sm,
+      }}
+    >
+      <section className={`${classes.brandPanel} ${background === "mosaic" ? classes.mosaic : ""}`}>
+        {photo && <div key={photo.lg} className={classes.photo} aria-hidden="true" />}
         <Logo size={30} />
         <Box className={classes.headline}>
           <h1 className={`tessera-display ${classes.title}`}>
@@ -92,10 +123,13 @@ export default function LoginForm() {
         )}
       </section>
 
-      <section className={classes.formPanel} style={{ background: brand.cream }}>
+      <section className={classes.formPanel}>
+        <div className={classes.cardLogo}>
+          <Logo size={34} tone={scheme === "dark" ? "light" : "dark"} />
+        </div>
         {recoveryCodes ? (
           <Stack gap="lg" className={classes.form}>
-            <Title order={1} fz={28} c={brand.navy}>
+            <Title order={1} fz={28} className={classes.heading}>
               Two-step login is on
             </Title>
             <RecoveryCodes codes={recoveryCodes} />
@@ -109,7 +143,7 @@ export default function LoginForm() {
               <Text size="xs" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: "0.12em" }}>
                 Two-step login
               </Text>
-              <Title order={1} fz={28} c={brand.navy}>
+              <Title order={1} fz={28} className={classes.heading}>
                 {mfa.mfaStep === "setup" ? "Protect your account" : "Enter your code"}
               </Title>
               {mfa.mfaStep === "setup" && (
@@ -137,7 +171,7 @@ export default function LoginForm() {
                 <Text size="xs" fw={600} c="dimmed" tt="uppercase" style={{ letterSpacing: "0.12em" }}>
                   Back office
                 </Text>
-                <Title order={1} fz={branding?.welcomeText && branding.welcomeText.length > 24 ? 26 : 32} c={brand.navy}>
+                <Title order={1} fz={branding?.welcomeText && branding.welcomeText.length > 24 ? 26 : 32} className={classes.heading}>
                   {branding?.welcomeText ?? "Sign in"}
                 </Title>
               </div>
@@ -203,6 +237,6 @@ export default function LoginForm() {
           <Button onClick={forgot.close}>OK</Button>
         </Stack>
       </Modal>
-    </div>
+    </Box>
   );
 }

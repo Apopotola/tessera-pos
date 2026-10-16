@@ -101,7 +101,7 @@ export interface PublicBranding {
   primaryColor: string;
   accentColor: string;
   loginStyle: "split" | "centered";
-  loginBackground: "bottles" | "mosaic" | "image";
+  loginBackground: "photo" | "bottles" | "mosaic" | "image";
   loginBackgroundImage: string | null;
   welcomeText: string;
   poweredBy: { text: string; support: string };

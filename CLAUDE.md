@@ -53,7 +53,8 @@ Tessera POS is a point of sale for Kenyan wines & spirits retail: a modular Lara
 - Brand tokens live in `app/theme` (`brand.navy`, `brand.purple`, `brand.amber`, `brand.cream`…); never hard-code other colours or fonts.
 - Every workspace view renders inside `components/shared/WorkspacePage` and passes the `section` prop it receives (the uppercase label comes from the menu automatically).
 - Tables, lists and panels go in `components/shared/DataCard`; KPIs use `StatTile`; on/off states use `StatusBadge`.
-- Full-screen surfaces (login, till) use the navy brand panel, `Logo` and `BottleSkyline` from `components/brand/`.
+- Full-screen surfaces (login, till) use the navy brand panel, `Logo` and `BottleSkyline` from `components/brand/`. The login may put a photo under that panel (Tessera's shop photos in `public/login`, or the owner's upload) as long as the navy brand overlay keeps white text readable and the `Logo` stays on the card; `BottleSkyline` shows with the *Bottle shelf* background and on the till.
+- Photos and other bundled media: free-licence only (e.g. Unsplash, Pexels), optimised WebP in `public/`, credited in a `CREDITS.md` beside them; never hotlink.
 - `pnpm lint` runs `scripts/check-ui-conventions.mjs`, which fails if a view skips `WorkspacePage` or a menu `view_type` has no registered screen.
 - Submit buttons show `loading` and ignore repeat clicks; map 422 errors with `form.setErrors(error.formErrors)`; confirm success with `notifications.show`.
 
