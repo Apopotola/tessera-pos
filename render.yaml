@@ -1,0 +1,59 @@
+# Render Blueprint for a free client demo: one Docker web service built from this repo's Dockerfile.
+# The database is a free Neon PostgreSQL project (Render's free Postgres is deleted after 30 days).
+# Values marked sync: false are asked for when you create the Blueprint; see README "Free demo hosting".
+services:
+  - type: web
+    name: tessera-pos-demo
+    runtime: docker
+    plan: free
+    region: frankfurt
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/v1/ping
+    autoDeploy: true
+    envVars:
+      - key: APP_NAME
+        value: Tessera POS
+      - key: APP_ENV
+        value: local            # demo shop and demo accounts; a real shop uses production
+      - key: APP_DEBUG
+        value: "false"
+      - key: APP_KEY
+        sync: false             # README "Free demo hosting": one command makes one
+      - key: APP_TIMEZONE
+        value: Africa/Nairobi
+      - key: LOG_CHANNEL
+        value: stderr
+      - key: LOG_LEVEL
+        value: warning
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: DB_HOST
+        sync: false             # Neon host, e.g. ep-xxxx-pooler.eu-central-1.aws.neon.tech
+      - key: DB_PORT
+        value: "5432"
+      - key: DB_DATABASE
+        value: neondb
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+      - key: DB_SSLMODE
+        value: require
+      - key: SESSION_DRIVER
+        value: database
+      - key: SESSION_SECURE_COOKIE
+        value: "true"
+      - key: CACHE_STORE
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: SANCTUM_STATEFUL_DOMAINS
+        value: __SANCTUM_CURRENT_REQUEST_HOST__
+      - key: TESSERA_DEMO
+        value: "true"
+      - key: MPESA_DRIVER
+        value: fake
+      - key: MPESA_CALLBACK_TOKEN
+        generateValue: true
+      - key: ETIMS_DRIVER
+        value: disabled

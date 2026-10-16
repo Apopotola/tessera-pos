@@ -12,7 +12,7 @@ Point of sale for Kenyan wines & spirits retail: bottle-size variants, an append
 | --- | --- |
 | API | Laravel 12, PHP 8.4, `nwidart/laravel-modules` 12, Sanctum (SPA cookies), spatie/laravel-permission, L5-Swagger |
 | Web | Next.js 16 (App Router), React 19, TypeScript, Mantine 8, Redux Toolkit, Axios, Tabler Icons |
-| Data | PostgreSQL 16, Redis (queues, later) |
+| Data | PostgreSQL 16 (database cache, queue and sessions; no Redis) |
 
 ## Repository layout
 
@@ -30,6 +30,10 @@ frontend/           Next.js app
   types/            API contracts mirroring Laravel Resources
 docs/               Requirements and architecture
 compose.dev.yaml    Local PostgreSQL + Redis (optional)
+Dockerfile          One image: Nginx + PHP-FPM + Next.js (see "Docker")
+docker/             Image config (Nginx, PHP, Supervisor, entrypoint)
+docker-compose.yml  PostgreSQL + the app on :8080, optional public tunnel
+render.yaml         Render Blueprint for the free demo
 ```
 
 ## Local development
@@ -97,6 +101,35 @@ Owner, Admin and Tessera Support accounts use **two-step login**: the first sign
 3. The manager is signed out and the device shows **Who's on the till?**. Cashiers tap their name, enter their PIN and start their shift.
 
 Lost or replaced device: **Administration → Branches → Tills → Disconnect**. Staff and PINs: **Administration → Users & roles**.
+
+## Docker
+
+One image runs everything behind one origin: **Nginx** in front, **PHP 8.4-FPM** for `/api`, `/sanctum`, `/storage` and the Swagger docs (`/api/documentation`), and the **Next.js** standalone server for the rest. **Supervisor** also runs the scheduler (`php artisan schedule:work`: eTIMS every minute, notifications, the nightly low-stock digest, customer anonymisation and the 23:30 ledger check) and the queue worker (`php artisan queue:work database`, eTIMS submissions). There is no Redis: cache, queue and sessions use the database.
+
+```bash
+docker compose up -d --build
+```
+
+Open **http://localhost:8080** and sign in as `owner@tessera.test` / `password` (demo mode: two-step login is off, the till PINs are in *Local demo accounts*). The first start takes about a minute.
+
+- **On every start** (`docker/entrypoint.sh`) the container waits for PostgreSQL, runs `migrate --force`, seeds **only an empty database** (with `TESSERA_DEMO=true` it also runs `DemoShowcaseSeeder`), links storage, generates the API docs and caches config, routes, views and events.
+- **APP_KEY:** taken from the environment; locally one is generated on the first start and kept in the `app-storage` volume, so sessions and encrypted settings survive rebuilds.
+- **Demo settings:** `APP_ENV=local`, `APP_DEBUG=false`, `MPESA_DRIVER=fake`, `ETIMS_DRIVER=disabled`. Override any of them in a root `.env` (not committed), e.g. `APP_PORT=9090`.
+- **Share it:** `docker compose --profile share up -d` adds a free Cloudflare quick tunnel; the public HTTPS link is in `docker compose logs tunnel` (look for `trycloudflare.com`). It changes every time the tunnel restarts.
+- **Reset everything:** `docker compose down -v` (deletes the database and uploads).
+- `compose.dev.yaml` is unchanged: it only starts PostgreSQL for `php artisan serve` + `pnpm dev`.
+- The browser calls the API on the same origin because the image is built with `NEXT_PUBLIC_API_SAME_ORIGIN=true`; local development on ports 3010/8010 is unaffected.
+
+## Free demo hosting (Render + Neon)
+
+`render.yaml` is a Render **Blueprint**: one free Docker web service built from the `Dockerfile`, with the health check on `/api/v1/ping`. The database is a free **Neon** PostgreSQL project (Render's own free PostgreSQL is deleted after 30 days); `DB_SSLMODE=require`.
+
+1. **Neon** (neon.tech): create a project in *AWS Europe Central 1 (Frankfurt)*, PostgreSQL 16. From *Connect*, note the host, user and password (database `neondb`).
+2. **APP_KEY:** run `php -r "echo 'base64:'.base64_encode(random_bytes(32)), PHP_EOL;"` once and keep the value.
+3. **Render** (render.com): *New → Blueprint*, pick this repository and branch `main`. Fill in `APP_KEY`, `DB_HOST`, `DB_USERNAME` and `DB_PASSWORD` when asked, then *Apply*. The first build takes about 10 minutes.
+4. Open the service URL (`https://tessera-pos-demo.onrender.com` or similar) and sign in as `owner@tessera.test` / `password`. `APP_URL` defaults to Render's public URL.
+
+**Free-plan limits:** the service **sleeps after 15 minutes without visits** and takes **about a minute to wake**; anything uploaded (logos, branding images) is **lost when it sleeps or redeploys** (no disk on the free plan; the database keeps everything else). 512 MB of RAM, so PHP-FPM runs at most 4 workers and large PDF exports stop at 2,000 rows. Neon's free database suspends when idle and wakes on the first query. This is for demos only: a real shop needs a paid plan, `APP_ENV=production`, its own owner account (`TESSERA_OWNER_EMAIL`, `TESSERA_OWNER_PASSWORD`), `MPESA_DRIVER=daraja` and eTIMS.
 
 ## Checks
 
