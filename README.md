@@ -102,8 +102,10 @@ Lost or replaced device: **Administration → Branches → Tills → Disconnect*
 
 ```bash
 cd backend && php artisan test && vendor/bin/pint --test && composer validate
-cd frontend && pnpm lint && pnpm typecheck && pnpm build
+cd frontend && pnpm lint && pnpm typecheck && pnpm test && pnpm build
 ```
+
+`pnpm test` runs the frontend unit tests (`modules/**/*.test.ts`, e.g. the receipt printer) on the Playwright runner in Node: no browser, server or database.
 
 ### Till end-to-end tests
 
@@ -186,6 +188,24 @@ When the connection drops the till keeps selling **cash and card** from a copy o
 - Offline, these wait for the connection: M-PESA, manager approvals (overrides, big discounts, large voids, refunds), returns, parking, locking and ending the shift. A shift cannot end while its offline sales are still sending.
 - A cashier already signed in when the connection dropped can keep selling, even after reloading the page (production builds cache the till page with `public/sw.js`). Signing in a new cashier needs the connection.
 - Offline sales older than `SALES_OFFLINE_MAX_HOURS` (default 72, REQUIRES VALIDATION against KRA/VSCU rules) are refused on sync.
+
+## Receipt printing
+
+Each till prints its receipts the way *Settings → Integrations → Receipt printer* says (set per business, branch or till):
+
+| Connection | Use | Needs |
+| --- | --- | --- |
+| Print through the browser (default) | Any printer the computer knows | Nothing; the print dialog opens with the 58/80 mm layout |
+| USB thermal printer | ESC/POS printer on a USB cable | Chrome or Edge (WebUSB) |
+| Serial or Bluetooth printer | Serial / USB-serial printers, and Bluetooth printers paired as a COM port | Chrome or Edge on a computer (Web Serial); *Serial printer speed* from the printer's self-test page |
+| RawBT app | Android tablets and phones (Bluetooth, USB or network printers) | The free RawBT app from Google Play |
+| No printer | Receipts are not printed automatically | The *Print receipt* button still opens the print dialog |
+
+- **Direct printing** sends ESC/POS commands, which every common thermal printer understands. Receipts follow *Receipts → Paper size* (58 mm: 32 characters, 80 mm: 48). The *Receipt logo* is turned black and white (dithered) when *Show on receipt → Logo* is ticked, and the printer draws the eTIMS QR itself. The logo is kept on the till, so offline receipts still carry it.
+- **Set up a till:** till menu → **Printer** → **Choose printer** (USB or serial: the browser asks once and remembers the device) → **Print test page**. The test page shows the business name, the logo and a full line of characters, then cuts the paper.
+- **If the printer cannot be reached** (unplugged, out of paper, another browser) the receipt opens in the print dialog instead, so a receipt is never lost, and the till says why.
+- Reprints from *Return / reprint* print `*** COPY ***`. The back office (*Sales*) prints through the browser.
+- Code: `frontend/modules/sales/printer/` (ESC/POS writer, logo raster, transports, receipt layout) and `frontend/modules/till/components/PrinterModal.tsx`.
 
 ## Cash control
 

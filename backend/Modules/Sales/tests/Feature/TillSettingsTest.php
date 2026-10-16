@@ -91,7 +91,23 @@ class TillSettingsTest extends InventoryTestCase
             ->assertJsonPath('data.policy.discountLimits.Cashier', 5)
             ->assertJsonPath('data.policy.paymentMethods', ['mpesa', 'cash', 'card'])
             ->assertJsonPath('data.policy.voidApprovalThresholdCents', null)
-            ->assertJsonPath('data.policy.receipt.footerLines', ['Thank you for shopping with us.']);
+            ->assertJsonPath('data.policy.receipt.footerLines', ['Thank you for shopping with us.'])
+            ->assertJsonPath('data.policy.printer', ['connection' => 'browser', 'baudRate' => 9600]);
+    }
+
+    public function test_printer_connection_is_chosen_per_till(): void
+    {
+        $tillId = DB::table('tills')->where('branch_id', $this->main->id)->value('id');
+        $this->setting('hardware.receipt_printer', 'usb', 'branch', $this->main->id);
+        $this->setting('hardware.receipt_printer', 'serial', 'till', $tillId);
+        $this->setting('hardware.printer_baud_rate', 115200, 'till', $tillId);
+
+        $this->withHeaders(['X-Till-Token' => $this->token])->getJson('/api/v1/organisation/till-context')
+            ->assertOk()
+            ->assertJsonPath('data.policy.printer', ['connection' => 'serial', 'baudRate' => 115200]);
+
+        $this->backOffice($this->owner)->putJson('/api/v1/settings/values/hardware.receipt_printer', ['scope' => 'till', 'scopeId' => $tillId, 'value' => 'bluetooth-le'])
+            ->assertUnprocessable();
     }
 
     public function test_invoice_prefix_numbers_sales_and_an_empty_prefix_keeps_the_branch_format(): void

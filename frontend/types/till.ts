@@ -15,6 +15,13 @@ export interface Till {
   isActive: boolean;
 }
 
+/** Settings → Integrations → Receipt printer, for this till (TillPolicy::forTill). */
+export interface TillPrinter {
+  connection: "browser" | "usb" | "serial" | "rawbt" | "none";
+  /** Serial printers only. */
+  baudRate: number;
+}
+
 export type QuickButton = "hold" | "discount" | "customer" | "returns" | "price_check" | "open_drawer";
 
 /** Display-only staff card on the till screen (no contact details). */
@@ -64,6 +71,7 @@ export interface TillContext {
     quickButtons: QuickButton[];
     favouritesMode: "top" | "pinned" | "none";
     receipt: ReceiptSettings;
+    printer: TillPrinter;
     returnWindowDays: number;
     /** "stk": prompt the phone or pick the customer's payment; "manual": type the code (unverified). */
     mpesaMode: "stk" | "manual";
