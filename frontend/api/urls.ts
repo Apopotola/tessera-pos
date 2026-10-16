@@ -86,6 +86,7 @@ export const SALES_URLS = {
   tillSale: (number: string) => `/sales/till/sales/${encodeURIComponent(number)}`,
   tillReturns: "/sales/till/returns",
   tillVoids: "/sales/till/voids",
+  tillDrawerTest: "/sales/till/drawer-test",
   tillParked: "/sales/till/parked",
   tillRecall: (id: number) => `/sales/till/parked/${id}/recall`,
   openBottles: "/sales/open-bottles",

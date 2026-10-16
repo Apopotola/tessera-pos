@@ -230,7 +230,8 @@ final class SettingsRegistry
             'hardware.scanner' => self::f('integrations', 'Barcode scanner', 'select', 'keyboard', 'B', group: 'Hardware', scopes: ['business', 'branch', 'till'],
                 options: ['keyboard' => 'USB / Bluetooth scanner (types like a keyboard)', 'none' => 'No scanner']),
             'hardware.cash_drawer' => self::f('integrations', 'Cash drawer', 'select', 'none', 'B', group: 'Hardware', scopes: ['business', 'branch', 'till'],
-                options: ['none' => 'None', 'printer' => 'Opens with the receipt printer'], available: false, note: 'Direct printer and drawer control arrive later.'),
+                options: ['none' => 'None', 'printer' => 'Plugged into the receipt printer'],
+                help: 'Opens for sales that took cash, never for reprints or M-PESA, card or account-only sales. Needs a direct receipt printer (USB, serial or RawBT).'),
         ];
     }
 

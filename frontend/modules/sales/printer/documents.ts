@@ -98,6 +98,16 @@ export function receiptBytes(sale: Sale, options: ReceiptPrintOptions = {}): Uin
   return p.feed(4).cut().build();
 }
 
+/** The sale put cash in the drawer (a cash tender above zero). */
+export function tookCash(sale: Pick<Sale, "tenders">): boolean {
+  return sale.tenders.some((t) => t.method === "cash" && t.amountCents > 0);
+}
+
+/** Only the drawer pulse (pin 2), sent on its own so the drawer opens before the receipt prints. */
+export function drawerBytes(): Uint8Array {
+  return new EscPos(48).openDrawer().build();
+}
+
 /** Proves the connection, the paper width, the logo and the cutter. */
 export function testPageBytes(business: string, branch: string, receipt: ReceiptSettings, logo: Uint8Array | null): Uint8Array {
   const p = new EscPos(paperColumns(receipt.paperSize));

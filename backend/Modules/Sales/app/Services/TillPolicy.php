@@ -184,6 +184,8 @@ class TillPolicy
             'printer' => [
                 'connection' => $this->value('hardware.receipt_printer', $till),
                 'baudRate' => (int) $this->value('hardware.printer_baud_rate', $till),
+                // The drawer opens through the printer, so only when receipts go straight to it.
+                'cashDrawer' => $this->value('hardware.cash_drawer', $till) === 'printer',
             ],
         ];
     }

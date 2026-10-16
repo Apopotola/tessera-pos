@@ -207,6 +207,13 @@ Each till prints its receipts the way *Settings → Integrations → Receipt pri
 - Reprints from *Return / reprint* print `*** COPY ***`. The back office (*Sales*) prints through the browser.
 - Code: `frontend/modules/sales/printer/` (ESC/POS writer, logo raster, transports, receipt layout) and `frontend/modules/till/components/PrinterModal.tsx`.
 
+### Cash drawer
+
+- *Settings → Integrations → Cash drawer → Plugged into the receipt printer* (per business, branch or till). The drawer is wired to the printer's drawer port, so it needs a direct receipt printer (USB, serial or RawBT).
+- The drawer opens when a sale **took cash** (a cash payment above zero, including the cash part of a split payment), before the receipt prints. It never opens for a reprint, or for a sale paid only by M-PESA, card or on account.
+- **Test drawer** (till menu → *Printer*) is for the **owner only** (permission `sales.drawer.test`; not admins or Tessera support). The API refuses it when the till has no drawer and writes `sales.drawer.tested` to the audit log before the drawer opens. On an existing database, run `php artisan db:seed --class="Modules\Authorization\Database\Seeders\AuthorizationDatabaseSeeder"` once to add the permission to the Owner role.
+- Opening the drawer without a sale from the sales screen (*Open drawer* quick button, *Open cash drawer without a sale* approval) is still *Coming later*.
+
 ## Cash control
 
 - **Cash drops:** during a shift the cashier moves excess notes to the safe from the till menu (*Cash drop to safe*); a manager witnesses it with their PIN. A drop can never exceed what the drawer should hold, and drops are append-only.

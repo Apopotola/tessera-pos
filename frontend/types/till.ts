@@ -20,6 +20,8 @@ export interface TillPrinter {
   connection: "browser" | "usb" | "serial" | "rawbt" | "none";
   /** Serial printers only. */
   baudRate: number;
+  /** Settings → Cash drawer: plugged into the receipt printer. */
+  cashDrawer: boolean;
 }
 
 export type QuickButton = "hold" | "discount" | "customer" | "returns" | "price_check" | "open_drawer";

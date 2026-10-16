@@ -9,7 +9,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, authApi, salesApi } from "@/api";
 import { brand } from "@/app/theme";
 import Receipt, { ReceiptPrint } from "@/modules/sales/components/Receipt";
-import { printReceipt } from "@/modules/sales/printer";
+import { openDrawerForSale, printReceipt } from "@/modules/sales/printer";
 import { type ApprovalRules, type CartLine, cartTotals, withPromotions, fromParked, lineKey, lineName, lineTotal, looksLikeBarcode, needsApproval, newClientId, newLine, repriceForCustomer, sameLine, toParked, toPayload } from "@/modules/till/cart";
 import CustomerPicker from "@/modules/till/components/CustomerPicker";
 import type { TillCustomer } from "@/types/customers";
@@ -377,7 +377,12 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     setPaying(false);
     setCompleted(sale);
     // Settings → Receipts → Print behaviour.
-    if (policy.receipt.printBehaviour === "always") void printSale(sale, false, false);
+    // The drawer opens first (the cashier needs change), then the receipt prints.
+    void (async () => {
+      const drawer = await openDrawerForSale(policy.printer, sale);
+      if (drawer.via === "browser" && drawer.error) notifications.show({ color: "yellow", message: `The cash drawer did not open (${drawer.error}).` });
+      if (policy.receipt.printBehaviour === "always") await printSale(sale, false, false);
+    })();
     loadFavourites();
     setLines([]);
     setCustomer(null);

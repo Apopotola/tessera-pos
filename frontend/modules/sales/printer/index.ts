@@ -1,4 +1,4 @@
-import { paperWidthMm, receiptBytes } from "@/modules/sales/printer/documents";
+import { drawerBytes, paperWidthMm, receiptBytes, tookCash } from "@/modules/sales/printer/documents";
 import { logoRaster } from "@/modules/sales/printer/logo";
 import { isDirect, isSupported, sendBytes, type PrinterConnection } from "@/modules/sales/printer/transports";
 import type { Sale } from "@/types/sales";
@@ -46,6 +46,15 @@ export async function sendToPrinter(printer: TillPrinter, bytes: () => Uint8Arra
   } catch (error) {
     return { via: "browser", error: error instanceof Error ? error.message : "Printer error" };
   }
+}
+
+/**
+ * Settings → Cash drawer: open it for a sale that took cash. Never for reprints (they do not come here)
+ * or sales paid only by M-PESA, card or on account. Nothing happens without a direct printer.
+ */
+export async function openDrawerForSale(printer: TillPrinter, sale: Pick<Sale, "tenders">): Promise<PrintOutcome> {
+  if (!printer.cashDrawer || !tookCash(sale) || !printsDirect(printer)) return { via: "none" };
+  return sendToPrinter(printer, drawerBytes);
 }
 
 /** A receipt on this till's printer, logo included when the receipt shows it. */

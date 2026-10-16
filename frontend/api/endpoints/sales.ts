@@ -31,6 +31,8 @@ export const salesApi = {
   returnItems: (payload: ReturnPayload) => api.post<Sale>(U.tillReturns, payload),
   logVoid: (variantId: number, quantity: number, valueCents: number, reason: string | null, approvalToken: string | null) =>
     api.post<null>(U.tillVoids, { variantId, quantity, valueCents, reason, approvalToken }),
+  /** Owner only: logs a test opening of the cash drawer; the till then sends the pulse. */
+  drawerTest: () => api.post<null>(U.tillDrawerTest),
   parked: () => api.get<ParkedSale[]>(U.tillParked),
   park: (label: string | null, lines: ParkedLine[], totalCents: number) => api.post<ParkedSale>(U.tillParked, { label, lines, totalCents }),
   recall: (id: number) => api.post<ParkedSale>(U.tillRecall(id)),

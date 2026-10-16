@@ -2,14 +2,16 @@
 
 import { Alert, Button, Group, Modal, Stack, Text } from "@mantine/core";
 import { notifications } from "@mantine/notifications";
-import { IconPlug, IconPrinter, IconUsb } from "@tabler/icons-react";
+import { IconCash, IconPlug, IconPrinter, IconUsb } from "@tabler/icons-react";
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import receiptClasses from "@/modules/sales/components/Receipt.module.css";
-import { pairedDeviceName, rememberDevice, sendToPrinter } from "@/modules/sales/printer";
-import { paperWidthMm, testPageBytes } from "@/modules/sales/printer/documents";
+import { ApiError, salesApi } from "@/api";
+import { pairedDeviceName, printsDirect, rememberDevice, sendToPrinter } from "@/modules/sales/printer";
+import { drawerBytes, paperWidthMm, testPageBytes } from "@/modules/sales/printer/documents";
 import { logoRaster } from "@/modules/sales/printer/logo";
 import { isDirect, isSupported, pairSerial, pairUsb } from "@/modules/sales/printer/transports";
+import { useAppSelector } from "@/store/hooks";
 import type { TillContext } from "@/types/till";
 
 const CONNECTION_LABELS = {
@@ -30,6 +32,8 @@ export default function PrinterModal({ context, onClose }: { context: TillContex
   const [busy, setBusy] = useState(false);
   const supported = isSupported(printer.connection);
   const paper = paperWidthMm(receipt.paperSize);
+  // Opening the drawer without a sale is the owner's alone, and logged.
+  const canTestDrawer = useAppSelector((state) => state.auth.user?.permissions.includes("sales.drawer.test") ?? false);
   // The print dialog version of the test page: mounted, printed, unmounted.
   const [browserTest, setBrowserTest] = useState(false);
   useEffect(() => {
@@ -74,6 +78,24 @@ export default function PrinterModal({ context, onClose }: { context: TillContex
     }
   };
 
+  const testDrawer = async () => {
+    if (busy) return;
+    setBusy(true);
+    try {
+      await salesApi.drawerTest();
+      const outcome = await sendToPrinter(printer, drawerBytes);
+      notifications.show(
+        outcome.via === "printer"
+          ? { color: "green", message: "Drawer opened. The test is in the audit log." }
+          : { color: "red", message: `The drawer did not open${outcome.via === "browser" && outcome.error ? ` (${outcome.error})` : ""}. Check the printer and the drawer cable.` },
+      );
+    } catch (e) {
+      notifications.show({ color: "red", message: e instanceof ApiError ? e.message : "Could not test the drawer." });
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Modal opened onClose={onClose} title="Receipt printer" centered>
       <Stack>
@@ -104,7 +126,18 @@ export default function PrinterModal({ context, onClose }: { context: TillContex
         )}
         {printer.connection === "rawbt" && supported && <Text size="sm">Install RawBT from Google Play and pick the printer there once. Receipts then print without a dialog.</Text>}
 
+        {printer.cashDrawer && (
+          <Text size="sm" c="dimmed">
+            Cash drawer: opens for sales that took cash{printsDirect(printer) ? "" : " (needs a direct printer on this browser)"}.
+          </Text>
+        )}
+
         <Group justify="flex-end">
+          {canTestDrawer && printer.cashDrawer && printsDirect(printer) && (
+            <Button variant="default" leftSection={<IconCash size={18} />} loading={busy} onClick={() => void testDrawer()}>
+              Test drawer
+            </Button>
+          )}
           <Button variant="default" onClick={onClose}>
             Close
           </Button>

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
-import { amount, receiptBytes, testPageBytes } from "@/modules/sales/printer/documents";
+import { openDrawerForSale } from "@/modules/sales/printer";
+import { amount, drawerBytes, receiptBytes, testPageBytes, tookCash } from "@/modules/sales/printer/documents";
 import { EscPos, columns, toAscii, wrap } from "@/modules/sales/printer/escpos";
 import { PAPER_DOTS, fitLogo, rasterCommand, toBitmap } from "@/modules/sales/printer/raster";
 import { rawbtUrl } from "@/modules/sales/printer/transports";
@@ -151,4 +152,21 @@ test("the logo is dithered to black and white and fits the paper", () => {
 
 test("RawBT gets the bytes as an Android intent", () => {
   expect(rawbtUrl(Uint8Array.from([0x1b, 0x40]))).toBe("intent:base64,G0A=#Intent;scheme=rawbt;package=ru.a402d.rawbtprinter;end;");
+});
+
+test("the drawer opens only for sales that took cash", () => {
+  const tender = (method: Sale["tenders"][number]["method"], amountCents: number) => ({ ...sale.tenders[0], method, amountCents, tenderedCents: null, changeCents: null });
+  expect(tookCash(sale)).toBe(true);
+  expect(tookCash({ tenders: [tender("mpesa", 520000)] })).toBe(false);
+  expect(tookCash({ tenders: [tender("card", 520000)] })).toBe(false);
+  expect(tookCash({ tenders: [tender("credit", 520000)] })).toBe(false);
+  expect(tookCash({ tenders: [tender("mpesa", 400000), tender("cash", 120000)] })).toBe(true);
+  expect(tookCash({ tenders: [tender("mpesa", 520000), tender("cash", 0)] })).toBe(false);
+  // Pin 2 pulse, and nothing else.
+  expect(Array.from(drawerBytes())).toEqual([0x1b, 0x40, 0x1b, 0x70, 0x00, 0x19, 0xfa]);
+});
+
+test("no drawer pulse without the setting or a direct printer", async () => {
+  expect(await openDrawerForSale({ connection: "usb", baudRate: 9600, cashDrawer: false }, sale)).toEqual({ via: "none" });
+  expect(await openDrawerForSale({ connection: "browser", baudRate: 9600, cashDrawer: true }, sale)).toEqual({ via: "none" });
 });

@@ -92,7 +92,7 @@ class TillSettingsTest extends InventoryTestCase
             ->assertJsonPath('data.policy.paymentMethods', ['mpesa', 'cash', 'card'])
             ->assertJsonPath('data.policy.voidApprovalThresholdCents', null)
             ->assertJsonPath('data.policy.receipt.footerLines', ['Thank you for shopping with us.'])
-            ->assertJsonPath('data.policy.printer', ['connection' => 'browser', 'baudRate' => 9600]);
+            ->assertJsonPath('data.policy.printer', ['connection' => 'browser', 'baudRate' => 9600, 'cashDrawer' => false]);
     }
 
     public function test_printer_connection_is_chosen_per_till(): void
@@ -104,10 +104,30 @@ class TillSettingsTest extends InventoryTestCase
 
         $this->withHeaders(['X-Till-Token' => $this->token])->getJson('/api/v1/organisation/till-context')
             ->assertOk()
-            ->assertJsonPath('data.policy.printer', ['connection' => 'serial', 'baudRate' => 115200]);
+            ->assertJsonPath('data.policy.printer', ['connection' => 'serial', 'baudRate' => 115200, 'cashDrawer' => false]);
 
         $this->backOffice($this->owner)->putJson('/api/v1/settings/values/hardware.receipt_printer', ['scope' => 'till', 'scopeId' => $tillId, 'value' => 'bluetooth-le'])
             ->assertUnprocessable();
+    }
+
+    public function test_only_the_owner_can_test_the_cash_drawer_and_it_is_audited(): void
+    {
+        $owner = fn () => $this->actingAs($this->owner)->withHeaders(['Referer' => 'http://'.config('sanctum.stateful')[0].'/till', 'X-Till-Token' => $this->token]);
+
+        // No drawer on this till yet.
+        $owner()->postJson('/api/v1/sales/till/drawer-test')->assertUnprocessable()->assertJsonValidationErrors('drawer');
+
+        $this->setting('hardware.cash_drawer', 'printer', 'branch', $this->main->id);
+        $this->withHeaders(['X-Till-Token' => $this->token])->getJson('/api/v1/organisation/till-context')
+            ->assertJsonPath('data.policy.printer.cashDrawer', true);
+
+        // Cashiers and managers cannot open the drawer without a sale.
+        $this->till()->postJson('/api/v1/sales/till/drawer-test')->assertForbidden();
+        $this->actingAs($this->manager)->postJson('/api/v1/sales/till/drawer-test')->assertForbidden();
+        $this->assertDatabaseMissing('audit_logs', ['action' => 'sales.drawer.tested']);
+
+        $owner()->postJson('/api/v1/sales/till/drawer-test')->assertOk();
+        $this->assertDatabaseHas('audit_logs', ['action' => 'sales.drawer.tested', 'user_id' => $this->owner->id, 'branch_id' => $this->main->id]);
     }
 
     public function test_invoice_prefix_numbers_sales_and_an_empty_prefix_keeps_the_branch_format(): void

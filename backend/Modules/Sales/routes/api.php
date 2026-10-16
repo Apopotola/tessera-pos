@@ -33,6 +33,7 @@ Route::middleware(['auth:sanctum', 'till.device'])->prefix('sales')->name('sales
         Route::get('sales/{number}', [TillSaleController::class, 'find'])->name('sales.find');
         Route::post('returns', [TillSaleController::class, 'storeReturn'])->name('returns.store');
         Route::post('voids', [TillSaleController::class, 'void'])->name('voids');
+        Route::post('drawer-test', [TillSaleController::class, 'drawerTest'])->middleware('throttle:10,1')->name('drawer-test');
         Route::get('parked', [TillSaleController::class, 'parked'])->name('parked.index');
         Route::post('parked', [TillSaleController::class, 'park'])->name('parked.store');
         Route::post('parked/{parkedSale}/recall', [TillSaleController::class, 'recall'])->name('parked.recall');
