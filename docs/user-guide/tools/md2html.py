@@ -1,13 +1,13 @@
 """Turn user-guide Markdown chapters into one branded HTML page, ready to print to PDF.
 
 Usage:
-    python md2html.py OUT.html CHAPTER.md [CHAPTER.md ...] [--cover] [--landscape] [--gallery]
+    python md2html.py OUT.html CHAPTER.md [CHAPTER.md ...] [--cover] [--for="Client name"] [--landscape] [--gallery]
 
 Supports what the guide uses: headings, paragraphs, **bold**, *italic*, `code`, links (text only),
 tables, numbered lists (keeping their numbers), bullet lists, images with captions
 (![Figure …](path)) and callout boxes written as blockquotes that start with
 **Tip:**, **Important:** or **Common mistake:**.
---cover adds a title page and a table of contents; --gallery puts consecutive images
+--cover adds a title page and a table of contents (--for= names the client on it); --gallery puts consecutive images
 side by side (used for the inventory). Brand colours: Jacaranda #5B3FA3 headings,
 Ink #1A1B2E text, Tile Amber #F2A93B for tips.
 """
@@ -18,7 +18,8 @@ import re
 import sys
 
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
-flags = {a for a in sys.argv[1:] if a.startswith("--")}
+flags = {a.split("=")[0] for a in sys.argv[1:] if a.startswith("--")}
+client = next((a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--for=")), "")
 out_path, sources = pathlib.Path(args[0]), [pathlib.Path(a).resolve() for a in args[1:]]
 IMG = re.compile(r"^!\[([^\]]*)\]\(([^)]+)\)\s*$")
 OL = re.compile(r"^(\d+)\. (.*)")
@@ -128,7 +129,7 @@ if "--cover" in flags:
     logo = "".join(f'<span style="background:{c}"></span>' for c in ("#8F79CC", "#F2A93B", "#8F79CC", "#FFFFFF"))
     items = "".join(f'<li class="lvl{n}"><a href="#{a}">{inline(t)}</a></li>' for n, t, a in toc)
     cover = f"""<section class="cover"><div class="logo">{logo}</div><div class="brand">tessera</div>
-<h1>User Guide</h1><p class="sub">Tessera POS for wines &amp; spirits shops</p>
+<h1>User Guide</h1><p class="sub">Tessera POS for wines &amp; spirits shops</p>{f'<p class="client">Prepared for {html.escape(client)}</p>' if client else ''}
 <p class="meta">Version 1.0 · {today.day} {today.strftime('%B %Y')}</p></section>
 <section class="toc"><h2>Contents</h2><ol>{items}</ol></section>"""
 
@@ -170,6 +171,7 @@ figcaption {{ font-size: 9pt; color: #5B3FA3; font-weight: 600; margin-top: 4px;
 .cover .brand {{ font-size: 20pt; font-weight: 700; margin: 10px 0 40px; letter-spacing: .02em; }}
 .cover h1 {{ color: #fff; font-size: 44pt; }}
 .cover .sub {{ color: #F2A93B; font-size: 15pt; margin: 4px 0 30px; }}
+.cover .client {{ color: #fff; font-size: 13pt; margin: -18px 0 30px; }}
 .cover .meta {{ color: #b9b9c8; font-size: 11pt; }}
 .toc {{ page-break-after: always; }}
 .toc ol {{ list-style: none; padding: 0; }}

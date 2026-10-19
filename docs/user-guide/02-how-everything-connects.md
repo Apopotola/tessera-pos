@@ -2,7 +2,7 @@
 
 Tessera POS is one system, not a set of separate programs. When a cashier sells a bottle, the stock goes down, the tax invoice goes to KRA, the money shows in the day's takings and the owner's dashboard updates, all at once. You do not copy anything from one screen to another.
 
-This chapter follows one ordinary day at **Karen Wines & Spirits**, a shop with two branches in Nairobi (Karen and Westlands). It shows which part of the system is used at each step, who uses it, and what changes elsewhere as a result. Later chapters explain each part in detail.
+This chapter follows one ordinary day at **Spanish Wines & Spirits**, a shop with two branches in Nairobi (Kobil Imara Daima and Westlands). It shows which part of the system is used at each step, who uses it, and what changes elsewhere as a result. Later chapters explain each part in detail.
 
 ## The big picture
 
@@ -50,7 +50,7 @@ Click **Add user (1)** to create staff accounts. Each person gets a role, such a
 ### Step 2: Products are added and stock is received
 
 **Who:** the owner or admin adds products. The owner, an admin or the accountant orders stock, and a different person approves the order. The storekeeper receives the delivery.
-**Where:** Catalogue → Products, Purchasing → Purchase orders, and Inventory → Stock on hand.
+**Where:** Catalogue → Products, Purchasing → Purchase orders, and Inventory → Stock levels.
 
 ![Figure 2.5: Catalogue → Products](images/overview/04-products.png)
 
@@ -60,9 +60,9 @@ Stock comes in through a **purchase order**: a list of what you are ordering fro
 
 ![Figure 2.6: Purchase orders → Received: an order from Rift Valley Spirits Distributors that has been delivered](images/overview/05-purchase-order-received.png)
 
-![Figure 2.7: Inventory → Stock on hand, per item and branch](images/overview/06-stock-on-hand.png)
+![Figure 2.7: Inventory → Stock levels, per item and branch](images/overview/06-stock-on-hand.png)
 
-**What changes elsewhere:** receiving goods adds stock to the **stock ledger** (the full history of every bottle in and out) and to Stock on hand. When the supplier's invoice is recorded, the amount appears under **Supplier accounts** as money you owe.
+**What changes elsewhere:** receiving goods adds stock to the **stock ledger** (the full history of every bottle in and out) and to Stock levels. When the supplier's invoice is recorded, the amount appears under **Supplier accounts** as money you owe.
 
 > **Tip:** Prices are set centrally by the owner or admin, and a new price waits for the owner's approval. This keeps both branches charging the same and keeps tax invoices correct.
 
@@ -92,7 +92,7 @@ A customer buys two bottles of Nederburg Cabernet Sauvignon and a Coca-Cola and 
 
 1. Scan the barcode or type part of the name in the search box **(1)**, then tap the item.
 2. Check the items in the sale **(2)**. Two bottles of wine qualify for the *Wine weekend: buy 2, 10% off* promotion, so KSh 290 is taken off by itself.
-3. Tap **Pay (3)**. The total is KSh 2,700.
+3. Under the total, tap how the customer pays, here **M-PESA (3)**, then tap **Complete sale (4)**. The total is KSh 2,700.
 
 ![Figure 2.10: The age check before payment](images/overview/09a-age-check.png)
 
@@ -106,7 +106,7 @@ A customer buys two bottles of Nederburg Cabernet Sauvignon and a Coca-Cola and 
 
 6. When the confirmation **(1)** appears, tap **Complete sale (2)**.
 
-For cash, choose **Cash** and type the amount the customer hands over; the till shows the change to give. Card payments and sales on a customer's account work the same way (see the Sales chapter).
+For cash, choose **Cash** and type the amount the customer hands over; the till shows the change to give. Card payments and sales on a customer's account work the same way (see chapter 3).
 
 **What changes elsewhere:** the moment the sale completes, the two bottles and the Coca-Cola leave the stock, the M-PESA payment is matched to the sale, and the day's sales on the dashboard go up.
 
@@ -207,7 +207,7 @@ This report lists what to order and roughly what it will cost. To order, open **
 
 ![Figure 2.27: The Sales summary report, with VAT, ready to export](images/overview/25-sales-summary.png)
 
-The **Sales summary** shows gross sales, discounts, returns, net sales and **VAT (Value Added Tax)** for any period, by day, week or month. Click **Export CSV** to open it in Excel, or **Print / PDF** to keep a copy. The accountant also uses *Revenue, cost of goods & gross profit*, *Expenses*, *Receivables aging* and *Payables aging*. Because every sale was signed on eTIMS as it happened, the VAT figures match what KRA has on record.
+The **Sales summary** shows gross sales, discounts, returns, net sales and **VAT (Value Added Tax)** for any period, by day, week or month. Click **Export CSV** to open it in Excel, **Download PDF** for a branded copy, or **Print**. The accountant also uses *Revenue, cost of goods & gross profit*, *Expenses*, *Receivables aging* and *Payables aging*. Because every sale was signed on eTIMS as it happened, the VAT figures match what KRA has on record.
 
 ## Who does what: summary
 
@@ -230,7 +230,7 @@ The **Sales summary** shows gross sales, discounts, returns, net sales and **VAT
 No. Every sale and return is sent to eTIMS automatically. Check *Compliance → eTIMS monitor* now and then; it shows anything that still needs attention.
 
 **What happens if the internet goes down during the day?**
-The till keeps selling for cash and card and sends the sales when the connection comes back. M-PESA payment requests and returns need the connection. See the Sales chapter.
+The till keeps selling for cash and card, and for M-PESA by typing the code from the customer's message. It sends the sales when the connection comes back. M-PESA payment requests, returns and manager approvals need the connection. See chapter 3.
 
 **Can a cashier see how much money should be in the drawer?**
 Not before counting. The expected amount is shown only after the count is submitted, so the count is honest.
