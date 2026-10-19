@@ -61,6 +61,8 @@ php artisan migrate --seed
 php artisan serve   # 127.0.0.1:8010 (SERVER_HOST/SERVER_PORT in .env)
 ```
 
+**Windows:** use PHP 8.4 (with Laravel Herd: `php84 artisan …`; XAMPP's `php` is 8.2) and start the API with `php84 artisan serve --no-reload`. Without `--no-reload` Laravel starts the server with a reduced environment, which on some Windows machines fails with *Failed to listen on 127.0.0.1:8010 (reason: ?)*.
+
 Seeding creates the MAIN branch, the six default roles, the navigation menu and a local Owner account (`owner@tessera.test` / `password`, local and testing only). Outside local, set `TESSERA_OWNER_EMAIL` and `TESSERA_OWNER_PASSWORD` before seeding.
 
 API docs: `php artisan l5-swagger:generate`, then open http://localhost:8010/api/documentation.
