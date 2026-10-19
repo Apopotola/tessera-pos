@@ -37,9 +37,11 @@ php artisan migrate --force
 USERS=$(PGPASSWORD="$DB_PASSWORD" PGSSLMODE="${DB_SSLMODE:-prefer}" psql -h "$DB_HOST" -p "${DB_PORT:-5432}" -U "$DB_USERNAME" -d "$DB_DATABASE" -tAc 'SELECT count(*) FROM users')
 if [ "$USERS" = "0" ]; then
     php artisan db:seed --force
-    # Demo mode: two-step login off for the owner, demo PINs, a credit customer, promotions, a licence.
+    # Demo mode: two-step login off for the owner, demo PINs, promotions, a licence; then the full demo shop
+    # (two branches, ~90 items, suppliers, trade customers, two weeks of sales, open paperwork). About 2 minutes.
     if [ "$TESSERA_DEMO" = "true" ]; then
         php artisan db:seed --class=DemoShowcaseSeeder --force
+        php artisan db:seed --class=DemoShopSeeder --force
     fi
 fi
 

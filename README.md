@@ -92,6 +92,26 @@ Open **http://localhost:3010** (use `localhost`, not `127.0.0.1`, so the Sanctum
 
 Before a client demo, run `php artisan db:seed --class=DemoShowcaseSeeder --force` (local only, safe to repeat). It switches two-step login off for the owner, resets the PINs above, opens a KES 30,000 credit account for *Demo Lounge & Grill*, and adds two approved promotions and a liquor licence expiring in 20 days. The role-by-role demo script and the latest walkthrough results are in [docs/Tessera-POS-Demo-Walkthrough.pdf](docs/Tessera-POS-Demo-Walkthrough.pdf).
 
+### Full demo shop
+
+For a client demo with a shop that looks lived-in, start from a fresh database (local only):
+
+```bash
+php artisan migrate:fresh --seed
+php artisan db:seed --class=DemoShowcaseSeeder --force
+php artisan db:seed --class=DemoShopSeeder --force
+```
+
+`DemoShopSeeder` (about 2 minutes) builds **Karen Wines & Spirits** with two branches (Karen and Westlands) through the real services, so every figure agrees:
+
+- **Catalogue:** about 70 products / 90 items in every category: blended and single-malt Scotch, Irish and American whiskey, vodka, gin, brandy and cognac, rum, tequila, liqueurs, red, white, rosé and sparkling wine, port, beer (with 24-bottle crate barcodes), cider and ready-to-drink, plus the usual mixers, soft drinks, water, energy drinks and ice (0% ABV, so they also show the licensed-hours lock). Popular spirits sell by the 25 ml tot; beer, wine and soft drinks have trade prices for wholesale customers.
+- **Suppliers:** six (spirits, wines, breweries, soft drinks, premium imports), with contacts and payment terms.
+- **Customers:** six, three of them trade accounts on credit.
+- **Trading:** opening stock at both branches, 13 days of sales (cash, M-PESA, card, on account), daily cash-ups signed off (one KES 200 short), today's shift open at Karen, items running low.
+- **Open paperwork:** a purchase order waiting for approval, one sent and awaiting delivery, a supplier invoice on query (overcharged), whisky in transit to Westlands, a breakage, a return to the supplier and an expense waiting for a manager, and a stock count in progress.
+
+The owner shows as *David Kiprop* (still `owner@tessera.test` / `password`). Names of suppliers and customers are fictional; phone numbers and KRA PINs are dummies. The Docker and Render demos load this shop automatically on their first start (`TESSERA_DEMO=true`).
+
 Owner, Admin and Tessera Support accounts use **two-step login**: the first sign-in shows a QR code for an authenticator app (Google Authenticator, Microsoft Authenticator, Authy) and then recovery codes. For demos without a phone, an owner can switch it off under **Settings → Staff and roles** (Tessera Support always keeps it).
 
 ### Setting up a till
@@ -112,7 +132,7 @@ docker compose up -d --build
 
 Open **http://localhost:8080** and sign in as `owner@tessera.test` / `password` (demo mode: two-step login is off, the till PINs are in *Local demo accounts*). The first start takes about a minute.
 
-- **On every start** (`docker/entrypoint.sh`) the container waits for PostgreSQL, runs `migrate --force`, seeds **only an empty database** (with `TESSERA_DEMO=true` it also runs `DemoShowcaseSeeder`), links storage, generates the API docs and caches config, routes, views and events.
+- **On every start** (`docker/entrypoint.sh`) the container waits for PostgreSQL, runs `migrate --force`, seeds **only an empty database** (with `TESSERA_DEMO=true` it also loads the full demo shop: `DemoShowcaseSeeder` and `DemoShopSeeder`, about 2 minutes on the first start), links storage, generates the API docs and caches config, routes, views and events.
 - **APP_KEY:** taken from the environment; locally one is generated on the first start and kept in the `app-storage` volume, so sessions and encrypted settings survive rebuilds.
 - **Demo settings:** `APP_ENV=local`, `APP_DEBUG=false`, `MPESA_DRIVER=fake`, `ETIMS_DRIVER=disabled`. Override any of them in a root `.env` (not committed), e.g. `APP_PORT=9090`.
 - **Share it:** `docker compose --profile share up -d` adds a free Cloudflare quick tunnel; the public HTTPS link is in `docker compose logs tunnel` (look for `trycloudflare.com`). It changes every time the tunnel restarts.
