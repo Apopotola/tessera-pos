@@ -104,12 +104,12 @@ php artisan db:seed --class=DemoShowcaseSeeder --force
 php artisan db:seed --class=DemoShopSeeder --force
 ```
 
-`DemoShopSeeder` (about 2 minutes) builds **Karen Wines & Spirits** with two branches (Karen and Westlands) through the real services, so every figure agrees:
+`DemoShopSeeder` (about 2 minutes) builds **Spanish Wines & Spirits** with two branches (Kobil Imara Daima and Westlands) through the real services, so every figure agrees:
 
 - **Catalogue:** about 70 products / 90 items in every category: blended and single-malt Scotch, Irish and American whiskey, vodka, gin, brandy and cognac, rum, tequila, liqueurs, red, white, rosé and sparkling wine, port, beer (with 24-bottle crate barcodes), cider and ready-to-drink, plus the usual mixers, soft drinks, water, energy drinks and ice (0% ABV, so they also show the licensed-hours lock). Popular spirits sell by the 25 ml tot; beer, wine and soft drinks have trade prices for wholesale customers.
 - **Suppliers:** six (spirits, wines, breweries, soft drinks, premium imports), with contacts and payment terms.
 - **Customers:** six, three of them trade accounts on credit.
-- **Trading:** opening stock at both branches, 13 days of sales (cash, M-PESA, card, on account), daily cash-ups signed off (one KES 200 short), today's shift open at Karen, items running low.
+- **Trading:** opening stock at both branches, 13 days of sales (cash, M-PESA, card, on account), daily cash-ups signed off (one KES 200 short), today's shift open at Kobil Imara Daima, items running low.
 - **Open paperwork:** a purchase order waiting for approval, one sent and awaiting delivery, a supplier invoice on query (overcharged), whisky in transit to Westlands, a breakage, a return to the supplier and an expense waiting for a manager, and a stock count in progress.
 
 The owner shows as *David Kiprop* (still `owner@tessera.test` / `password`). Names of suppliers and customers are fictional; phone numbers and KRA PINs are dummies. The Docker and Render demos load this shop automatically on their first start (`TESSERA_DEMO=true`).

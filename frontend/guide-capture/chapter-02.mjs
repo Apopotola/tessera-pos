@@ -1,5 +1,5 @@
 // Chapter 2 "How everything connects": one business day, in order. Saves to images/overview.
-// Needs the user-guide shop (UserGuideSeeder) served on GUIDE_WEB; see guide-capture/README.md.
+// Needs the user-guide shop (guide-db.sh: the demo shop) served on GUIDE_WEB; see guide-capture/README.md.
 import { BACK_OFFICE, TILL, WEB, launch, newPage, open, settle, shot, signIn, typePin } from "./lib.mjs";
 
 const F = "overview";
@@ -12,7 +12,7 @@ await signIn(office, "owner@tessera.test");
 await open(office, "/admin/settings");
 await shot(office, F, "01-settings-business", [
   [office.locator("main a").filter({ hasText: /^Business/ }).first(), 1],
-  [office.locator('main input[value="Karen Wines & Spirits"]'), 2],
+  [office.locator('main input[value="Spanish Wines & Spirits"]'), 2],
   [office.getByRole("button", { name: "Save" }).first(), 3],
 ]);
 
@@ -80,10 +80,13 @@ await settle(till, 600);
 await shot(till, F, "08-till-selling", [
   [search, 1],
   [till.getByText("Nederburg Cabernet", { exact: false }).last(), 2, { box: false }],
-  [till.getByRole("button", { name: /^Pay / }), 3],
+  [till.getByRole("button", { name: "M-PESA", exact: true }), 3],
+  [till.getByRole("button", { name: "Complete sale" }), 4],
 ]);
 
-await till.getByRole("button", { name: /^Pay / }).click();
+// The sale panel: pick how the customer pays, then Complete sale.
+await till.getByRole("button", { name: "M-PESA", exact: true }).click();
+await till.getByRole("button", { name: "Complete sale" }).click();
 // Settings may ask for an age check first.
 const age = till.getByRole("button", { name: "Yes, 18 or over" });
 const tender = till.getByRole("dialog", { name: "Take payment" });

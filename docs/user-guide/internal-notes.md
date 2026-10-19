@@ -65,5 +65,6 @@ These are hidden in the system or not built. Leave them out of the client guide 
 | Purchase orders | Document the current permissions: owner, admin or accountant raise orders; a different person approves; storekeepers receive. |
 | Prices | Branch managers cannot change prices: prices are set centrally by the owner or admin. The guide explains why (no unapproved price changes, branches stay consistent, eTIMS invoices stay correct). Managers can still approve discounts at the till up to their limit. |
 | Screenshot sizes | Back office 1440×900; till 1366×768 (the till is built for a computer or tablet, not a phone). |
-| Demo data | A separate guide database: "Karen Wines & Spirits", branches Karen and Westlands, Kenyan names, dummy phone numbers (0712 000 000) and dummy KRA PINs (P000000000X). The local demo data is not changed. |
-| Output | Markdown chapters plus images, combined into `docs/Tessera_POS_User_Guide.docx` and `.pdf`. |
+| Demo data | A separate guide database: "Spanish Wines & Spirits", branches Kobil Imara Daima and Westlands, Kenyan names, dummy phone numbers (0712 000 000) and dummy KRA PINs (P000000000X). The local demo data is not changed. |
+| Client | The client is **Spanish Wines & Spirits** at **Kobil Imara Daima** (they also run a butchery, which is out of scope). The guide shop uses their name; the Westlands branch, staff, customers and suppliers are made up so transfers and two-branch screens can be shown. |
+| Output | Markdown chapters plus images, combined into `docs/Tessera_POS_User_Guide.pdf` (`md2html.py` + `pdf.mjs`) and `.docx` (`md2docx.py`, no Word needed). |

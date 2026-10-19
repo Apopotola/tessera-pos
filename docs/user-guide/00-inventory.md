@@ -134,7 +134,7 @@ The main steps (purple, and the till in amber) follow a business day from left t
 - **Back office (Figures 2 to 35):** 1440×900, signed in as the owner on the local demo system, just looking (nothing was changed).
 - **Till (Figures 36 to 53):** 1366×768, on the separate test system, with a cashier (Otieno) making a real test sale.
 
-The small "N" badge in the bottom-left corner appears only in development mode. The final guide will be shot without it, on the "Karen Wines & Spirits" demo data once you approve it.
+The small "N" badge in the bottom-left corner appears only in development mode. The final guide will be shot without it, on the "Spanish Wines & Spirits" demo data once you approve it.
 
 ### 5.1 Back office
 
@@ -218,5 +218,5 @@ The small "N" badge in the bottom-left corner appears only in development mode. 
 | 6 | Managers and prices | Intended: prices are set centrally. The guide explains why, and that managers still approve till discounts up to their limit. |
 | 7 | "Coming later" settings | Mentioned only as not available yet. |
 | 8 | Screenshot sizes | Back office 1440×900, till 1366×768. |
-| 9 | Demo data | Separate guide database, "Karen Wines & Spirits" (Karen and Westlands branches). |
+| 9 | Demo data | Separate guide database, "Spanish Wines & Spirits" (Kobil Imara Daima and Westlands branches). |
 | 10 | Output | Word and PDF from the Markdown source. |

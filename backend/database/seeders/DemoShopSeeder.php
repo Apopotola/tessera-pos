@@ -30,7 +30,7 @@ use Modules\Purchasing\Services\SupplierService;
 
 /**
  * A full demo shop for showing Tessera to clients, LOCAL only (APP_ENV=local, never production):
- * the sample shop of the user guide ("Karen Wines & Spirits", two branches, two weeks of trading)
+ * the sample shop of the user guide ("Spanish Wines & Spirits", two branches, two weeks of trading)
  * with a complete wines & spirits catalogue, more suppliers and trade customers, and the open
  * paperwork a demo walks through: orders waiting for approval or delivery, an invoice on query,
  * stock in transit, a breakage and a return waiting for a manager, a stock count, an expense.
@@ -163,7 +163,7 @@ class DemoShopSeeder extends Seeder
             ['Red Bull', 'Austria', 'Red Bull Energy Drink', 'energy-drinks', 0.0, [[250, 'RB-250', 250, null, null, 'can']]],
             ['Monster', 'USA', 'Monster Energy', 'energy-drinks', 0.0, [[500, 'MON-500', 300, null, null, 'can']]],
             // Accessories
-            ['Polar Ice', 'Kenya', 'Polar Ice cubes 2 kg', 'accessories', 0.0, [[2000, 'ICE-2KG', 200, null, null, 'pouch']]],
+            ['Polar Ice', 'Kenya', 'Polar Ice Cubes', 'accessories', 0.0, [[2000, 'ICE-2KG', 200, null, null, 'pouch']]],
         ];
 
         $vat = TaxRate::query()->where('code', 'B')->value('id');
@@ -279,7 +279,7 @@ class DemoShopSeeder extends Seeder
             'grnIds' => [$grn->id], 'subtotalCents' => $subtotal, 'vatCents' => $vat, 'totalCents' => $subtotal + $vat, 'note' => 'Check the Moët unit price',
         ], $accountant);
 
-        // 4. Westlands is short of whisky: Karen's store sends some over; it is on the way.
+        // 4. Westlands is short of whisky: Imara Daima's store sends some over; it is on the way.
         Date::setTestNow($now->subHours(5));
         $transfer = $this->transfers->request(['fromLocationId' => $location($karen, 'STORE')->id, 'toLocationId' => $location($westlands, 'STORE')->id,
             'note' => 'Weekend at Westlands', 'lines' => [['variantId' => $sku('JWB-750'), 'quantity' => 12], ['variantId' => $sku('JAM-750'), 'quantity' => 12], ['variantId' => $sku('JWR-750'), 'quantity' => 12]]], $storekeeper);
@@ -307,7 +307,7 @@ class DemoShopSeeder extends Seeder
             Date::setTestNow($now->subHours(4));
             $this->expenses->request([
                 'branchId' => $karen->id, 'categoryId' => $category, 'amountCents' => 350000, 'paidFrom' => 'petty_cash',
-                'payee' => 'Total Energies Karen', 'description' => 'Generator fuel during the power cut', 'reference' => null, 'spentOn' => $now->toDateString(),
+                'payee' => 'Kobil Imara Daima', 'description' => 'Generator fuel during the power cut', 'reference' => null, 'spentOn' => $now->toDateString(),
             ], $accountant);
         }
     }

@@ -41,7 +41,7 @@ use Modules\Settings\Services\SettingsService;
 
 /**
  * Sample shop for the client user guide's screenshots, LOCAL only (never production):
- * "Karen Wines & Spirits" with a Karen and a Westlands branch, two weeks of trading and
+ * "Spanish Wines & Spirits" with a Kobil Imara Daima and a Westlands branch, two weeks of trading and
  * everyday paperwork, all made through the real services so every number agrees.
  *
  * Run on a fresh database after the demo seeders:
@@ -126,14 +126,14 @@ class UserGuideSeeder extends Seeder
             }
         }
         $this->paperwork($karen, $today);
-        // This morning: the Karen till is open and has already sold a little.
+        // This morning: the Imara Daima till is open and has already sold a little.
         [$branch, $till, $cashier] = $tills[0];
         $this->tradingDay($branch, $till, $cashier, $today, closeShift: false);
         $this->lowStock($karen);
         Date::setTestNow();
         $this->alerts->lowStockDigest();
 
-        $this->command?->info('Karen Wines & Spirits is ready for the user guide screenshots.');
+        $this->command?->info('Spanish Wines & Spirits is ready for the user guide screenshots.');
     }
 
     /** Business name, main branch, people, customers and suppliers renamed for the sample shop. */
@@ -141,23 +141,23 @@ class UserGuideSeeder extends Seeder
     {
         $support = User::role(Roles::TESSERA_ADMIN)->firstOrFail();
         foreach ([
-            'business.legal_name' => 'Karen Wines & Spirits',
-            'business.address' => 'Karen Road, Karen, Nairobi',
+            'business.legal_name' => 'Spanish Wines & Spirits',
+            'business.address' => 'Kobil Imara Daima, Mombasa Road, Nairobi',
             'business.phone' => '0712 000 000',
-            'business.email' => 'info@karenwines.test',
+            'business.email' => 'info@spanishwines.test',
         ] as $key => $value) {
             $this->settings->set($support, $key, 'business', 0, $value, 'edit');
         }
 
         $karen = Branch::query()->where('code', 'MAIN')->firstOrFail();
-        $karen->forceFill(['name' => 'Karen'])->save();
+        $karen->forceFill(['name' => 'Kobil Imara Daima'])->save();
         // The licence alert from the demo showcase named the old branch: raise it again.
         Alert::query()->where('type', Alert::LICENCE_EXPIRY)->delete();
         $this->alerts->licenceExpiry();
         $this->owner->forceFill(['name' => 'David Kiprop'])->save();
 
         $customers = [
-            'Demo Lounge & Grill' => ['name' => 'Karen Country Lounge', 'contact_name' => 'Grace Wairimu', 'phone' => '0712 000 101', 'email' => 'orders@karenlounge.test'],
+            'Demo Lounge & Grill' => ['name' => 'Imara Country Lounge', 'contact_name' => 'Grace Wairimu', 'phone' => '0712 000 101', 'email' => 'orders@imaralounge.test'],
             'Demo Events Ltd' => ['name' => 'Langata Events Ltd', 'contact_name' => 'Peter Ochieng', 'phone' => '0712 000 102', 'email' => null],
         ];
         foreach ($customers as $old => $new) {
@@ -294,7 +294,7 @@ class UserGuideSeeder extends Seeder
             $lines = collect(array_rand(array_flip($variants), mt_rand(1, 3)) ?: [])->map(fn ($id) => ['variantId' => $id, 'unit' => 'bottle', 'quantity' => mt_rand(1, 2)])->values()->all();
             // Today's few sales: mostly cash, so the day's cash takings are clear on the dashboard.
             $roll = $closeShift ? mt_rand(1, 100) : [60, 20, 70, 95, 80][$times->search($at) % 5];
-            $customer = $branch->code === 'MAIN' && $roll > 95 ? Customer::query()->where('name', 'Karen Country Lounge')->first() : null;
+            $customer = $branch->code === 'MAIN' && $roll > 95 ? Customer::query()->where('name', 'Imara Country Lounge')->first() : null;
             $total = $this->total($till, $cashier, $lines, $at, (bool) $customer?->is_wholesale);
             if ($customer && $this->onAccountCents + $total > 2_500_000) {
                 $customer = null;
@@ -331,7 +331,7 @@ class UserGuideSeeder extends Seeder
         $this->shifts->review($closed->fresh(), $this->manager, $short ? 'Discussed with Amina; count change twice.' : null);
     }
 
-    /** A few popular items at Karen end up at or below their reorder level, for the low-stock screens. */
+    /** A few popular items at Imara Daima end up at or below their reorder level, for the low-stock screens. */
     private function lowStock(Branch $karen): void
     {
         foreach (['JAM-750', 'SMR-750', 'TUS-500', 'GOR-750'] as $sku) {
@@ -388,7 +388,7 @@ class UserGuideSeeder extends Seeder
         }
 
         Date::setTestNow($today->subDays(3)->setTime(12, 0));
-        $lounge = Customer::query()->where('name', 'Karen Country Lounge')->first();
+        $lounge = Customer::query()->where('name', 'Imara Country Lounge')->first();
         if ($lounge && $this->accounts->balance($lounge) > 0) {
             $this->accounts->receivePayment($lounge, [
                 'amountCents' => min($this->accounts->balance($lounge), 300000), 'method' => 'mpesa', 'reference' => 'SKA7Q2M1PX',
@@ -398,7 +398,7 @@ class UserGuideSeeder extends Seeder
 
         $categories = ExpenseCategory::query()->pluck('id', 'name');
         foreach ([
-            [5, 'Electricity & water', 485000, 'bank', 'Electricity supplier', 'Electricity tokens, Karen shop'],
+            [5, 'Electricity & water', 485000, 'bank', 'Electricity supplier', 'Electricity tokens, Imara Daima shop'],
             [4, 'Cleaning & supplies', 150000, 'petty_cash', 'Sparkle Cleaners', 'Weekly cleaning'],
             [2, 'Transport & delivery', 80000, 'mpesa', 'Boda rider', 'Delivery to Langata Events'],
         ] as [$ago, $category, $cents, $from, $payee, $what]) {
