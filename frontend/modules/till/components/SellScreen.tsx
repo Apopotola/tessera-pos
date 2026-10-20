@@ -814,6 +814,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
             <div className={classes.receiptPreview}>
               <Receipt sale={completed} />
             </div>
+            {/* Receipt actions side by side, then the next step full width, so no label is cut off. */}
             <Group grow>
               <Button variant="default" leftSection={<IconPrinter size={18} />} onClick={() => void printSale(completed, false, true)}>
                 Print receipt
@@ -822,16 +823,19 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
               {!completed.pendingSync && isOnline && (
                 <ShareReceiptButton saleNumber={completed.number} businessName={completed.business.name} createToken={() => salesApi.shareFromTill(completed.number)} />
               )}
-              <Button
-                data-autofocus
-                onClick={() => {
-                  setCompleted(null);
-                  refocus();
-                }}
-              >
-                Next customer
-              </Button>
             </Group>
+            <Button
+              size="lg"
+              fullWidth
+              rightSection={<IconArrowRight size={20} />}
+              data-autofocus
+              onClick={() => {
+                setCompleted(null);
+                refocus();
+              }}
+            >
+              Next customer
+            </Button>
           </Stack>
         </Modal>
       )}
