@@ -113,7 +113,7 @@ class BrandedPdf
             ])),
             'logo' => $this->logo(),
             // Goes into the stylesheet, so only a plain hex colour is accepted.
-            'colour' => preg_match('/^#[0-9A-Fa-f]{6}$/', (string) $this->settings->get('branding.primary_color')) ? (string) $this->settings->get('branding.primary_color') : '#5B3FA3',
+            'colour' => preg_match('/^#[0-9A-Fa-f]{6}$/', (string) $this->settings->get('branding.primary_color')) ? (string) $this->settings->get('branding.primary_color') : '#1F4E8C',
         ];
     }
 

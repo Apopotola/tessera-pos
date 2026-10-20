@@ -55,7 +55,7 @@ export default function LockScreen({ context, user, onUnlocked }: LockScreenProp
     <div style={{ position: "fixed", inset: 0, zIndex: 300, background: brand.navy, display: "flex", alignItems: "center", justifyContent: "center", padding: 16 }}>
       <Stack align="center" gap="xs" w="100%" maw={380}>
         <IconLock size={32} color={brand.amber} />
-        <Avatar size={84} radius={999} styles={{ placeholder: { background: brand.purple, color: "white", fontWeight: 700, fontSize: 28 } }}>
+        <Avatar size={84} radius={999} styles={{ placeholder: { background: brand.sky, color: "white", fontWeight: 700, fontSize: 28 } }}>
           {initials}
         </Avatar>
         <Text c="white" fw={700} fz="xl">

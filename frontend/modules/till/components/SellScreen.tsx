@@ -4,7 +4,7 @@ import { ActionIcon, Alert, Button, Group, Loader, Menu, Modal, ScrollArea, Simp
 import { useIdle } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import { IconBarcode, IconBuildingBank, IconCash, IconClockOff, IconCreditCard, IconDeviceMobile, IconDiscount, IconDots, IconUser, IconLock, IconLogout, IconMinus, IconPlayerPause, IconPlus, IconPrinter, IconReceipt2, IconReceiptRefund, IconSearch, IconTag, IconTrash, IconUsers } from "@tabler/icons-react";
+import { IconArrowRight, IconBarcode, IconBuildingBank, IconCash, IconClockOff, IconCreditCard, IconDeviceMobile, IconDiscount, IconDots, IconUser, IconLock, IconLogout, IconMinus, IconPlayerPause, IconPlus, IconPrinter, IconReceipt2, IconReceiptRefund, IconSearch, IconTag, IconTrash, IconUsers } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, authApi, salesApi } from "@/api";
 import { brand } from "@/app/theme";
@@ -735,7 +735,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
                 size="md"
                 px={8}
                 className={classes.methodButton}
-                variant={method === m ? "filled" : "default"}
+                variant={method === m ? "filled" : "outline"}
                 color="tessera"
                 leftSection={METHOD_ICON[m]}
                 aria-pressed={method === m}
@@ -752,14 +752,14 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
             {parked.length} parked {parked.length === 1 ? "sale" : "sales"} — recall
           </Button>
         )}
-        <Button size="xl" fullWidth color={brand.navy} disabled={lines.length === 0} onClick={startPayment}>
-          Complete sale
+        <Button size="xl" fullWidth color="tessera" disabled={lines.length === 0} rightSection={<IconArrowRight size={22} />} onClick={startPayment}>
+          {lines.length === 0 ? "Complete sale" : `Complete sale · ${formatKes(totals.total)}`}
         </Button>
         <Group grow gap={8}>
-          <Button variant="default" leftSection={<IconPlayerPause size={16} />} disabled={lines.length === 0 || !isOnline} onClick={() => setParking(true)}>
+          <Button variant="outline" color="tessera" leftSection={<IconPlayerPause size={16} />} disabled={lines.length === 0 || !isOnline} onClick={() => setParking(true)}>
             Hold sale
           </Button>
-          <Button variant="light" color="red" leftSection={<IconTrash size={16} />} disabled={lines.length === 0} onClick={() => void clearCart()}>
+          <Button variant="filled" color="red" leftSection={<IconTrash size={16} />} disabled={lines.length === 0} onClick={() => void clearCart()}>
             Void
           </Button>
         </Group>

@@ -50,7 +50,7 @@ Tessera POS is a point of sale for Kenyan wines & spirits retail: a modular Lara
 
 ### Uniform look (every module)
 
-- Brand tokens live in `app/theme` (`brand.navy`, `brand.purple`, `brand.amber`, `brand.cream`…); never hard-code other colours or fonts.
+- Brand tokens live in `app/theme` (`brand.navy`, `brand.blue`, `brand.amber`, `brand.surface`…); never hard-code other colours or fonts.
 - Every workspace view renders inside `components/shared/WorkspacePage` and passes the `section` prop it receives (the uppercase label comes from the menu automatically). Its header is light: title and subtitle on the left, the screen's actions on the right; back-office screens carry no bottle silhouettes.
 - Back-office shell (`components/layout/`): a navy sidebar with the shop name and a flat menu (groups are small captions, never collapsed, no icons), and above the page only the slim light workspace bar (tabs, alerts, account). No navy top bar. KPIs are white `StatTile`s on the light page; amber only for what needs attention.
 - Tables, lists and panels go in `components/shared/DataCard`; KPIs use `StatTile`; on/off states use `StatusBadge`; stock states (in stock / low / out) use `modules/inventory/components/StockStatusBadge`.

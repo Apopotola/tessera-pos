@@ -14,7 +14,7 @@ import type { Shift, TillCashier, TillContext } from "@/types/till";
 import { formatKes } from "@/utils/money";
 import classes from "../Till.module.css";
 
-export const AVATAR_COLORS = [brand.purple, brand.amber, brand.lilac, "#3dbb7f", "#e8664a", "#c9c6d6"];
+export const AVATAR_COLORS = [brand.sky, brand.amber, "#9ec0ea", "#3dbb7f", "#e8664a", "#c9c6d6"];
 
 interface PinScreenProps {
   context: TillContext;
@@ -68,7 +68,7 @@ export default function PinScreen({ context, onShiftStarted }: PinScreenProps) {
   return (
     <div className={classes.split}>
       <section className={classes.main} style={{ background: brand.navy }}>
-        <TillHeader context={context} />
+        <TillHeader context={context} onDark />
 
         <h1 className={`tessera-display ${classes.heading}`}>Who&apos;s on the till?</h1>
 

@@ -246,7 +246,7 @@ export default function TenderModal({ totalCents, mpesaMode, mpesaDemo, methods,
           <Button variant="default" onClick={close} disabled={pending}>
             Back to sale
           </Button>
-          <Button size="lg" color="amber.5" c="dark.9" onClick={pay} loading={pending} disabled={!canPay}>
+          <Button size="lg" color="tessera" onClick={pay} loading={pending} disabled={!canPay}>
             Complete sale
           </Button>
         </Group>

@@ -63,7 +63,7 @@ await shot(till, F, "04-sell-screen", [
   [chips, 2],
   [till.locator("[class*=results] button:visible").first(), 3],
   [button(/Walk-in customer/), 4],
-  [button("Complete sale", true), 5],
+  [button(/^Complete sale/), 5],
 ]);
 await chips.getByText("All", { exact: true }).click();
 await settle(till, 900);
@@ -127,7 +127,7 @@ await shot(till, F, "11-till-menu", [[till.getByRole("menu").first(), 1, { box: 
 await till.keyboard.press("Escape");
 
 // Taking payment: cash.
-await button("Complete sale", true).click();
+await button(/^Complete sale/).click();
 const age = button("Yes, 18 or over");
 const tender = dialog("Take payment");
 await age.or(tender).first().waitFor();
