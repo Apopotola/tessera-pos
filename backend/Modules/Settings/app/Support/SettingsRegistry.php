@@ -29,7 +29,7 @@ final class SettingsRegistry
 
     /** Tested brand colours (white text passes WCAG AA on each). */
     public const PRIMARY_COLOURS = [
-        '#5B3FA3' => 'Jacaranda', '#1F6FEB' => 'Lake Blue', '#0F7B6C' => 'Savanna Green', '#B42318' => 'Maasai Red',
+        '#1F4E8C' => 'Tessera Blue', '#5B3FA3' => 'Jacaranda', '#1F6FEB' => 'Lake Blue', '#0F7B6C' => 'Savanna Green', '#B42318' => 'Maasai Red',
         '#9A3412' => 'Terracotta', '#1C1D2E' => 'Night', '#6D28D9' => 'Violet', '#0E7490' => 'Coast Teal',
     ];
 
@@ -77,7 +77,7 @@ final class SettingsRegistry
             'branding.app_logo' => self::f('branding', 'App logo', 'image', null, 'O', help: 'PNG or SVG, up to 1 MB. Sidebar, login and till.'),
             'branding.receipt_logo' => self::f('branding', 'Receipt logo', 'image', null, 'O', help: 'Black-and-white PNG, up to 300 px wide.'),
             'branding.favicon' => self::f('branding', 'App icon', 'image', null, 'O', help: 'Square PNG, 512 px.'),
-            'branding.primary_color' => self::f('branding', 'Primary colour', 'color', '#5B3FA3', 'O', options: self::PRIMARY_COLOURS,
+            'branding.primary_color' => self::f('branding', 'Primary colour', 'color', '#1F4E8C', 'O', options: self::PRIMARY_COLOURS,
                 help: 'Buttons, highlights and the active menu item. A custom colour must keep white text readable.'),
             'branding.accent_color' => self::f('branding', 'Accent colour', 'select', '#F2A93B', 'O', options: self::ACCENT_COLOURS),
             'branding.theme' => self::f('branding', 'Theme', 'select', 'light', 'O', scopes: ['business', 'till'], branchLevelScopes: ['till'],

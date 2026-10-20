@@ -33,7 +33,7 @@ async function addToCart(query: string, sku: string) {
 
 /** Opens the tender screen, answering the age check when Settings asks for it. */
 async function startPayment() {
-  await page.getByRole("button", { name: "Complete sale", exact: true }).click();
+  await page.getByRole("button", { name: /^Complete sale/ }).click();
   const ageCheck = page.getByRole("button", { name: "Yes, 18 or over" });
   const tender = page.getByRole("dialog", { name: "Take payment" });
   await expect(ageCheck.or(tender)).toBeVisible();

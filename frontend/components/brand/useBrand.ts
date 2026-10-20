@@ -14,7 +14,7 @@ export function useBrand() {
     logo: (v["branding.app_logo"] as string | null | undefined) ?? pub?.appLogo ?? null,
     receiptLogo: (v["branding.receipt_logo"] as string | null | undefined) ?? null,
     favicon: (v["branding.favicon"] as string | null | undefined) ?? pub?.favicon ?? null,
-    primary: (v["branding.primary_color"] as string | undefined) ?? pub?.primaryColor ?? brand.purple,
+    primary: (v["branding.primary_color"] as string | undefined) ?? pub?.primaryColor ?? brand.blue,
     accent: (v["branding.accent_color"] as string | undefined) ?? pub?.accentColor ?? brand.amber,
     poweredBy: app?.poweredBy ?? pub?.poweredBy ?? { text: "Powered by Tessera", support: "support@tessera.co.ke" },
     /** True once the client has set their own name or logo (otherwise show the Tessera wordmark). */

@@ -1,17 +1,17 @@
 import { createTheme, type MantineColorsTuple } from "@mantine/core";
 
-/** Tessera brand purple (primary actions). Shade 7 = #5B3FA3. */
+/** Tessera blue (primary actions). Shade 7 = #1F4E8C. The client's own colour replaces it (Settings → Branding). */
 const tessera: MantineColorsTuple = [
-  "#f3effc",
-  "#e2daf6",
-  "#c4b3ec",
-  "#a58be3",
-  "#8f74db",
-  "#7a5bd0",
-  "#6b4bbf",
-  "#5b3fa3",
-  "#4e358c",
-  "#402b73",
+  "#ebf1f9",
+  "#d4e1f2",
+  "#a9c3e5",
+  "#7ea4d7",
+  "#5a8acb",
+  "#3f76c1",
+  "#2c63ad",
+  "#1f4e8c",
+  "#1a4276",
+  "#143560",
 ];
 
 /** Amber accent (highlights, secondary calls to action). Shade 5 = #F2A93B. */
@@ -30,15 +30,16 @@ const amber: MantineColorsTuple = [
 
 /** Brand tokens for surfaces that are not Mantine components (login panel, till). */
 export const brand = {
-  navy: "#1c1d2e",
-  navyRaised: "#262739",
+  /** Deep blue (not black): sidebar, sign-in panel, till sign-in. */
+  navy: "#13355f",
+  navyRaised: "#1b4374",
   cream: "#f4f2ec",
-  /** Back-office page background: near-white, so white cards and tables stand out. */
-  surface: "#f6f6f9",
-  purple: "#5b3fa3",
-  lilac: "#8f74db",
+  /** Page background (back office and till): near-white, so white cards and tables stand out. */
+  surface: "#f4f6f9",
+  blue: "#1f4e8c",
+  sky: "#5a8acb",
   amber: "#f2a93b",
-  slate: "#3b3c55",
+  slate: "#3d5272",
 } as const;
 
 /** Font stacks: Figtree (UI text), Bricolage Grotesque (display), JetBrains Mono (codes). Loaded in app/layout.tsx. */

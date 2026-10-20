@@ -9,15 +9,15 @@ interface Bottle {
 }
 
 const BOTTLES: Bottle[] = [
-  { shape: "wine", color: brand.purple, height: 205 },
+  { shape: "wine", color: brand.blue, height: 205 },
   { shape: "spirit", color: brand.amber, height: 165 },
-  { shape: "wine", color: brand.lilac, height: 225 },
+  { shape: "wine", color: brand.sky, height: 225 },
   { shape: "stubby", color: brand.slate, height: 145 },
-  { shape: "wine", color: brand.purple, height: 195 },
+  { shape: "wine", color: brand.blue, height: 195 },
   { shape: "spirit", color: brand.amber, height: 175 },
   { shape: "wine", color: brand.slate, height: 215 },
-  { shape: "stubby", color: brand.lilac, height: 155 },
-  { shape: "wine", color: brand.purple, height: 235 },
+  { shape: "stubby", color: brand.sky, height: 155 },
+  { shape: "wine", color: brand.blue, height: 235 },
 ];
 
 const WIDTH = 36;

@@ -18,9 +18,9 @@ export function TesseraMark({ size = 28, tone = "light" }: Pick<LogoProps, "size
 
   return (
     <svg width={size} height={size} viewBox="0 0 28 28" aria-hidden="true">
-      <rect x="0" y="0" width="12.5" height="12.5" rx="3" fill={brand.lilac} />
+      <rect x="0" y="0" width="12.5" height="12.5" rx="3" fill={brand.sky} />
       <rect x="15.5" y="0" width="12.5" height="12.5" rx="3" fill={brand.amber} />
-      <rect x="0" y="15.5" width="12.5" height="12.5" rx="3" fill={brand.lilac} />
+      <rect x="0" y="15.5" width="12.5" height="12.5" rx="3" fill={brand.sky} />
       <rect x="15.5" y="15.5" width="12.5" height="12.5" rx="3" fill={fourth} />
     </svg>
   );

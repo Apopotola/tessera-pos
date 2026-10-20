@@ -5,7 +5,7 @@
 <title>{{ $doc['title'] }}</title>
 <style>
     @page { margin: 22mm 14mm 18mm 14mm; }
-    body { font-family: "DejaVu Sans", sans-serif; font-size: 9pt; color: #1c1d2e; }
+    body { font-family: "DejaVu Sans", sans-serif; font-size: 9pt; color: #13355f; }
     header { position: fixed; top: -16mm; left: 0; right: 0; height: 12mm; border-bottom: 2px solid {{ $letterhead['colour'] }}; }
     header .name { font-size: 12pt; font-weight: bold; }
     header .lines { font-size: 7.5pt; color: #555; }
@@ -24,7 +24,7 @@
     table.data td { padding: 1.2mm 2mm; border-bottom: 1px solid #e6e6ee; }
     table.data tr:nth-child(even) td { background: #f7f7fb; }
     table.data .num { text-align: right; white-space: nowrap; }
-    table.data tr.totals td { font-weight: bold; border-top: 1.5px solid #1c1d2e; background: #fff; }
+    table.data tr.totals td { font-weight: bold; border-top: 1.5px solid #13355f; background: #fff; }
     .notes { margin-top: 4mm; font-size: 7.5pt; color: #555; }
     .empty { padding: 6mm 0; color: #777; }
 </style>

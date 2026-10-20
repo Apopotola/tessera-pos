@@ -1,4 +1,4 @@
-/* Till: dark, touch-first. Main panel (people) + side panel (PIN pad) ≈ 64/36 on wide screens. */
+/* Till: deep blue, touch-first. Main panel (people) + side panel (PIN pad) ≈ 64/36 on wide screens. */
 .split {
   display: grid;
   grid-template-columns: 1fr;
@@ -28,32 +28,32 @@
 .card {
   padding: 18px 20px;
   border-radius: 14px;
-  background: #262739;
+  background: #1b4374;
   border: 2px solid transparent;
   transition: background 120ms ease, border-color 120ms ease;
 }
 
 .card:hover {
-  background: #2e2f45;
+  background: #22508a;
 }
 
 .card[data-active] {
-  background: var(--mantine-color-tessera-9);
-  border-color: var(--mantine-color-tessera-4);
+  background: var(--mantine-color-tessera-7);
+  border-color: var(--mantine-color-tessera-3);
 }
 
 .footer {
   margin-top: auto;
   padding: 16px 20px;
   border-radius: 14px;
-  background: #262739;
+  background: #1b4374;
 }
 
 .dot {
   width: 22px;
   height: 22px;
   border-radius: 50%;
-  border: 2px solid #7c7d95;
+  border: 2px solid #7f93b3;
 }
 
 .dot[data-filled] {
@@ -75,21 +75,21 @@
 }
 
 .key {
-  background: #1c1d2e;
+  background: #13355f;
 }
 
 .key:active {
-  background: var(--mantine-color-tessera-9);
+  background: var(--mantine-color-tessera-7);
 }
 
 .keyText {
   font-size: 17px;
-  color: #b9b8cc;
+  color: #b7c4d9;
 }
 
 .start:disabled {
-  background: #3b3c55;
-  color: #9b9ab0;
+  background: #3d5272;
+  color: #9fb0c9;
 }
 
 @media (min-width: $mantine-breakpoint-md) {
@@ -107,13 +107,13 @@
 }
 
 /* Selling screen ("New sale"): category chips + product grid (left), current sale (right).
-   Light surfaces on brand cream; the till header keeps the navy brand band. */
+   Light surfaces throughout; blue (the primary colour) marks what is selected. */
 .sell {
   display: grid;
   grid-template-columns: 1fr;
   min-height: 100vh;
-  background: #f4f2ec;
-  color: #1c1d2e;
+  background: #f4f6f9;
+  color: #13355f;
 }
 
 .sellMain {
@@ -125,9 +125,10 @@
 }
 
 .sellHeader {
-  padding: 14px 18px;
+  padding: 12px 18px;
   border-radius: 14px;
-  background: #1c1d2e;
+  background: var(--mantine-color-white);
+  border: 1px solid var(--mantine-color-gray-2);
 }
 
 .searchInput {
@@ -147,9 +148,9 @@
   flex-shrink: 0;
   padding: 8px 16px;
   border-radius: 999px;
-  border: 1px solid var(--mantine-color-gray-3);
+  border: 1px solid var(--mantine-color-tessera-2);
   background: var(--mantine-color-white);
-  color: #1c1d2e;
+  color: var(--mantine-color-tessera-7);
   font-size: 14px;
   font-weight: 600;
   white-space: nowrap;
@@ -157,12 +158,13 @@
 }
 
 .chip:hover {
-  border-color: var(--mantine-color-tessera-4);
+  border-color: var(--mantine-color-tessera-5);
+  background: var(--mantine-color-tessera-0);
 }
 
 .chip[data-active] {
-  background: #1c1d2e;
-  border-color: #1c1d2e;
+  background: var(--mantine-color-tessera-7);
+  border-color: var(--mantine-color-tessera-7);
   color: var(--mantine-color-white);
 }
 
@@ -186,13 +188,13 @@
   border-radius: 14px;
   background: var(--mantine-color-white);
   border: 1px solid var(--mantine-color-gray-2);
-  box-shadow: 0 1px 2px rgb(28 29 46 / 6%);
+  box-shadow: 0 1px 2px rgb(19 53 95 / 6%);
   transition: border-color 120ms ease, box-shadow 120ms ease;
 }
 
 .item:hover {
   border-color: var(--mantine-color-tessera-3);
-  box-shadow: 0 4px 12px rgb(28 29 46 / 10%);
+  box-shadow: 0 4px 12px rgb(19 53 95 / 10%);
 }
 
 .item[data-disabled] {
@@ -214,7 +216,7 @@
   aspect-ratio: 4 / 3;
   overflow: hidden;
   border-radius: 10px;
-  background: #f4f2ec;
+  background: #f4f6f9;
   color: var(--mantine-color-tessera-4);
 }
 
@@ -258,7 +260,7 @@
   gap: 8px;
   padding: 8px 10px;
   border-radius: 10px;
-  background: #f4f2ec;
+  background: #f4f6f9;
 }
 
 .cartTotals {
