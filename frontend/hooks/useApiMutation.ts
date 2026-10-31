@@ -45,7 +45,9 @@ export function useApiMutation<TArgs extends unknown[], TResult>(
         opts.onValidationError(apiError.formErrors);
         notifications.show({ color: "red", title: "Check the form", message: "Some fields need attention." });
       } else {
-        notifications.show({ color: "red", title: "Could not save", message: apiError.message });
+        // With no form to show 422s on (e.g. an Approve button), say what the API refused.
+        const reason = apiError.status === 422 ? Object.values(apiError.formErrors).find(Boolean) : undefined;
+        notifications.show({ color: "red", title: "Could not save", message: reason ?? apiError.message });
       }
       return undefined;
     } finally {
