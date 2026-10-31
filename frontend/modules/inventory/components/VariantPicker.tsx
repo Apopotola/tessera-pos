@@ -20,20 +20,21 @@ interface VariantPickerProps {
 
 /**
  * Search the catalogue by name, brand, SKU or scanned barcode and pick one size.
- * Options come from the server as you type, so large catalogues stay fast.
+ * Opening it lists the first items; options come from the server as you type, so large catalogues stay fast.
  */
 export default function VariantPicker({ value, onChange, label, error, placeholder = "Search or scan an item" }: VariantPickerProps) {
   const [search, setSearch] = useState("");
   const [debounced] = useDebouncedValue(search.trim(), 300);
   const [options, setOptions] = useState<PickedVariant[]>([]);
   const [loading, setLoading] = useState(false);
+  const [opened, setOpened] = useState(false);
 
   useEffect(() => {
-    if (debounced.length < 2 || debounced === value?.label) return;
+    if (!opened || debounced.length === 1 || debounced === value?.label) return;
     let active = true;
     setLoading(true); // eslint-disable-line react-hooks/set-state-in-effect -- request status for the search box
     catalogueApi
-      .products({ search: debounced, perPage: 15 })
+      .products({ search: debounced || undefined, perPage: 15 })
       .then((page) => {
         if (!active) return;
         setOptions(
@@ -47,7 +48,7 @@ export default function VariantPicker({ value, onChange, label, error, placehold
     return () => {
       active = false;
     };
-  }, [debounced, value?.label]);
+  }, [opened, debounced, value?.label]);
 
   const data = [...(value && !options.some((o) => o.id === value.id) ? [value] : []), ...options].map((o) => ({ value: String(o.id), label: o.label }));
 
@@ -61,12 +62,13 @@ export default function VariantPicker({ value, onChange, label, error, placehold
       value={value ? String(value.id) : null}
       searchValue={search}
       onSearchChange={setSearch}
+      onDropdownOpen={() => setOpened(true)}
       onChange={(id) => {
         const picked = data.find((d) => d.value === id);
         onChange(picked ? { id: Number(picked.value), label: picked.label } : null);
       }}
       filter={({ options: all }) => all}
-      nothingFoundMessage={debounced.length < 2 ? "Type at least 2 characters" : loading ? "Searching…" : "No matching item"}
+      nothingFoundMessage={loading ? "Searching…" : debounced.length === 1 ? "Type at least 2 characters" : "No matching item"}
       rightSection={loading ? <Loader size="xs" /> : undefined}
       error={error}
     />
