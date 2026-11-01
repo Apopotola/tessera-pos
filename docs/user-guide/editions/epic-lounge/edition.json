@@ -1,0 +1,44 @@
+{
+  "client": "Epic Lounge Wines & Spirits",
+  "shop": {
+    "GUIDE_SHOP": "Epic Lounge Wines & Spirits",
+    "GUIDE_BRANCH": "Main Branch",
+    "GUIDE_ADDRESS": "Nairobi, Kenya",
+    "GUIDE_EMAIL": "info@epiclounge.test",
+    "GUIDE_SECOND_BRANCH": ""
+  },
+  "replace": [
+    [
+      "The examples in this guide use **Spanish Wines & Spirits** at Kobil Imara Daima, with a second branch in Westlands. The people, phone numbers and KRA PINs in the pictures are made up.",
+      "The examples in this guide use **Epic Lounge Wines & Spirits**. The products and prices are typical of a Kenyan wines and spirits shop; the people, customers, suppliers, phone numbers and KRA PINs in the pictures are made up."
+    ],
+    [
+      "This chapter follows one ordinary day at **Spanish Wines & Spirits**, a shop with two branches in Nairobi (Kobil Imara Daima and Westlands).",
+      "This chapter follows one ordinary day at **Epic Lounge Wines & Spirits**."
+    ],
+    [
+      "This keeps both branches charging the same and keeps tax invoices correct.",
+      "This keeps every till charging the same and keeps tax invoices correct."
+    ],
+    [
+      "**Who:** the cashier (Amina Hassan, Westlands).",
+      "**Who:** the cashier (Amina Hassan, at Till 2)."
+    ],
+    [
+      "the sale took the bottles off the Westlands shop floor",
+      "the sale took the bottles off the shop floor"
+    ],
+    [
+      "for both branches together.",
+      "for the whole shop."
+    ],
+    [
+      "The middle part is the branch (for example *MAIN* or *WLD*).",
+      "The middle part is the branch (for example *MAIN*)."
+    ],
+    [
+      "2. The sending branch **dispatches** it. It is now *In transit* **(1)**: it has left one branch but not reached the other.\n3. The receiving branch clicks **Receive (2)** and enters what actually arrived.",
+      "2. The sender **dispatches** it. It is now *In transit* **(1)**: it has left one place but not reached the other.\n3. The receiver clicks **Receive (2)** and enters what actually arrived."
+    ]
+  ]
+}

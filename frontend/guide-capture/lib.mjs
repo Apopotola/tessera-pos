@@ -4,7 +4,16 @@ import fs from "node:fs";
 import path from "node:path";
 
 export const WEB = process.env.GUIDE_WEB || "http://localhost:3011";
-export const IMAGES = path.resolve(import.meta.dirname, "../../docs/user-guide/images");
+// A client edition saves its pictures elsewhere (GUIDE_IMAGES) and names its shop like the seeders (GUIDE_SHOP…).
+export const IMAGES = path.resolve(process.env.GUIDE_IMAGES || path.join(import.meta.dirname, "../../docs/user-guide/images"));
+export const SHOP = {
+  name: process.env.GUIDE_SHOP || "Spanish Wines & Spirits",
+  branch: process.env.GUIDE_BRANCH || "Kobil Imara Daima",
+  /** Empty: a one-branch shop. */
+  second: process.env.GUIDE_SECOND_BRANCH ?? "Westlands",
+};
+/** Matches an option or text naming a branch. */
+export const named = (name) => new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"));
 export const BACK_OFFICE = { width: 1440, height: 900 };
 export const TILL = { width: 1366, height: 768 };
 
@@ -40,7 +49,7 @@ export async function signIn(page, email, password = "password") {
     await page.getByLabel("Email or phone number").fill(email);
     await page.getByLabel(/^Password/).fill(password);
     await page.getByRole("button", { name: "Sign in" }).click();
-    await page.waitForTimeout(3500);
+    await page.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 20000 }).catch(() => undefined);
   }
   if (page.url().includes("/login")) throw new Error(`Could not sign in as ${email}`);
 }

@@ -30,7 +30,7 @@ use Modules\Purchasing\Services\SupplierService;
 
 /**
  * A full demo shop for showing Tessera to clients, LOCAL only (APP_ENV=local, never production):
- * the sample shop of the user guide ("Spanish Wines & Spirits", two branches, two weeks of trading)
+ * the sample shop of the user guide ("Spanish Wines & Spirits", two branches, two weeks of trading; see UserGuideSeeder::shop())
  * with a complete wines & spirits catalogue, more suppliers and trade customers, and the open
  * paperwork a demo walks through: orders waiting for approval or delivery, an invoice on query,
  * stock in transit, a breakage and a return waiting for a manager, a stock count, an expense.
@@ -88,7 +88,7 @@ class DemoShopSeeder extends Seeder
         $this->tradeSuppliers();
         $this->tradeCustomers();
 
-        // Two branches, opening stock for every item above, price history and two weeks of trading.
+        // The branches, opening stock for every item above, price history and two weeks of trading.
         $this->call(UserGuideSeeder::class);
 
         $this->openPaperwork();
@@ -246,7 +246,9 @@ class DemoShopSeeder extends Seeder
         $storekeeper = User::query()->where('email', 'njeri@tessera.test')->firstOrFail();
         $accountant = User::query()->where('email', 'accountant@tessera.test')->firstOrFail();
         $karen = Branch::query()->where('code', 'MAIN')->firstOrFail();
-        $westlands = Branch::query()->where('code', 'WLD')->firstOrFail();
+        // A one-branch shop shows the same paperwork at its only branch.
+        $westlands = Branch::query()->where('code', '!=', 'MAIN')->first();
+        $other = $westlands ?? $karen;
         $location = fn (Branch $branch, string $code) => $branch->locations()->where('code', $code)->firstOrFail();
         $sku = fn (string $sku) => ProductVariant::query()->where('sku', $sku)->value('id');
         $supplier = fn (string $name) => Supplier::query()->where('name', $name)->value('id');
@@ -264,9 +266,9 @@ class DemoShopSeeder extends Seeder
         $this->orders->approve($wines, $manager);
         $this->orders->markSent($wines->fresh(), $this->owner);
 
-        // 3. Cognac and champagne received at Westlands; the supplier's invoice is KES 3,000 too high, so it is on query.
+        // 3. Cognac and champagne received (at the second branch, if any); the supplier's invoice is KES 3,000 too high, so it is on query.
         Date::setTestNow($now->subDays(4)->setTime(9, 30));
-        $premium = $this->orders->create(['supplierId' => $supplier('Premium Imports Kenya Ltd'), 'locationId' => $location($westlands, 'STORE')->id,
+        $premium = $this->orders->create(['supplierId' => $supplier('Premium Imports Kenya Ltd'), 'locationId' => $location($other, 'STORE')->id,
             'note' => 'Festive stock', 'lines' => [$line('HEN-VS-700', 6, 4600), $line('MOET-750', 6, 6800), $line('GLF12-750', 6, 4900)]], $this->owner);
         $this->orders->approve($premium, $manager);
         Date::setTestNow($now->subDays(3)->setTime(15, 0));
@@ -279,10 +281,12 @@ class DemoShopSeeder extends Seeder
             'grnIds' => [$grn->id], 'subtotalCents' => $subtotal, 'vatCents' => $vat, 'totalCents' => $subtotal + $vat, 'note' => 'Check the Moët unit price',
         ], $accountant);
 
-        // 4. Westlands is short of whisky: Imara Daima's store sends some over; it is on the way.
+        // 4. The second branch is short of whisky and the main store sends some over (one branch: the store
+        //    restocks the shop floor); it is on the way.
         Date::setTestNow($now->subHours(5));
-        $transfer = $this->transfers->request(['fromLocationId' => $location($karen, 'STORE')->id, 'toLocationId' => $location($westlands, 'STORE')->id,
-            'note' => 'Weekend at Westlands', 'lines' => [['variantId' => $sku('JWB-750'), 'quantity' => 12], ['variantId' => $sku('JAM-750'), 'quantity' => 12], ['variantId' => $sku('JWR-750'), 'quantity' => 12]]], $storekeeper);
+        $transfer = $this->transfers->request(['fromLocationId' => $location($karen, 'STORE')->id,
+            'toLocationId' => $westlands ? $location($westlands, 'STORE')->id : $location($karen, 'FLOOR')->id,
+            'note' => $westlands ? "Weekend at {$westlands->name}" : 'Weekend restock of the shelves', 'lines' => [['variantId' => $sku('JWB-750'), 'quantity' => 12], ['variantId' => $sku('JAM-750'), 'quantity' => 12], ['variantId' => $sku('JWR-750'), 'quantity' => 12]]], $storekeeper);
         $this->transfers->approve($transfer, $manager);
         Date::setTestNow($now->subHours(4));
         $this->transfers->dispatch($transfer->fresh()->load('lines'), $storekeeper, []);
@@ -297,9 +301,9 @@ class DemoShopSeeder extends Seeder
         $this->returns->create(['supplierId' => $supplier('Nairobi Soft Drinks Distributors'), 'locationId' => $location($karen, 'STORE')->id,
             'reason' => 'Flat tonic water, batch 2214', 'lines' => [['variantId' => $sku('SCH-TONIC-500'), 'quantity' => 12]]], $storekeeper);
 
-        // 7. Tonight's stock count of the Westlands shop floor has been started.
+        // 7. Tonight's stock count of a shop floor (the second branch's, if any) has been started.
         Date::setTestNow($now->subHours(1));
-        $this->counts->create(['locationId' => $location($westlands, 'FLOOR')->id, 'note' => 'Monthly count'], $storekeeper);
+        $this->counts->create(['locationId' => $location($other, 'FLOOR')->id, 'note' => 'Monthly count'], $storekeeper);
 
         // 8. Generator fuel paid from petty cash, waiting for the manager.
         $category = ExpenseCategory::query()->orderBy('id')->value('id');
@@ -307,7 +311,7 @@ class DemoShopSeeder extends Seeder
             Date::setTestNow($now->subHours(4));
             $this->expenses->request([
                 'branchId' => $karen->id, 'categoryId' => $category, 'amountCents' => 350000, 'paidFrom' => 'petty_cash',
-                'payee' => 'Kobil Imara Daima', 'description' => 'Generator fuel during the power cut', 'reference' => null, 'spentOn' => $now->toDateString(),
+                'payee' => 'Kobil petrol station', 'description' => 'Generator fuel during the power cut', 'reference' => null, 'spentOn' => $now->toDateString(),
             ], $accountant);
         }
     }

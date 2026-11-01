@@ -1,7 +1,7 @@
 // Chapters 3 and 4: selling at the till, and the till during and after a shift. Saves to images/till.
-// Sets up a till at Kobil Imara Daima and makes one cash sale and one parked sale; ends locked.
+// Sets up a till at the main branch (Kobil Imara Daima) and makes one cash sale and one parked sale; ends locked.
 // Needs the user-guide shop (guide-db.sh) served on GUIDE_WEB; see guide-capture/README.md.
-import { TILL, WEB, launch, newPage, settle, shot, typePin } from "./lib.mjs";
+import { SHOP, TILL, WEB, launch, named, newPage, settle, shot, typePin } from "./lib.mjs";
 
 const F = "till";
 const browser = await launch();
@@ -30,11 +30,11 @@ for (let attempt = 0; attempt < 3 && till.url().includes("/login"); attempt++) {
   await till.getByLabel("Email or phone number").fill("owner@tessera.test");
   await till.getByLabel(/^Password/).fill("password");
   await button("Sign in").click();
-  await till.waitForTimeout(3500);
+  await till.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 20000 }).catch(() => undefined);
 }
 await till.getByRole("heading", { name: "Set up this device as a till" }).waitFor();
 await till.getByRole("textbox", { name: "Branch" }).click();
-await till.getByRole("option", { name: /Imara Daima/ }).click();
+await till.getByRole("option", { name: named(SHOP.branch) }).click();
 await till.getByLabel("Till name").fill("Till 1");
 await till.getByLabel("Location").fill("Main counter");
 await shot(till, F, "01-set-up-till", [
