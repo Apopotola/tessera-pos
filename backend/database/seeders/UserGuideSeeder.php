@@ -42,7 +42,8 @@ use Modules\Settings\Services\SettingsService;
 /**
  * Sample shop for the client user guide's screenshots, LOCAL only (never production):
  * "Spanish Wines & Spirits" with a Kobil Imara Daima and a Westlands branch, two weeks of trading and
- * everyday paperwork, all made through the real services so every number agrees.
+ * everyday paperwork, all made through the real services so every number agrees. GUIDE_SHOP and the
+ * other GUIDE_* variables (see shop()) build the same shop under a client's name, with one branch or two.
  *
  * Run on a fresh database after the demo seeders:
  *   php artisan migrate:fresh --seed && php artisan db:seed --class=DemoShowcaseSeeder
@@ -87,6 +88,24 @@ class UserGuideSeeder extends Seeder
         private readonly ScheduledAlerts $alerts,
     ) {}
 
+    /**
+     * The sample shop's name and branches. A client edition of the guide sets them in the environment
+     * (guide-capture/README.md); an empty GUIDE_SECOND_BRANCH makes a one-branch shop.
+     *
+     * @return array{name: string, branch: string, address: string, email: string, second: string, secondCode: string}
+     */
+    public static function shop(): array
+    {
+        return [
+            'name' => (string) env('GUIDE_SHOP', 'Spanish Wines & Spirits'),
+            'branch' => (string) env('GUIDE_BRANCH', 'Kobil Imara Daima'),
+            'address' => (string) env('GUIDE_ADDRESS', 'Kobil Imara Daima, Mombasa Road, Nairobi'),
+            'email' => (string) env('GUIDE_EMAIL', 'info@spanishwines.test'),
+            'second' => (string) env('GUIDE_SECOND_BRANCH', 'Westlands'),
+            'secondCode' => (string) env('GUIDE_SECOND_BRANCH_CODE', 'WLD'),
+        ];
+    }
+
     public function run(): void
     {
         if (! app()->environment('local')) {
@@ -94,7 +113,7 @@ class UserGuideSeeder extends Seeder
 
             return;
         }
-        if (Branch::query()->where('code', 'WLD')->exists()) {
+        if (ProductVariant::query()->where('sku', 'NED-CS-750')->exists()) {
             $this->command?->info('The user-guide shop is already set up.');
 
             return;
@@ -107,17 +126,20 @@ class UserGuideSeeder extends Seeder
         $this->storekeeper = User::query()->where('email', 'njeri@tessera.test')->firstOrFail();
         $this->accountant = User::query()->where('email', 'accountant@tessera.test')->firstOrFail();
 
-        $karen = $this->identity();
-        $westlands = $this->westlands();
+        $shop = self::shop();
+        $karen = $this->identity($shop);
+        $westlands = $shop['second'] !== '' ? $this->westlands($shop['second'], $shop['secondCode']) : null;
         $this->products();
         $this->backdatePrices();
         $this->openingStock($karen, 40);
-        $this->openingStock($westlands, 30);
+        if ($westlands) {
+            $this->openingStock($westlands, 30);
+        }
 
-        $tills = [
-            [$karen, $this->till($karen, 'Till 1', 'Main counter'), User::query()->where('email', 'otieno@tessera.test')->firstOrFail()],
-            [$westlands, $this->till($westlands, 'Till 1', 'Front counter'), User::query()->where('email', 'amina@tessera.test')->firstOrFail()],
-        ];
+        $tills = [[$karen, $this->till($karen, 'Till 1', 'Main counter'), User::query()->where('email', 'otieno@tessera.test')->firstOrFail()]];
+        if ($westlands) {
+            $tills[] = [$westlands, $this->till($westlands, 'Till 1', 'Front counter'), User::query()->where('email', 'amina@tessera.test')->firstOrFail()];
+        }
 
         $today = $this->realNow->startOfDay();
         for ($daysAgo = 13; $daysAgo >= 1; $daysAgo--) {
@@ -126,31 +148,35 @@ class UserGuideSeeder extends Seeder
             }
         }
         $this->paperwork($karen, $today);
-        // This morning: the Imara Daima till is open and has already sold a little.
+        // This morning: the main branch's till is open and has already sold a little.
         [$branch, $till, $cashier] = $tills[0];
         $this->tradingDay($branch, $till, $cashier, $today, closeShift: false);
         $this->lowStock($karen);
         Date::setTestNow();
         $this->alerts->lowStockDigest();
 
-        $this->command?->info('Spanish Wines & Spirits is ready for the user guide screenshots.');
+        $this->command?->info("{$shop['name']} is ready for the user guide screenshots.");
     }
 
-    /** Business name, main branch, people, customers and suppliers renamed for the sample shop. */
-    private function identity(): Branch
+    /**
+     * Business name, main branch, people, customers and suppliers renamed for the sample shop.
+     *
+     * @param  array{name: string, branch: string, address: string, email: string}  $shop
+     */
+    private function identity(array $shop): Branch
     {
         $support = User::role(Roles::TESSERA_ADMIN)->firstOrFail();
         foreach ([
-            'business.legal_name' => 'Spanish Wines & Spirits',
-            'business.address' => 'Kobil Imara Daima, Mombasa Road, Nairobi',
+            'business.legal_name' => $shop['name'],
+            'business.address' => $shop['address'],
             'business.phone' => '0712 000 000',
-            'business.email' => 'info@spanishwines.test',
+            'business.email' => $shop['email'],
         ] as $key => $value) {
             $this->settings->set($support, $key, 'business', 0, $value, 'edit');
         }
 
         $karen = Branch::query()->where('code', 'MAIN')->firstOrFail();
-        $karen->forceFill(['name' => 'Kobil Imara Daima'])->save();
+        $karen->forceFill(['name' => $shop['branch']])->save();
         // The licence alert from the demo showcase named the old branch: raise it again.
         Alert::query()->where('type', Alert::LICENCE_EXPIRY)->delete();
         $this->alerts->licenceExpiry();
@@ -178,10 +204,10 @@ class UserGuideSeeder extends Seeder
         return $karen;
     }
 
-    private function westlands(): Branch
+    private function westlands(string $name, string $code): Branch
     {
         $karen = Branch::query()->where('code', 'MAIN')->firstOrFail();
-        $branch = Branch::query()->create(['business_id' => $karen->business_id, 'code' => 'WLD', 'name' => 'Westlands']);
+        $branch = Branch::query()->create(['business_id' => $karen->business_id, 'code' => $code, 'name' => $name]);
         foreach ([
             ['code' => 'FLOOR', 'name' => 'Shop floor', 'type' => LocationType::ShopFloor],
             ['code' => 'STORE', 'name' => 'Back store', 'type' => LocationType::Store],
@@ -321,17 +347,18 @@ class UserGuideSeeder extends Seeder
         }
         Date::setTestNow($day->setTime(21, 30));
         $expected = $this->shifts->cashInDrawer($shift->fresh());
-        // One evening at Westlands the drawer is KES 200 short, so the variance screens have an example.
-        $short = $branch->code === 'WLD' && $day->isTuesday() ? 20000 : 0;
+        // One evening the drawer is KES 200 short (at the second branch, if there is one), so the variance screens have an example.
+        $shortBranch = Branch::query()->where('code', '!=', 'MAIN')->exists() ? self::shop()['secondCode'] : 'MAIN';
+        $short = $branch->code === $shortBranch && $day->isTuesday() ? 20000 : 0;
         $closed = $this->shifts->close($shift->fresh(), $cashier, $expected - $short, null);
         if ($short) {
             $this->shifts->explainVariance($closed, $cashier, 'Gave a customer KES 200 too much change during the evening rush.');
         }
         Date::setTestNow($day->addDay()->setTime(9, 15));
-        $this->shifts->review($closed->fresh(), $this->manager, $short ? 'Discussed with Amina; count change twice.' : null);
+        $this->shifts->review($closed->fresh(), $this->manager, $short ? 'Discussed with '.strtok($cashier->name, ' ').'; count change twice.' : null);
     }
 
-    /** A few popular items at Imara Daima end up at or below their reorder level, for the low-stock screens. */
+    /** A few popular items at the main branch end up at or below their reorder level, for the low-stock screens. */
     private function lowStock(Branch $karen): void
     {
         foreach (['JAM-750', 'SMR-750', 'TUS-500', 'GOR-750'] as $sku) {
@@ -398,7 +425,7 @@ class UserGuideSeeder extends Seeder
 
         $categories = ExpenseCategory::query()->pluck('id', 'name');
         foreach ([
-            [5, 'Electricity & water', 485000, 'bank', 'Electricity supplier', 'Electricity tokens, Imara Daima shop'],
+            [5, 'Electricity & water', 485000, 'bank', 'Electricity supplier', 'Electricity tokens, '.$karen->name.' shop'],
             [4, 'Cleaning & supplies', 150000, 'petty_cash', 'Sparkle Cleaners', 'Weekly cleaning'],
             [2, 'Transport & delivery', 80000, 'mpesa', 'Boda rider', 'Delivery to Langata Events'],
         ] as [$ago, $category, $cents, $from, $payee, $what]) {

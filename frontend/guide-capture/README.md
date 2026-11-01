@@ -55,3 +55,28 @@ python tools/md2docx.py ../Tessera_POS_User_Guide.docx 0[1-9]-*.md 1[0-3]-*.md -
 ```
 
 Python is not on the PATH on every machine: Laragon's is at `C:\laragon\bin\python\python-3.13\python.exe`.
+
+## Client editions
+
+A client can get the same guide under their own shop name, with one branch or two. An edition lives in `docs/user-guide/editions/<client>/`: `edition.json` (the shop's `GUIDE_*` settings and the sentences of the chapters that change) and its own `images/`. The Spanish Wines & Spirits guide above is the default and is not changed by an edition.
+
+1. Build the shop in its own database with the edition's settings (an empty `GUIDE_SECOND_BRANCH` makes a one-branch shop: the transfer, delivery and stock count happen at the one branch, and chapter 2's cashier opens a second till there):
+
+   ```bash
+   createdb -U postgres tessera_pos_guide_epic
+   GUIDE_DB=tessera_pos_guide_epic GUIDE_SHOP="Epic Lounge Wines & Spirits" GUIDE_BRANCH="Main Branch" GUIDE_ADDRESS="Nairobi, Kenya" \
+     GUIDE_EMAIL="info@epiclounge.test" GUIDE_SECOND_BRANCH="" TESSERA_PHP=... sh frontend/guide-capture/guide-db.sh
+   ```
+
+2. Serve it as in step 2 (with `DB_DATABASE=tessera_pos_guide_epic`) and run the three capture scripts with the same `GUIDE_*` settings plus `GUIDE_IMAGES=../docs/user-guide/editions/epic-lounge/images`.
+3. Build the guide from the edition's chapters:
+
+   ```bash
+   cd docs/user-guide
+   python tools/edition.py editions/epic-lounge build/epic-lounge
+   python tools/md2html.py ../../frontend/guide-capture/.guide.html build/epic-lounge/*.md --cover --for="Epic Lounge Wines & Spirits"
+   node ../../frontend/guide-capture/pdf.mjs ../../frontend/guide-capture/.guide.html ../Epic_Lounge_User_Guide.pdf
+   python tools/md2docx.py ../Epic_Lounge_User_Guide.docx build/epic-lounge/*.md --for="Epic Lounge Wines & Spirits"
+   ```
+
+`edition.py` stops if a sentence in `edition.json` is no longer in the chapters, so a reworded chapter is noticed.

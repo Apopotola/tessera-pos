@@ -1,6 +1,6 @@
 // Chapter 2 "How everything connects": one business day, in order. Saves to images/overview.
 // Needs the user-guide shop (guide-db.sh: the demo shop) served on GUIDE_WEB; see guide-capture/README.md.
-import { BACK_OFFICE, TILL, WEB, launch, newPage, open, settle, shot, signIn, typePin } from "./lib.mjs";
+import { BACK_OFFICE, SHOP, TILL, WEB, launch, named, newPage, open, settle, shot, signIn, typePin } from "./lib.mjs";
 
 const F = "overview";
 const browser = await launch();
@@ -12,7 +12,7 @@ await signIn(office, "owner@tessera.test");
 await open(office, "/admin/settings");
 await shot(office, F, "01-settings-business", [
   [office.locator("main a").filter({ hasText: /^Business/ }).first(), 1],
-  [office.locator('main input[value="Spanish Wines & Spirits"]'), 2],
+  [office.locator(`main input[value="${SHOP.name}"]`), 2],
   [office.getByRole("button", { name: "Save" }).first(), 3],
 ]);
 
@@ -39,7 +39,8 @@ await shot(office, F, "05-purchase-order-received", [[office.locator("main table
 await open(office, "/inventory/stock");
 await shot(office, F, "06-stock-on-hand", [[office.locator("main table tbody tr:visible").first(), 1]]);
 
-// ---------------------------------------------------------------- 3–5: the till at Westlands (Amina)
+// ---------------------------------------------------------------- 3–5: the till at the second branch (Amina)
+// A one-branch shop: Amina opens a second till there, beside Otieno's.
 const till = await newPage(browser, TILL);
 await till.goto(`${WEB}/till`);
 await settle(till);
@@ -49,13 +50,13 @@ for (let attempt = 0; attempt < 3 && till.url().includes("/login"); attempt++) {
   await till.getByLabel("Email or phone number").fill("owner@tessera.test");
   await till.getByLabel(/^Password/).fill("password");
   await till.getByRole("button", { name: "Sign in" }).click();
-  await till.waitForTimeout(3500);
+  await till.waitForURL((url) => !url.pathname.startsWith("/login"), { timeout: 20000 }).catch(() => undefined);
 }
 await till.getByRole("heading", { name: "Set up this device as a till" }).waitFor();
 await till.getByRole("textbox", { name: "Branch" }).click();
-await till.getByRole("option", { name: /Westlands/ }).click();
-await till.getByLabel("Till name").fill("Till 1");
-await till.getByLabel("Location").fill("Front counter");
+await till.getByRole("option", { name: named(SHOP.second || SHOP.branch) }).click();
+await till.getByLabel("Till name").fill(SHOP.second ? "Till 1" : "Till 2");
+await till.getByLabel("Location").fill(SHOP.second ? "Front counter" : "Bar counter");
 await till.getByRole("button", { name: "Set up till" }).click();
 await till.getByRole("heading", { name: "Who's on the till?" }).waitFor();
 
