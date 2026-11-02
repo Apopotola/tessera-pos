@@ -36,12 +36,14 @@ function header(p: EscPos, business: string, branch: string, receipt: ReceiptSet
 
 export interface ReceiptPrintOptions {
   copy?: boolean;
+  /** The customer's bill before paying (see Receipt.tsx): no number, payments or eTIMS. */
+  bill?: boolean;
   /** Raster commands for the receipt logo (logo.ts). */
   logo?: Uint8Array | null;
 }
 
 export function receiptBytes(sale: Sale, options: ReceiptPrintOptions = {}): Uint8Array {
-  const { copy = false, logo = null } = options;
+  const { copy = false, bill = false, logo = null } = options;
   const { receipt } = sale;
   const show = (what: ReceiptSettings["show"][number]) => receipt.show.includes(what);
   const p = new EscPos(paperColumns(receipt.paperSize));
@@ -49,9 +51,10 @@ export function receiptBytes(sale: Sale, options: ReceiptPrintOptions = {}): Uin
   header(p, sale.business.name, sale.branch.name, receipt, logo);
   if (sale.business.kraPin) p.line(`PIN: ${sale.business.kraPin}`);
   if (copy) p.bold(true).line("*** COPY ***").bold(false);
+  if (bill) p.bold(true).large(true).paragraph("BILL - NOT PAID", true).large(false).bold(false);
 
   p.align("left").rule();
-  p.row("Receipt", sale.number);
+  if (!bill) p.row("Receipt", sale.number);
   p.row(dayjs(sale.completedAt).format("DD/MM/YYYY HH:mm"), sale.till.name);
   if (show("cashier")) p.row("Served by", sale.cashier.name);
   if (show("customer") && sale.customer) p.row("Customer", sale.customer.name);
@@ -68,17 +71,19 @@ export function receiptBytes(sale: Sale, options: ReceiptPrintOptions = {}): Uin
   p.rule();
   if (sale.discountCents > 0) p.row("You saved", amount(sale.discountCents));
   p.bold(true).row("TOTAL", `KES ${amount(sale.totalCents)}`).bold(false);
-  for (const t of sale.tenders.filter((t) => t.amountCents > 0)) {
+  for (const t of bill ? [] : sale.tenders.filter((t) => t.amountCents > 0)) {
     p.row(`${TENDER_LABELS[t.method]}${t.reference ? ` ${t.reference}` : ""}`, amount(t.method === "cash" ? (t.tenderedCents ?? t.amountCents) : t.amountCents));
   }
-  if (sale.roundingCents !== 0) p.row("Cash rounding", amount(sale.roundingCents));
+  if (!bill && sale.roundingCents !== 0) p.row("Cash rounding", amount(sale.roundingCents));
   const change = sale.tenders.find((t) => t.method === "cash" && t.amountCents >= 0)?.changeCents ?? 0;
-  if (change > 0) p.bold(true).row("Change", amount(change)).bold(false);
+  if (!bill && change > 0) p.bold(true).row("Change", amount(change)).bold(false);
   p.row("VAT included", amount(sale.vatCents));
   if (sale.returnedCents > 0) p.row("Refunded", `-${amount(sale.returnedCents)}`);
 
   p.rule().align("center");
-  if (sale.pendingSync) {
+  if (bill) {
+    p.bold(true).paragraph("NOT A TAX INVOICE. Your receipt and eTIMS invoice are printed when you pay.").bold(false);
+  } else if (sale.pendingSync) {
     p.bold(true).paragraph("RECORDED OFFLINE - provisional number. The official receipt number and eTIMS invoice follow when the till reconnects.").bold(false);
   } else if (sale.etims?.status === "signed") {
     p.align("left");
@@ -93,7 +98,7 @@ export function receiptBytes(sale: Sale, options: ReceiptPrintOptions = {}): Uin
     p.paragraph("eTIMS invoice pending - not yet signed by KRA");
   }
   receipt.footerLines.forEach((line) => p.paragraph(line));
-  if (show("return_policy")) p.paragraph(`Sealed bottles can be returned within ${receipt.returnWindowDays} days with this receipt.`);
+  if (!bill && show("return_policy")) p.paragraph(`Sealed bottles can be returned within ${receipt.returnWindowDays} days with this receipt.`);
 
   return p.feed(4).cut().build();
 }

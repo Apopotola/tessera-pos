@@ -12,9 +12,10 @@ const PAPER = { "58mm": classes.paper58, "80mm": "", a4: classes.paperA4 } as co
 
 /**
  * Till receipt laid out by Settings → Receipts (paper, logo, header and footer, what to show).
- * Rendered on screen as a preview; `ReceiptPrint` sends it to the printer.
+ * Rendered on screen as a preview; `ReceiptPrint` sends it to the printer. As a `bill` it is the
+ * customer's bill before paying: no receipt number, payments or eTIMS, and marked as not a tax invoice.
  */
-export default function Receipt({ sale, copy = false }: { sale: Sale; copy?: boolean }) {
+export default function Receipt({ sale, copy = false, bill = false }: { sale: Sale; copy?: boolean; bill?: boolean }) {
   const cash = sale.tenders.find((t) => t.method === "cash" && t.amountCents >= 0);
   const { receipt } = sale;
   const show = (what: Sale["receipt"]["show"][number]) => receipt.show.includes(what);
@@ -36,13 +37,16 @@ export default function Receipt({ sale, copy = false }: { sale: Sale; copy?: boo
         ))}
         {sale.business.kraPin && <div>PIN: {sale.business.kraPin}</div>}
         {copy && <div className={classes.copy}>*** COPY ***</div>}
+        {bill && <div className={classes.copy}>BILL — NOT PAID</div>}
       </div>
 
       <div className={classes.rule} />
-      <div className={classes.row}>
-        <span>Receipt</span>
-        <span>{sale.number}</span>
-      </div>
+      {!bill && (
+        <div className={classes.row}>
+          <span>Receipt</span>
+          <span>{sale.number}</span>
+        </div>
+      )}
       <div className={classes.row}>
         <span>{dayjs(sale.completedAt).format("DD/MM/YYYY HH:mm")}</span>
         <span>{sale.till.name}</span>
@@ -105,8 +109,9 @@ export default function Receipt({ sale, copy = false }: { sale: Sale; copy?: boo
         <span>TOTAL</span>
         <span>{formatKes(sale.totalCents)}</span>
       </div>
-      {sale.tenders
-        .filter((t) => t.amountCents > 0)
+      {!bill &&
+        sale.tenders
+          .filter((t) => t.amountCents > 0)
         .map((t, i) => (
           <div key={i} className={classes.row}>
             <span>
@@ -116,13 +121,13 @@ export default function Receipt({ sale, copy = false }: { sale: Sale; copy?: boo
             <span>{formatKes(t.method === "cash" ? (t.tenderedCents ?? t.amountCents) : t.amountCents)}</span>
           </div>
         ))}
-      {sale.roundingCents !== 0 && (
+      {!bill && sale.roundingCents !== 0 && (
         <div className={classes.row}>
           <span>Cash rounding</span>
           <span>{formatKes(sale.roundingCents)}</span>
         </div>
       )}
-      {cash && (cash.changeCents ?? 0) > 0 && (
+      {!bill && cash && (cash.changeCents ?? 0) > 0 && (
         <div className={classes.row}>
           <span>Change</span>
           <span>{formatKes(cash.changeCents)}</span>
@@ -141,7 +146,9 @@ export default function Receipt({ sale, copy = false }: { sale: Sale; copy?: boo
 
       <div className={classes.rule} />
       <div className={classes.center}>
-        {sale.pendingSync ? (
+        {bill ? (
+          <div className={classes.copy}>NOT A TAX INVOICE. Your receipt and eTIMS invoice are printed when you pay.</div>
+        ) : sale.pendingSync ? (
           <div className={classes.copy}>
             RECORDED OFFLINE — provisional number. The official receipt number and eTIMS invoice follow when the till reconnects.
           </div>
@@ -170,18 +177,18 @@ export default function Receipt({ sale, copy = false }: { sale: Sale; copy?: boo
         {receipt.footerLines.map((line, i) => (
           <div key={i}>{line}</div>
         ))}
-        {show("return_policy") && <div>Sealed bottles can be returned within {receipt.returnWindowDays} days with this receipt.</div>}
+        {!bill && show("return_policy") && <div>Sealed bottles can be returned within {receipt.returnWindowDays} days with this receipt.</div>}
       </div>
     </div>
   );
 }
 
 /** Mount while printing: only this receipt shows on paper (see the print rules in globals.css). */
-export function ReceiptPrint({ sale, copy = false }: { sale: Sale; copy?: boolean }) {
+export function ReceiptPrint({ sale, copy = false, bill = false }: { sale: Sale; copy?: boolean; bill?: boolean }) {
   if (typeof document === "undefined") return null;
   return createPortal(
     <div className="tessera-print">
-      <Receipt sale={sale} copy={copy} />
+      <Receipt sale={sale} copy={copy} bill={bill} />
     </div>,
     document.body,
   );

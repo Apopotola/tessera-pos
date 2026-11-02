@@ -28,7 +28,7 @@ import TenderModal from "@/modules/till/components/TenderModal";
 import TillHeader from "@/modules/till/components/TillHeader";
 import { isLicensedOpen, licensedOpensLabel } from "@/modules/till/licensedHours";
 import OfflineBanner from "@/modules/till/offline/OfflineBanner";
-import { buildOfflineReceipt } from "@/modules/till/offline/offlineReceipt";
+import { buildBill, buildOfflineReceipt } from "@/modules/till/offline/offlineReceipt";
 import { useOfflineTill } from "@/modules/till/offline/useOfflineTill";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { logout } from "@/store/slices/authSlice";
@@ -78,7 +78,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   const [payPending, setPayPending] = useState(false);
   const [completed, setCompleted] = useState<Sale | null>(null);
   // The print dialog (browser printing, or the fallback when the printer cannot be reached).
-  const [printing, setPrinting] = useState<{ sale: Sale; copy: boolean } | null>(null);
+  const [printing, setPrinting] = useState<{ sale: Sale; copy: boolean; bill?: boolean } | null>(null);
   const [printerSetup, setPrinterSetup] = useState(false);
   const [returning, setReturning] = useState(false);
   const [ending, setEnding] = useState(false);
@@ -241,15 +241,21 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
 
   /** Settings → Receipt printer: straight to the printer, else the print dialog. "No printer" skips the automatic print only. */
   const printSale = useCallback(
-    async (sale: Sale, copy: boolean, asked: boolean) => {
-      const outcome = await printReceipt(policy.printer, sale, copy);
+    async (sale: Sale, copy: boolean, asked: boolean, bill = false) => {
+      const outcome = await printReceipt(policy.printer, sale, copy, bill);
       if (outcome.via === "browser") {
         if (outcome.error) notifications.show({ color: "yellow", message: `The printer did not answer (${outcome.error}). Opening the print dialog instead.` });
-        setPrinting({ sale, copy });
-      } else if (outcome.via === "none" && asked) setPrinting({ sale, copy });
+        setPrinting({ sale, copy, bill });
+      } else if (outcome.via === "none" && asked) setPrinting({ sale, copy, bill });
     },
     [policy.printer],
   );
+
+  /** The customer's bill before paying (bars and lounges): nothing is recorded; the sale stays open. */
+  const printBill = () => {
+    if (!user || lines.length === 0) return;
+    void printSale(buildBill({ occurredAt: new Date().toISOString(), context, user, lines: priced, customer, snapshot: offline.snapshot }), false, true, true);
+  };
 
   const addItem = useCallback((item: TillItem, quantity = 1, unit: SaleUnit = "bottle") => {
     const now = new Date();
@@ -756,10 +762,13 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
           {lines.length === 0 ? "Complete sale" : `Complete sale · ${formatKes(totals.total)}`}
         </Button>
         <Group grow gap={8}>
-          <Button variant="outline" color="tessera" leftSection={<IconPlayerPause size={16} />} disabled={lines.length === 0 || !isOnline} onClick={() => setParking(true)}>
+          <Button variant="outline" color="tessera" px={8} className={classes.methodButton} leftSection={<IconPrinter size={16} />} disabled={lines.length === 0} onClick={printBill}>
+            Print bill
+          </Button>
+          <Button variant="outline" color="tessera" px={8} className={classes.methodButton} leftSection={<IconPlayerPause size={16} />} disabled={lines.length === 0 || !isOnline} onClick={() => setParking(true)}>
             Hold sale
           </Button>
-          <Button variant="filled" color="red" leftSection={<IconTrash size={16} />} disabled={lines.length === 0} onClick={() => void clearCart()}>
+          <Button variant="filled" color="red" px={8} className={classes.methodButton} leftSection={<IconTrash size={16} />} disabled={lines.length === 0} onClick={() => void clearCart()}>
             Void
           </Button>
         </Group>
@@ -918,7 +927,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
           }}
         />
       )}
-      {printing && <ReceiptPrint sale={printing.sale} copy={printing.copy} />}
+      {printing && <ReceiptPrint sale={printing.sale} copy={printing.copy} bill={printing.bill} />}
     </div>
   );
 }

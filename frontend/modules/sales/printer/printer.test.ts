@@ -131,6 +131,18 @@ test("offline receipts say so", () => {
   expect(text).toContain("RECORDED OFFLINE");
 });
 
+test("a bill before paying shows the items and total, but no number, payments or eTIMS", () => {
+  const bytes = receiptBytes(sale, { bill: true });
+  const text = printed(bytes).join(" ");
+  expect(text).toContain("BILL - NOT PAID");
+  expect(text).toContain("KES 5,200.00");
+  expect(text).toContain("VAT included");
+  expect(text).toContain("NOT A TAX INVOICE");
+  for (const absent of ["INV-000042", "Change", "CU invoice no.", "eTIMS invoice pending"]) expect(text).not.toContain(absent);
+  expect(has(bytes, [0x1d, 0x28, 0x6b])).toBe(false);
+  expect(has(bytes, [0x1b, 0x70])).toBe(false);
+});
+
 test("the test page proves the width and the cutter", () => {
   const lines = printed(testPageBytes("Tessera", "Main branch", receipt, null));
   expect(lines).toContain("PRINTER TEST");
