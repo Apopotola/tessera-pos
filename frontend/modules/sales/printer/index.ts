@@ -57,10 +57,10 @@ export async function openDrawerForSale(printer: TillPrinter, sale: Pick<Sale, "
   return sendToPrinter(printer, drawerBytes);
 }
 
-/** A receipt on this till's printer, logo included when the receipt shows it. */
-export function printReceipt(printer: TillPrinter, sale: Sale, copy: boolean): Promise<PrintOutcome> {
+/** A receipt (or the customer's bill before paying) on this till's printer, logo included when the receipt shows it. */
+export function printReceipt(printer: TillPrinter, sale: Sale, copy: boolean, bill = false): Promise<PrintOutcome> {
   return sendToPrinter(printer, async () => {
     const logo = sale.receipt.show.includes("logo") ? await logoRaster(sale.receipt.logo, paperWidthMm(sale.receipt.paperSize)) : null;
-    return receiptBytes(sale, { copy, logo });
+    return receiptBytes(sale, { copy, bill, logo });
   });
 }

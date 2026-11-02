@@ -6,7 +6,7 @@ import type { Sale, TenderPayload } from "@/types/sales";
 import type { TillContext, TillSnapshot } from "@/types/till";
 import { roundTo } from "@/utils/money";
 
-interface OfflineReceiptInput {
+export interface OfflineReceiptInput {
   localNumber: string;
   occurredAt: string;
   context: TillContext;
@@ -92,4 +92,12 @@ export function buildOfflineReceipt(input: OfflineReceiptInput): Sale {
     returns: [],
     receipt: context.policy.receipt,
   };
+}
+
+/**
+ * The customer's bill for the open sale, printed before they pay (Receipt with `bill`). Priced like
+ * the receipt; nothing is recorded, so it works offline too.
+ */
+export function buildBill(input: Omit<OfflineReceiptInput, "localNumber" | "tenders" | "customerPin">): Sale {
+  return { ...buildOfflineReceipt({ ...input, localNumber: "", tenders: [], customerPin: null }), pendingSync: false, capturedOffline: false, roundingCents: 0 };
 }
