@@ -82,3 +82,5 @@ A client can get the same guide under their own shop name, with one branch or tw
 `edition.py` stops if a sentence in `edition.json` is no longer in the chapters, so a reworded chapter is noticed.
 
 `settings-demo.mjs` (read-only) takes the pictures for an edition's short Settings demo briefing (`editions/epic-lounge/settings-demo.md`, built to `docs/Epic_Lounge_Settings_Demo.pdf` with `md2html.py` without `--cover` and `pdf.mjs`).
+
+`till-questions.mjs` takes the pictures for the answers to the client's till questions (the bill before paying, swapping a drink, selling more than the shelf holds): `editions/epic-lounge/till-questions.md`, built the same way to `docs/Epic_Lounge_Till_Questions.pdf`. It makes two real sales, so run it on a freshly built shop.
