@@ -1,7 +1,7 @@
 """Turn user-guide Markdown chapters into one branded HTML page, ready to print to PDF.
 
 Usage:
-    python md2html.py OUT.html CHAPTER.md [CHAPTER.md ...] [--cover] [--for="Client name"] [--landscape] [--gallery]
+    python md2html.py OUT.html CHAPTER.md [CHAPTER.md ...] [--cover] [--for="Client name"] [--title="…"] [--subtitle="…"] [--landscape] [--gallery]
 
 Supports what the guide uses: headings, paragraphs, **bold**, *italic*, `code`, links (text only),
 tables, numbered lists (keeping their numbers), bullet lists, images with captions
@@ -20,6 +20,8 @@ import sys
 args = [a for a in sys.argv[1:] if not a.startswith("--")]
 flags = {a.split("=")[0] for a in sys.argv[1:] if a.startswith("--")}
 client = next((a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--for=")), "")
+title = next((a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--title=")), "User Guide")
+subtitle = next((a.split("=", 1)[1] for a in sys.argv[1:] if a.startswith("--subtitle=")), "Tessera POS for wines & spirits shops")
 out_path, sources = pathlib.Path(args[0]), [pathlib.Path(a).resolve() for a in args[1:]]
 IMG = re.compile(r"^!\[([^\]]*)\]\(([^)]+)\)\s*$")
 OL = re.compile(r"^(\d+)\. (.*)")
@@ -129,7 +131,7 @@ if "--cover" in flags:
     logo = "".join(f'<span style="background:{c}"></span>' for c in ("#8F79CC", "#F2A93B", "#8F79CC", "#FFFFFF"))
     items = "".join(f'<li class="lvl{n}"><a href="#{a}">{inline(t)}</a></li>' for n, t, a in toc)
     cover = f"""<section class="cover"><div class="logo">{logo}</div><div class="brand">tessera</div>
-<h1>User Guide</h1><p class="sub">Tessera POS for wines &amp; spirits shops</p>{f'<p class="client">Prepared for {html.escape(client)}</p>' if client else ''}
+<h1>{html.escape(title)}</h1><p class="sub">{html.escape(subtitle)}</p>{f'<p class="client">Prepared for {html.escape(client)}</p>' if client else ''}
 <p class="meta">Version 1.0 · {today.day} {today.strftime('%B %Y')}</p></section>
 <section class="toc"><h2>Contents</h2><ol>{items}</ol></section>"""
 
