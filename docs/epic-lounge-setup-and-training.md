@@ -162,13 +162,12 @@ There is no import from a spreadsheet, so products go in one at a time. Start wi
 **Prepare first (on paper or in Excel):** for each drink, its sizes, barcode, cost price, selling price and tot price.
 
 1. **Catalogue → Brands and categories.** Categories become the chips on the till, so keep them short: *Beer, Cider, Whisky, Vodka, Gin, Brandy, Rum, Tequila, Liqueur, Wine, Champagne, Soft drinks, Energy, Water, Snacks*.
-2. **Catalogue → Products → New product.**
-   - Enter the name, brand, category and ABV.
-   - For each size, enter the ml, container, a short SKU and the **tax class** (most alcohol is standard 16 % VAT; ask the accountant). **Scan** the barcode from the bottle rather than typing it, and enter the retail price.
-3. **Tot prices** for spirits sold by the shot: on the size, **⋯ → Change price → Tot**.
-4. **Photos:** on the product, **Upload photo**. Use a clear, square photo of the bottle; it shows on the till and makes ordering faster.
-5. **Suppliers** (*Purchasing → Suppliers*): name, phone and payment terms for each supplier.
-6. **Reorder levels** (*Inventory → Stock levels → ⋯*): about two weeks of sales for the best sellers.
+2. **Catalogue → Products → New product.** Enter the name, brand, category and ABV.
+3. For each size, enter the ml, container, a short SKU and the **tax class** (most alcohol is standard 16 % VAT; ask the accountant). **Scan** the barcode from the bottle rather than typing it, and enter the retail price.
+4. **Tot prices** for spirits sold by the shot: on the size, **⋯ → Change price → Tot**.
+5. **Photos:** on the product, **Upload photo**. Use a clear, square photo of the bottle; it shows on the till and makes ordering faster.
+6. **Suppliers** (*Purchasing → Suppliers*): name, phone and payment terms for each supplier.
+7. **Reorder levels** (*Inventory → Stock levels → ⋯*): about two weeks of sales for the best sellers.
 
 > **Note:** Prices entered by anyone other than Brian wait for his approval (*Catalogue → Price changes → Pending*). Brian should approve them before the practice run, or the till will not have prices.
 
@@ -179,12 +178,10 @@ There is no import from a spreadsheet, so products go in one at a time. Start wi
 Stock in Tessera is never typed in directly; the opening count goes in as a stock adjustment.
 
 1. Count every shelf and the store room, one area at a time, before opening or after closing.
-2. *Inventory → Breakages & adjustments → New adjustment*.
-   - **What happened:** *Opening stock*.
-   - **Location:** *Shop floor* for what is behind the bar, *Back store* for the store room (a separate adjustment for each).
-   - Add each item and the quantity counted.
-3. **Send for approval.** A **different person** (Brian or a manager) approves it. Nobody can approve their own.
-4. Check *Inventory → Stock levels*: every drink's quantity should match the shelf. The *Stock dashboard* now shows the stock value.
+2. *Inventory → Breakages & adjustments → New adjustment*. Choose **What happened:** *Opening stock*.
+3. **Location:** *Shop floor* for what is behind the bar, *Back store* for the store room (a separate adjustment for each). Add each item and the quantity counted.
+4. **Send for approval.** A **different person** (Brian or a manager) approves it. Nobody can approve their own.
+5. Check *Inventory → Stock levels*: every drink's quantity should match the shelf. The *Stock dashboard* now shows the stock value.
 
 > **Important:** Wrong opening stock makes every report wrong afterwards. Count twice for the expensive bottles.
 
@@ -195,12 +192,10 @@ Stock in Tessera is never typed in directly; the opening count goes in as a stoc
 1. On the counter computer or tablet, open https://pos.tesseratech.co.ke/till in **Chrome** or **Edge**.
 2. Choose **Manager sign in** and sign in as Brian or a manager (not with the super user, so the till is set up in the shop's name).
 3. Set the branch, a till name (*Till 1*), where it is (*Main bar*) and the opening float, then **Set up till**.
-4. **Printer.** In *Settings → Integrations → Receipt printer*:
-   - *Print through the browser* works with any installed printer.
-   - *Direct USB/serial printing* is faster and opens the cash drawer.
-   - Then, on the till, open the till menu and choose **Printer → Print test page**.
-5. **Scanner:** plug it in and scan a bottle in the search box. The item should appear.
-6. Make the browser **full screen** (F11). Add a shortcut to the till page on the desktop.
+4. **Printer.** In *Settings → Integrations → Receipt printer*, choose *Print through the browser* (works with any installed printer) or *Direct USB/serial printing* (faster, and opens the cash drawer).
+5. On the till, open the till menu and choose **Printer → Print test page**.
+6. **Scanner:** plug it in and scan a bottle in the search box. The item should appear.
+7. Make the browser **full screen** (F11). Add a shortcut to the till page on the desktop.
 
 For a second till, repeat on the second device with another name.
 
@@ -249,22 +244,20 @@ Train **by doing**: the trainee holds the mouse or the screen, you talk. Each se
 
 **Cashier sign-off checklist:** the trainee alone does:
 
-- [ ] A cash sale with change.
-- [ ] An M-PESA sale with a code.
-- [ ] A sale with 2 tots and 1 bottle.
-- [ ] A held table tab, recalled and paid.
-- [ ] A return with a manager's approval.
-- [ ] A lock and unlock.
-- [ ] A switch cashier.
-- [ ] An end-of-shift count.
+- ☐ A cash sale with change.
+- ☐ An M-PESA sale with a code.
+- ☐ A sale with 2 tots and 1 bottle.
+- ☐ A held table tab, recalled and paid.
+- ☐ A return with a manager's approval.
+- ☐ A lock and unlock.
+- ☐ A switch cashier.
+- ☐ An end-of-shift count.
 
 ### 8.2 Branch managers / supervisors (60 minutes)
 
 **What a manager is responsible for:** approvals at the till, the safe, and checking each cashier's cash-up.
 
-- **At the till, with their PIN:** discounts above the cashier's limit, voids, price changes, refunds, cash drops, payouts, unlocking another person's till.
-  - The manager types the PIN, never the cashier.
-  - Every approval carries the manager's name in the *Voids, discounts & price overrides* report.
+- **At the till, with their PIN:** discounts above the cashier's limit, voids, price changes, refunds, cash drops, payouts, unlocking another person's till. The manager types the PIN, never the cashier. Every approval carries the manager's name in the *Voids, discounts & price overrides* report.
 - **Cash-up sign-off:** *Sales & Shifts → Shifts & cash-ups*. Check each closed shift, read the reason for any difference, add a note and sign off. Nobody can sign off their own.
 - **Receiving stock:** *Inventory → Receive stock* against an approved purchase order. Count before posting; a posted delivery cannot be edited.
 - **Adjustments:** approve or reject breakages (*Inventory → Breakages & adjustments*). Check the reason makes sense.
@@ -280,27 +273,23 @@ Covers: receive a delivery, record a breakage, move stock from the back store to
 
 **What the owner is responsible for:** prices and promotions, staff accounts, approvals no one else may give, and checking the money every day.
 
-1. **Dashboard:**
-   - today's sales and profit,
-   - cash shortages,
-   - low stock,
-   - shifts waiting for sign-off.
-2. **Approvals waiting:**
-   - price changes (*Catalogue → Price changes*),
-   - promotions,
-   - purchase orders.
+1. **Dashboard:** today's sales and profit, cash shortages, low stock, and shifts waiting for sign-off.
+2. **Approvals waiting:** price changes (*Catalogue → Price changes*), promotions and purchase orders.
 3. **Prices and promotions:** change a price with a start date; create a happy-hour promotion (days, hours, % off) and approve it.
 4. **Staff:** add a user, set a PIN, deactivate a leaver, reset a forgotten password (*Edit* → new password).
-5. **Reports** (*Reports*), the ones to know:
-   - *Sales summary*: what was sold, by day.
-   - *Sales by cashier / tender*: how much each cashier took in cash, M-PESA and card.
-   - *Profit*: margin by product and category.
-   - *Voids, discounts & price overrides*: who gave what away, and who approved it.
-   - *Low stock*: what to order.
-   - *Stock count variance* and *Adjustments & losses by reason*: where stock is disappearing.
+5. **Reports** (*Reports*): the ones to know are in the table below.
 6. **Purchasing:** raise a purchase order, approve it (a different person from the one who raised it), receive it, record the supplier invoice.
 7. **Expenses and licences:** record expenses; enter the liquor licence and its expiry date so he is warned before it runs out.
 8. **Audit log:** who did what, and when (*Administration → Audit log*).
+
+| Report | Answers |
+| --- | --- |
+| *Sales summary* | What was sold, by day. |
+| *Sales by cashier / tender* | How much each cashier took in cash, M-PESA and card. |
+| *Profit* | The margin by product and category. |
+| *Voids, discounts & price overrides* | Who gave what away, and who approved it. |
+| *Low stock* | What to order. |
+| *Stock count variance*, *Adjustments & losses by reason* | Where stock is disappearing. |
 
 ---
 
