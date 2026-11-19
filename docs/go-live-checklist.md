@@ -20,7 +20,7 @@ In `APP_ENV=production` it creates no demo accounts and no demo data.
 
 - [ ] Agree a time with the client when nobody is using the system.
 - [ ] Have the owner's **email address** and a **strong first password** ready (12+ characters). The owner must change this password at the first sign-in.
-- [ ] Have the owner's **phone with an authenticator app** (Google Authenticator, Microsoft Authenticator or Authy). Owners must use two-step login in production.
+- [ ] Decide on **two-step login**. It is on by default for owners, admins and Tessera support, and only a Tessera support (super user) account can switch it off or on again (*Settings → Staff and roles*). If it stays on, each of them needs a **phone with an authenticator app** (Google Authenticator, Microsoft Authenticator or Authy).
 - [ ] Decide the **M-PESA** setup:
   - `manual`: the cashier types the M-PESA code, and a manager matches it on *Payments → M-PESA reconciliation*. Use this to start today.
   - `daraja`: needs the client's Safaricom Daraja keys, shortcode and passkey (see `backend/.env.example`). Switch to it later.
@@ -109,7 +109,7 @@ Keep `APP_KEY`, `DB_*` and `DB_SSLMODE=require`. If you created a new database, 
 - [ ] `https://pos.tesseratech.co.ke/api/v1/ping` answers `pong`.
 - [ ] The login page no longer says *Spanish Wines & Spirits*.
 - [ ] `owner@tessera.test` / `password` is **refused**.
-- [ ] The owner signs in with the new email address, changes the password, scans the two-step QR code and **writes down the 8 recovery codes**.
+- [ ] The owner signs in with the new email address and changes the password. While two-step login is on, they also scan the QR code and **write down the 8 recovery codes**.
 - [ ] *Inventory → Stock levels* is empty and *Sales* has no sales.
 - [ ] *Administration → Branches* shows only **MAIN · Main Branch**. Rename it to the shop's name before the first sale; the code `MAIN` appears in every document number.
 

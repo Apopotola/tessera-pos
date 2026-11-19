@@ -39,7 +39,7 @@ class SignInSecurityTest extends TestCase
 
     private function setting(string $key, mixed $value): void
     {
-        app(SettingsService::class)->set(User::role(Roles::OWNER)->firstOrFail(), $key, 'business', 0, $value);
+        app(SettingsService::class)->set($this->user(Roles::TESSERA_ADMIN), $key, 'business', 0, $value);
     }
 
     public function test_owner_sets_up_two_step_login_at_first_sign_in(): void
@@ -86,14 +86,30 @@ class SignInSecurityTest extends TestCase
         $this->assertSame([], $owner->fresh()->mfa_recovery_codes);
     }
 
-    public function test_setting_off_skips_two_step_for_owners_but_never_for_tessera_support(): void
+    public function test_tessera_support_needs_two_step_while_the_setting_is_on(): void
+    {
+        $this->login($this->user(Roles::TESSERA_ADMIN))->assertOk()->assertJsonPath('data.mfaStep', 'setup');
+    }
+
+    public function test_setting_off_skips_two_step_for_owners_and_tessera_support(): void
     {
         $this->setting('staff.two_step_login', false);
 
         $this->login($this->user(Roles::OWNER))->assertOk()->assertJsonMissingPath('data.mfaStep');
         $this->fromFrontend()->postJson('/api/v1/auth/logout');
-        $this->login($this->user(Roles::TESSERA_ADMIN))->assertOk()->assertJsonPath('data.mfaStep', 'setup');
+        $this->login($this->user(Roles::TESSERA_ADMIN))->assertOk()->assertJsonMissingPath('data.mfaStep');
+        $this->fromFrontend()->postJson('/api/v1/auth/logout');
         $this->login($this->user(Roles::CASHIER))->assertOk()->assertJsonMissingPath('data.mfaStep');
+    }
+
+    public function test_only_tessera_support_switches_two_step_login(): void
+    {
+        $owner = User::role(Roles::OWNER)->firstOrFail();
+
+        $this->actingAs($owner)->putJson('/api/v1/settings/values/staff.two_step_login', ['scope' => 'business', 'scopeId' => 0, 'value' => false])
+            ->assertForbidden();
+        $this->actingAs($this->user(Roles::TESSERA_ADMIN))->putJson('/api/v1/settings/values/staff.two_step_login', ['scope' => 'business', 'scopeId' => 0, 'value' => false])
+            ->assertOk();
     }
 
     public function test_admin_resets_someone_elses_two_step_login(): void

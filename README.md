@@ -114,7 +114,7 @@ php artisan db:seed --class=DemoShopSeeder --force
 
 The owner shows as *David Kiprop* (still `owner@tessera.test` / `password`). Names of suppliers and customers are fictional; phone numbers and KRA PINs are dummies. The Docker and Render demos load this shop automatically on their first start (`TESSERA_DEMO=true`).
 
-Owner, Admin and Tessera Support accounts use **two-step login**: the first sign-in shows a QR code for an authenticator app (Google Authenticator, Microsoft Authenticator, Authy) and then recovery codes. For demos without a phone, an owner can switch it off under **Settings → Staff and roles** (Tessera Support always keeps it).
+Owner, Admin and Tessera Support accounts use **two-step login**: the first sign-in shows a QR code for an authenticator app (Google Authenticator, Microsoft Authenticator, Authy) and then recovery codes. For demos without a phone, Tessera Support can switch it off for everyone under **Settings → Staff and roles**; owners cannot change it.
 
 ### Setting up a till
 
@@ -317,7 +317,7 @@ It compares each balance with the sum of its movements, both ways (a balance wit
 
 ## Sign-in security
 
-- **Two-step login (TOTP):** required for owners and admins while *Settings → Staff → Two-step login* is on, and always for Tessera support. The first sign-in sets it up (QR code, then 8 one-time recovery codes). Anyone can turn it on from the account menu. Lost phone: sign in with a recovery code, or an administrator uses *Users & roles → Reset two-step login* (only Tessera support can reset a Tessera support account). Secrets are stored encrypted, recovery codes hashed, and a code cannot be used twice.
+- **Two-step login (TOTP):** required for owners, admins and Tessera support while *Settings → Staff → Two-step login* is on. Only Tessera support can switch it. The first sign-in sets it up (QR code, then 8 one-time recovery codes). Anyone can turn it on from the account menu. Lost phone: sign in with a recovery code, or an administrator uses *Users & roles → Reset two-step login* (only Tessera support can reset a Tessera support account). Secrets are stored encrypted, recovery codes hashed, and a code cannot be used twice.
 - **Passwords:** *Change password* in the account menu. A password set by an administrator, or older than *Password expiry*, must be changed before the back office works again.
 - **Back-office timeout:** signed out after *Back office signs out after (minutes idle)* (default 30), enforced by the API (`Modules\Auth\Http\Middleware\EnforceSessionSecurity`). Computers where *Keep me signed in* was ticked are exempt.
 - **Till lock:** after *Till locks after (minutes idle)* (default 2, per branch or till; not while taking payment or while offline) or *Lock screen* in the till menu. The sale in progress is kept; the API refuses everything but unlocking. The cashier unlocks with their PIN, or a branch manager with theirs (logged with the manager as approver).

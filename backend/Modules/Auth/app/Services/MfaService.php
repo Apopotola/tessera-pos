@@ -14,8 +14,8 @@ use Modules\Authorization\Support\Roles;
 use Modules\Settings\Services\SettingsService;
 
 /**
- * Two-step login with an authenticator app (TOTP). Required for owners and admins while
- * Settings → Staff → Two-step login is on, and always for Tessera support accounts.
+ * Two-step login with an authenticator app (TOTP). Required for owners, admins and Tessera support
+ * while Settings → Staff → Two-step login is on; only Tessera support can switch it.
  */
 class MfaService
 {
@@ -30,11 +30,7 @@ class MfaService
 
     public function required(User $user): bool
     {
-        if ($user->hasRole(Roles::TESSERA_ADMIN)) {
-            return true;
-        }
-
-        return $user->hasAnyRole([Roles::OWNER, Roles::ADMIN]) && (bool) $this->settings->get('staff.two_step_login');
+        return $user->hasAnyRole([Roles::TESSERA_ADMIN, Roles::OWNER, Roles::ADMIN]) && (bool) $this->settings->get('staff.two_step_login');
     }
 
     public function enabled(User $user): bool

@@ -36,7 +36,7 @@ export interface MfaChallenge {
 
 export interface MfaStatus {
   enabled: boolean;
-  /** Required for the user's role (Settings → Staff → Two-step login; always for Tessera support). */
+  /** Required for the user's role (Settings → Staff → Two-step login; switched by Tessera support). */
   required: boolean;
   recoveryCodesLeft: number;
 }
