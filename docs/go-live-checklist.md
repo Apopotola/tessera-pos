@@ -156,7 +156,58 @@ Follow the user guide's chapter 12 (Administration) and chapters 6–7 (Products
 ## 6. After go-live
 
 - [ ] Every evening: cash-ups signed off, and the dashboard and reports checked.
-- [ ] Back up the database daily: `pg_dump` from a cron job on a VPS, or Neon's point-in-time restore.
+- [ ] Back up every night (section 7). On Render with Neon, use Neon's point-in-time restore instead.
 - [ ] Switch `MPESA_DRIVER` to `daraja` when the Safaricom keys arrive.
   - Set a public `MPESA_CALLBACK_BASE_URL` and run `php artisan mpesa:register-c2b` once.
 - [ ] Book the eTIMS setup with Tessera support once the KRA integration is ready.
+
+## 7. Nightly backup (VPS with Docker)
+
+The script below backs up the database and the uploaded files (logos, product photos) every night at 02:30. It keeps 14 days of backups.
+
+Set `PROJECT` to the Compose project the containers run under. You can see it in their names: `tessera-pos-demo-db-1` means the project is `tessera-pos-demo`.
+
+**1. Create the script:**
+
+```bash
+mkdir -p ~/bin ~/backups/tessera && cat > ~/bin/tessera-backup.sh <<'SH'
+#!/bin/sh
+# Nightly backup of Tessera POS: database + uploaded files, 14 days kept.
+set -e
+PROJECT=tessera-pos-demo
+DIR="$HOME/backups/tessera"
+STAMP=$(date +%F-%H%M)
+docker exec "$PROJECT-db-1" pg_dump -U tessera -d tessera_pos -Fc > "$DIR/db-$STAMP.dump"
+docker run --rm -v "${PROJECT}_app-storage":/data:ro -v "$DIR":/out alpine tar czf "/out/files-$STAMP.tar.gz" -C /data .
+find "$DIR" -type f -mtime +14 -delete
+SH
+chmod 700 ~/bin/tessera-backup.sh ~/backups/tessera
+```
+
+**2. Test it once.** Both files should appear, and neither should be empty:
+
+```bash
+~/bin/tessera-backup.sh && ls -lh ~/backups/tessera
+```
+
+**3. Schedule it** (02:30 every night):
+
+```bash
+(crontab -l 2>/dev/null; echo '30 2 * * * $HOME/bin/tessera-backup.sh >> $HOME/backups/tessera/backup.log 2>&1') | crontab -
+```
+
+**4. Check the schedule and the server's time zone:**
+
+```bash
+crontab -l; timedatectl | grep 'Time zone'
+```
+
+Cron uses the server's clock. If the time zone is not `Africa/Nairobi`, either run `sudo timedatectl set-timezone Africa/Nairobi` or change `30 2` in the cron line.
+
+**Restore (emergency only).** This replaces the live data:
+
+```bash
+docker exec -i tessera-pos-demo-db-1 pg_restore -U tessera -d tessera_pos --clean --if-exists < ~/backups/tessera/db-YYYY-MM-DD-HHMM.dump
+```
+
+> **Important:** These backups are on the same server as the shop, so losing the server loses them too. At least once a week, copy the latest `db-*.dump` somewhere else, for example with `scp` to your own computer, or take a snapshot in your hosting provider's control panel.
