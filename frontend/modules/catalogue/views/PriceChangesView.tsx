@@ -23,6 +23,7 @@ import { formatKes } from "@/utils/money";
 export default function PriceChangesView({ title, section }: WorkspaceViewProps) {
   const { can } = usePermissions();
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const mayApproveOwn = useAppSelector((state) => state.auth.user?.mayApproveOwn ?? false);
   const canApprove = can(PERMISSIONS.PRICES_APPROVE);
   const [status, setStatus] = useState<PriceStatus>("pending");
   const [page, setPage] = useState(1);
@@ -82,7 +83,7 @@ export default function PriceChangesView({ title, section }: WorkspaceViewProps)
             </Table.Thead>
             <Table.Tbody>
               {data?.items.map((price) => {
-                const own = price.requestedBy?.id === userId;
+                const own = price.requestedBy?.id === userId && !mayApproveOwn;
                 return (
                   <Table.Tr key={price.id}>
                     <Table.Td>

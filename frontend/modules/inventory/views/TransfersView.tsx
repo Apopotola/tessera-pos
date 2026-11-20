@@ -28,6 +28,7 @@ type Dialog = { kind: "create" } | { kind: "dispatch" | "receive" | "cancel"; tr
 export default function TransfersView({ title, section }: WorkspaceViewProps) {
   const { can } = usePermissions();
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const mayApproveOwn = useAppSelector((state) => state.auth.user?.mayApproveOwn ?? false);
   const [filter, setFilter] = useState<Filter>("open");
   const [page, setPage] = useState(1);
   const [dialog, setDialog] = useState<Dialog | null>(null);
@@ -47,7 +48,7 @@ export default function TransfersView({ title, section }: WorkspaceViewProps) {
   };
 
   const actionsFor = (t: Transfer) => {
-    const own = t.requestedBy?.id === userId;
+    const own = t.requestedBy?.id === userId && !mayApproveOwn;
     switch (t.status) {
       case "requested":
         return (

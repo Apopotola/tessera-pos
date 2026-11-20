@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
 use Modules\Auth\Models\User;
 use Modules\Auth\Services\PasswordService;
+use Modules\Authorization\Services\ApprovalPolicy;
 
 /**
  * The signed-in user as the frontend sees it (frontend/types/auth.ts → AuthUser).
@@ -27,6 +28,8 @@ class AuthUserResource extends JsonResource
             'mfaEnabled' => $this->mfa_enabled_at !== null,
             'roles' => $this->getRoleNames()->values(),
             'permissions' => $this->getAllPermissions()->pluck('name')->sort()->values(),
+            // Settings → Staff → "Owners and Tessera support may approve their own work".
+            'mayApproveOwn' => app(ApprovalPolicy::class)->mayApproveOwn($this->resource),
         ];
     }
 }

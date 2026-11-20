@@ -28,6 +28,7 @@ export default function StockCountSheetView({ tabId, title, section, props }: Wo
   const dispatch = useAppDispatch();
   const { can } = usePermissions();
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const mayApproveOwn = useAppSelector((state) => state.auth.user?.mayApproveOwn ?? false);
   const fetchCount = useCallback(() => inventoryApi.count(countId), [countId]);
   const { data: count, loading, error, reload } = useApiQuery(fetchCount);
   const [counted, setCounted] = useState<Record<number, number | string>>({});
@@ -200,7 +201,7 @@ export default function StockCountSheetView({ tabId, title, section, props }: Wo
               </Group>
             )}
 
-            {count.status === "submitted" && can(PERMISSIONS.INVENTORY_COUNT_APPROVE) && count.submittedBy?.id !== userId && (
+            {count.status === "submitted" && can(PERMISSIONS.INVENTORY_COUNT_APPROVE) && (count.submittedBy?.id !== userId || mayApproveOwn) && (
               <Group justify="flex-end">
                 <Button variant="light" color="red" onClick={() => setRejecting(true)}>
                   Reject (recount)

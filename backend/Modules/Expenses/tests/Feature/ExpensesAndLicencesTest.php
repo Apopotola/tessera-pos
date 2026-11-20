@@ -91,6 +91,9 @@ class ExpensesAndLicencesTest extends InventoryTestCase
         $this->backOffice($support)->putJson($key, ['scope' => 'business', 'scopeId' => 0, 'value' => true])->assertOk();
 
         $this->backOffice($this->owner)->postJson("/api/v1/expenses/{$first['id']}/approve")->assertOk()->assertJsonPath('data.status', 'approved');
+        // The back office shows Approve on the owner's own documents.
+        $this->backOffice($this->owner)->getJson('/api/v1/auth/me')->assertJsonPath('data.mayApproveOwn', true);
+        $this->backOffice($this->manager->fresh())->getJson('/api/v1/auth/me')->assertJsonPath('data.mayApproveOwn', false);
 
         // Everyone else still needs a second person.
         $managers = $this->record($this->manager);

@@ -12,6 +12,8 @@ export interface AuthUser {
   mfaEnabled: boolean;
   roles: string[];
   permissions: string[];
+  /** Owner or Tessera support, with Settings → Staff → "may approve their own work" on. */
+  mayApproveOwn: boolean;
 }
 
 export interface LoginPayload {

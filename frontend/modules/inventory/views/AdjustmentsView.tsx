@@ -26,6 +26,7 @@ import { formatKes } from "@/utils/money";
 export default function AdjustmentsView({ title, section }: WorkspaceViewProps) {
   const { can } = usePermissions();
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const mayApproveOwn = useAppSelector((state) => state.auth.user?.mayApproveOwn ?? false);
   const [status, setStatus] = useState<DocumentStatus>("pending");
   const [page, setPage] = useState(1);
   const [creating, setCreating] = useState(false);
@@ -96,7 +97,7 @@ export default function AdjustmentsView({ title, section }: WorkspaceViewProps) 
             </Table.Thead>
             <Table.Tbody>
               {data?.items.map((adj) => {
-                const own = adj.requestedBy?.id === userId;
+                const own = adj.requestedBy?.id === userId && !mayApproveOwn;
                 const value = adj.lines.every((l) => l.unitCostCents !== null) ? adj.lines.reduce((s, l) => s + l.quantity * (l.unitCostCents ?? 0), 0) : null;
                 return (
                   <Table.Tr key={adj.id}>

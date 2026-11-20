@@ -28,6 +28,7 @@ export default function PurchaseOrderDetailView({ tabId, title, section, props }
   const dispatch = useAppDispatch();
   const { can } = usePermissions();
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const mayApproveOwn = useAppSelector((state) => state.auth.user?.mayApproveOwn ?? false);
   const fetchOrder = useCallback(() => purchasingApi.order(orderId), [orderId]);
   const { data: order, loading, error, reload } = useApiQuery(fetchOrder);
   const [receiving, setReceiving] = useState(false);
@@ -50,7 +51,7 @@ export default function PurchaseOrderDetailView({ tabId, title, section, props }
   }
 
   const status = order?.status;
-  const canApprove = status === "draft" && can(PERMISSIONS.PURCHASING_APPROVE) && order?.createdBy?.id !== userId;
+  const canApprove = status === "draft" && can(PERMISSIONS.PURCHASING_APPROVE) && (order?.createdBy?.id !== userId || mayApproveOwn);
   const canReceive = (status === "approved" || status === "sent" || status === "partially_received") && can(PERMISSIONS.INVENTORY_RECEIVE);
   const canCancel = (status === "draft" || status === "approved" || status === "sent") && (can(PERMISSIONS.PURCHASING_MANAGE) || can(PERMISSIONS.PURCHASING_APPROVE));
 

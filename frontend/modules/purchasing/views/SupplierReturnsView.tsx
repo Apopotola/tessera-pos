@@ -30,6 +30,7 @@ type Dialog = { kind: "create" } | { kind: "reject" | "credit"; ret: SupplierRet
 export default function SupplierReturnsView({ title, section }: WorkspaceViewProps) {
   const { can } = usePermissions();
   const userId = useAppSelector((state) => state.auth.user?.id);
+  const mayApproveOwn = useAppSelector((state) => state.auth.user?.mayApproveOwn ?? false);
   const [status, setStatus] = useState<DocumentStatus>("pending");
   const [page, setPage] = useState(1);
   const [dialog, setDialog] = useState<Dialog | null>(null);
@@ -85,7 +86,7 @@ export default function SupplierReturnsView({ title, section }: WorkspaceViewPro
             </Table.Thead>
             <Table.Tbody>
               {data?.items.map((r) => {
-                const own = r.requestedBy?.id === userId;
+                const own = r.requestedBy?.id === userId && !mayApproveOwn;
                 return (
                   <Table.Tr key={r.id}>
                     <Table.Td>

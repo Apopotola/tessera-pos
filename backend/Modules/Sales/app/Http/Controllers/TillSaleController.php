@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use Modules\AuditTrail\Services\AuditLogger;
 use Modules\Auth\Models\User;
+use Modules\Authorization\Services\ApprovalPolicy;
 use Modules\Authorization\Support\Permissions;
 use Modules\Catalogue\Models\ProductVariant;
 use Modules\Organisation\Models\Till;
@@ -83,7 +84,7 @@ class TillSaleController extends Controller
         $approvers = User::permission(TillApprovalService::ACTIONS[$action])
             ->where('is_active', true)
             ->whereNotNull('pin_hash')
-            ->whereKeyNot($request->user()->id)
+            ->when(! app(ApprovalPolicy::class)->mayApproveOwn($request->user()), fn ($q) => $q->whereKeyNot($request->user()->id))
             ->where(fn ($q) => $q->whereHas('branches', fn ($b) => $b->whereKey($till->branch_id))
                 ->orWhere(fn ($all) => $all->permission(Permissions::ORGANISATION_ALL_BRANCHES)))
             ->orderBy('name')
