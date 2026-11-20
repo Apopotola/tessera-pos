@@ -112,7 +112,7 @@ class ProductController extends Controller
         return $this->success('Product updated.', new ProductResource($this->loadDetail($product, null)));
     }
 
-    #[OA\Post(path: '/api/v1/catalogue/products/{product}/image', summary: 'Upload or replace the product photo (JPEG, PNG or WebP, up to 4 MB; stored as 800 px WebP)', tags: ['Catalogue'], responses: [
+    #[OA\Post(path: '/api/v1/catalogue/products/{product}/image', summary: 'Upload or replace the product photo (JPEG, PNG or WebP, up to 8 MB and at least 100 px; stored as 800 px WebP)', tags: ['Catalogue'], responses: [
         new OA\Response(response: 200, description: 'Updated product'),
         new OA\Response(response: 422, description: 'Not a usable photo'),
     ])]

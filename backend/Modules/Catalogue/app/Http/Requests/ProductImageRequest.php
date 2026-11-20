@@ -15,7 +15,7 @@ class ProductImageRequest extends PermissionRequest
     public function rules(): array
     {
         return [
-            'file' => ['required', 'file', 'max:4096', 'mimes:jpg,jpeg,png,webp', 'dimensions:min_width=200,min_height=200'],
+            'file' => ['required', 'file', 'max:8192', 'mimes:jpg,jpeg,png,webp', 'dimensions:min_width=100,min_height=100'],
         ];
     }
 
@@ -23,9 +23,9 @@ class ProductImageRequest extends PermissionRequest
     public function messages(): array
     {
         return [
-            'file.max' => 'The photo must be 4 MB or smaller.',
+            'file.max' => 'The photo must be 8 MB or smaller.',
             'file.mimes' => 'Use a JPEG, PNG or WebP photo.',
-            'file.dimensions' => 'The photo must be at least 200 × 200 pixels.',
+            'file.dimensions' => 'The photo must be at least 100 × 100 pixels.',
         ];
     }
 }

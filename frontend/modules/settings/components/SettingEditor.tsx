@@ -25,6 +25,7 @@ import { settingsApi } from "@/api";
 import VariantPicker from "@/modules/inventory/components/VariantPicker";
 import { WEEKDAYS, type SettingField, type SettingValue, type SettingsSchema, type Weekday, type WeeklyHours } from "@/types/settings";
 import { contrastRatio } from "@/utils/palette";
+import { shrinkImage } from "@/utils/image";
 
 export interface EditorProps {
   field: SettingField;
@@ -338,7 +339,7 @@ function ColourEditor({ field, value, onChange, disabled, error }: { field: Sett
   );
 }
 
-/** Upload (PNG, JPG, SVG, WebP up to 1 MB), preview, remove. The draft is the stored path. */
+/** Upload (any photo, resized in the browser; or SVG up to 1 MB), preview, remove. The draft is the stored path. */
 function ImageEditor({ field, value, onChange, disabled, error }: { field: SettingField; value: string | null; onChange: (v: string | null) => void; disabled: boolean; error?: string }) {
   const [preview, setPreview] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -351,7 +352,8 @@ function ImageEditor({ field, value, onChange, disabled, error }: { field: Setti
     setUploading(true);
     setUploadError(null);
     try {
-      const result = await settingsApi.upload(file);
+      // Photos are resized in the browser first (logos stay sharp at 1920 px; SVG is sent as is).
+      const result = await settingsApi.upload(await shrinkImage(file, 1920));
       setPreview(result.url);
       onChange(result.path);
     } catch (e) {
@@ -372,7 +374,7 @@ function ImageEditor({ field, value, onChange, disabled, error }: { field: Setti
         </Text>
       )}
       <Group gap="xs">
-        <FileButton onChange={upload} accept="image/png,image/jpeg,image/svg+xml,image/webp" disabled={disabled}>
+        <FileButton onChange={upload} accept="image/*" disabled={disabled}>
           {(props) => (
             <Button {...props} size="xs" variant="default" leftSection={<IconUpload size={14} />} loading={uploading} disabled={disabled}>
               Upload

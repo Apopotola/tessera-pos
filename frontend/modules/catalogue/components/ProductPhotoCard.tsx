@@ -7,10 +7,14 @@ import { catalogueApi } from "@/api";
 import DataCard from "@/components/shared/DataCard";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import type { Product } from "@/types/catalogue";
+import { shrinkImage } from "@/utils/image";
 
 /** Product photo shown on the till grid and stock screens; owners and admins upload or remove it. */
 export default function ProductPhotoCard({ product, canManage, onChanged }: { product: Product; canManage: boolean; onChanged: () => void }) {
-  const upload = useApiMutation((file: File) => catalogueApi.uploadProductImage(product.id, file), { successMessage: "Photo saved.", onSuccess: onChanged });
+  const upload = useApiMutation(async (file: File) => catalogueApi.uploadProductImage(product.id, await shrinkImage(file)), {
+    successMessage: "Photo saved.",
+    onSuccess: onChanged,
+  });
   const remove = useApiMutation(() => catalogueApi.removeProductImage(product.id), { successMessage: "Photo removed.", onSuccess: onChanged });
   const busy = upload.pending || remove.pending;
 
@@ -24,7 +28,7 @@ export default function ProductPhotoCard({ product, canManage, onChanged }: { pr
     });
 
   return (
-    <DataCard title="Photo" description="Shown on the till and stock screens. JPEG, PNG or WebP, up to 4 MB; square photos look best." padding="lg">
+    <DataCard title="Photo" description="Shown on the till and stock screens. Any photo from a phone or camera; it is resized for you. Square photos look best." padding="lg">
       <Group align="flex-start" gap="lg" wrap="wrap">
         {product.imageUrl ? (
           <Image src={product.imageUrl} alt={product.name} w={160} h={160} radius="md" fit="cover" />
@@ -42,7 +46,7 @@ export default function ProductPhotoCard({ product, canManage, onChanged }: { pr
         )}
         {canManage && (
           <Stack gap="xs">
-            <FileButton accept="image/jpeg,image/png,image/webp" onChange={(file) => file && void upload.mutate(file)} disabled={busy}>
+            <FileButton accept="image/*"onChange={(file) => file && void upload.mutate(file)} disabled={busy}>
               {(fileProps) => (
                 <Button {...fileProps} leftSection={<IconPhotoUp size={16} />} loading={upload.pending}>
                   {product.imageUrl ? "Replace photo" : "Upload photo"}
