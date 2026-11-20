@@ -2,7 +2,9 @@
 
 namespace Modules\Catalogue\Http\Requests;
 
+use Illuminate\Validation\Validator;
 use Modules\Authorization\Support\Permissions;
+use Modules\Catalogue\Models\Product;
 
 class UpdateProductRequest extends PermissionRequest
 {
@@ -18,5 +20,14 @@ class UpdateProductRequest extends PermissionRequest
             ...ProductRules::product(),
             'isActive' => ['sometimes', 'boolean'],
         ];
+    }
+
+    /** @return list<callable> */
+    public function after(): array
+    {
+        return [function (Validator $validator) {
+            $product = $this->route('product');
+            ProductRules::uniqueName($validator, $this, $product instanceof Product ? $product->id : null);
+        }];
     }
 }

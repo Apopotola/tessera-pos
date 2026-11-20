@@ -60,7 +60,7 @@ The full instructions for every screen are in the **Epic Lounge User Guide**.
 | **Reset a forgotten password** | *Users & roles* → the person → **Edit** → type a new password. They choose their own when they sign in. |
 | **Reset a forgotten PIN** | *Users & roles* → the person → **⋯ → Change till PIN**. |
 | **Approve a price or promotion** | *Catalogue → Price changes* or *Promotions* → **Approve** or **Reject**. |
-| **Order stock** | *Purchasing → Purchase orders → New*. Someone else approves it (or you, if someone else raised it). |
+| **Order stock** | *Purchasing → Purchase orders → New*. You can approve it yourself, or approve one a manager raised. |
 | **Receive a delivery** | *Inventory → Receive stock* → choose the purchase order → count what came, enter good and damaged → **Post to stock**. |
 | **Record a breakage** | *Inventory → Breakages & adjustments → New adjustment* → a manager (or you) approves. |
 | **Give a customer a tab (credit)** | *Customers* → register the customer → set a credit limit. Only if customer credit is switched on. |
@@ -85,7 +85,7 @@ Make sure **a manager is on every shift**: without one, nobody can approve a ref
 ## The rules that keep your money safe
 
 1. **Everyone has their own account and PIN.** Never share. Everything is recorded against the person signed in.
-2. **Nobody approves their own work.** Not cash-ups, not breakages, not purchase orders. The system enforces this.
+2. **Staff never approve their own work.** Not cash-ups, not breakages, not purchase orders. The system enforces this. You (the owner) and Tessera support may approve your own entries, because Tessera has switched that on for Epic Lounge.
 3. **Sales are never edited or deleted.** A mistake is fixed with a return, so the history stays honest.
 4. **Count before posting.** Deliveries and counts cannot be changed afterwards.
 5. **M-PESA: see the message.** Cashiers type the code only after seeing the customer's confirmation message. You match the codes every evening.

@@ -302,7 +302,7 @@ It compares each balance with the sum of its movements, both ways (a balance wit
 - **Cash drops:** during a shift the cashier moves excess notes to the safe from the till menu (*Cash drop to safe*); a manager witnesses it with their PIN. A drop can never exceed what the drawer should hold, and drops are append-only.
 - **Closing:** a blind count by note and coin (KES 1,000 … KES 1). Expected cash = opening float + cash sales − cash refunds − drops to the safe.
 - **Differences:** if the count is over or short, the cashier must say why before signing out.
-- **Sign-off:** every closed cash-up waits for a manager in *Sales & Shifts → Shifts & cash-ups* (the dashboard shows how many). A difference needs the manager's note, and nobody can sign off their own cash-up.
+- **Sign-off:** every closed cash-up waits for a manager in *Sales & Shifts → Shifts & cash-ups* (the dashboard shows how many). A difference needs the manager's note, and nobody can sign off their own cash-up — unless Tessera support has switched on *Settings → Staff → Owners and Tessera support may approve their own work* (setting `approvals.owner_self_approval`, off by default, level T). For an owner-run shop it lets owners and Tessera support approve their own adjustments, counts, transfers, purchase orders, supplier returns, expenses, cash-ups and till PIN approvals; every other role still needs a second person (`Modules\Authorization\Services\ApprovalPolicy`).
 
 ## Settings
 

@@ -76,6 +76,27 @@ class ExpensesAndLicencesTest extends InventoryTestCase
         DB::table('expenses')->where('id', $expense['id'])->update(['amount_cents' => 1]);
     }
 
+    public function test_owners_approve_their_own_work_only_when_tessera_support_switches_it_on(): void
+    {
+        $support = User::factory()->create();
+        $support->assignRole(Roles::TESSERA_ADMIN);
+        $key = '/api/v1/settings/values/approvals.owner_self_approval';
+
+        $first = $this->record($this->owner);
+        $this->backOffice($this->owner)->postJson("/api/v1/expenses/{$first['id']}/approve")
+            ->assertForbidden()->assertJsonPath('message', 'Someone else must approve an expense you recorded.');
+
+        // Only Tessera support can switch it.
+        $this->backOffice($this->owner)->putJson($key, ['scope' => 'business', 'scopeId' => 0, 'value' => true])->assertForbidden();
+        $this->backOffice($support)->putJson($key, ['scope' => 'business', 'scopeId' => 0, 'value' => true])->assertOk();
+
+        $this->backOffice($this->owner)->postJson("/api/v1/expenses/{$first['id']}/approve")->assertOk()->assertJsonPath('data.status', 'approved');
+
+        // Everyone else still needs a second person.
+        $managers = $this->record($this->manager);
+        $this->backOffice($this->manager)->postJson("/api/v1/expenses/{$managers['id']}/approve")->assertForbidden();
+    }
+
     public function test_cash_paid_out_of_the_till_is_witnessed_and_lowers_the_expected_cash(): void
     {
         $token = $this->actingAs($this->owner)->postJson('/api/v1/organisation/tills/pair', ['branchId' => $this->main->id, 'name' => 'Till 1', 'defaultFloatCents' => 500000])->json('data.deviceToken');

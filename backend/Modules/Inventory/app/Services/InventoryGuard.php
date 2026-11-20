@@ -5,12 +5,13 @@ namespace Modules\Inventory\Services;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Validation\ValidationException;
 use Modules\Auth\Models\User;
+use Modules\Authorization\Services\ApprovalPolicy;
 use Modules\Organisation\Services\BranchAccessService;
 
 /** Authorisation rules shared by every inventory workflow. */
 class InventoryGuard
 {
-    public function __construct(private readonly BranchAccessService $branches) {}
+    public function __construct(private readonly BranchAccessService $branches, private readonly ApprovalPolicy $approvals) {}
 
     /** @param list<string> $permissions any one is enough */
     public function requireAny(User $user, array $permissions): void
@@ -34,7 +35,7 @@ class InventoryGuard
     /** Maker–checker: the person who raised a document cannot approve it. */
     public function requireDifferentPerson(?int $makerId, User $checker): void
     {
-        if ($makerId !== null && $makerId === $checker->id) {
+        if ($makerId !== null && $makerId === $checker->id && ! $this->approvals->mayApproveOwn($checker)) {
             throw new AuthorizationException('Someone else must approve this — you raised it.');
         }
     }

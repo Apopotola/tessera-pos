@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Modules\AuditTrail\Services\AuditLogger;
 use Modules\Auth\Models\User;
+use Modules\Authorization\Services\ApprovalPolicy;
 use Modules\Authorization\Support\Permissions;
 use Modules\Organisation\Models\Till;
 use Modules\Organisation\Services\BranchAccessService;
@@ -37,7 +38,11 @@ class TillApprovalService
         'payout' => Permissions::SHIFTS_CASHUP_APPROVE,
     ];
 
-    public function __construct(private readonly BranchAccessService $branches, private readonly AuditLogger $audit) {}
+    public function __construct(
+        private readonly BranchAccessService $branches,
+        private readonly AuditLogger $audit,
+        private readonly ApprovalPolicy $policy,
+    ) {}
 
     /** @return array{token: string, approver: array{id: int, name: string}, expiresInSeconds: int} */
     public function grant(Till $till, User $cashier, int $approverId, string $pin, string $action): array
@@ -54,7 +59,7 @@ class TillApprovalService
             throw ValidationException::withMessages(['pin' => 'Wrong PIN.']);
         }
 
-        if ($approver->is($cashier)) {
+        if ($approver->is($cashier) && ! $this->policy->mayApproveOwn($approver)) {
             throw new AuthorizationException('A different person must approve this.');
         }
         if (! $approver->can(self::ACTIONS[$action]) || ! $this->branches->canAccess($approver, $till->branch_id)) {

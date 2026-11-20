@@ -5,6 +5,7 @@ namespace Modules\Inventory\Tests\Feature;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Modules\Authorization\Support\Roles;
+use Modules\Settings\Services\SettingsService;
 
 class AdjustmentTest extends InventoryTestCase
 {
@@ -43,6 +44,16 @@ class AdjustmentTest extends InventoryTestCase
 
         $this->actingAs($owner)->postJson("/api/v1/inventory/adjustments/{$id}/approve")->assertForbidden();
         $this->assertSame(0, $this->onHand($this->store));
+    }
+
+    public function test_owner_approves_own_adjustment_when_tessera_support_allows_it(): void
+    {
+        app(SettingsService::class)->set($this->staff(Roles::TESSERA_ADMIN), 'approvals.owner_self_approval', 'business', 0, true);
+
+        $owner = $this->staff(Roles::OWNER);
+        $id = $this->adjust($owner, 'opening', 5, 1000)->json('data.id');
+        $this->actingAs($owner)->postJson("/api/v1/inventory/adjustments/{$id}/approve")->assertOk();
+        $this->assertSame(5, $this->onHand($this->store));
     }
 
     public function test_weighted_average_cost_blends_new_stock(): void

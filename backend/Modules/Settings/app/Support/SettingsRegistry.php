@@ -187,6 +187,8 @@ final class SettingsRegistry
                 help: 'Not on computers where "keep me signed in" was ticked.'),
             'staff.till_auto_lock_minutes' => self::f('staff', 'Till locks after (minutes idle)', 'number', 2, 'B', scopes: ['business', 'branch', 'till'], min: 0, max: 60,
                 help: 'The sale in progress is kept; the cashier or a manager unlocks with their PIN. 0 = never.'),
+            'approvals.owner_self_approval' => self::f('staff', 'Owners and Tessera support may approve their own work', 'boolean', false, 'T', group: 'Actions needing manager approval',
+                help: 'For a business run by its owner: owners and Tessera support approve their own stock adjustments, counts, transfers, orders, returns, prices, promotions, expenses, cash-ups and till actions. Everyone else still needs a second person. Switched by Tessera support.'),
             'approvals.refund' => self::f('staff', 'Refund', 'select', 'approval', 'O', group: 'Actions needing manager approval', options: self::approvalOptions()),
             'approvals.remove_item' => self::f('staff', 'Remove an item from an open sale', 'select', 'allowed', 'O', group: 'Actions needing manager approval',
                 options: ['allowed' => 'Allowed; logged', 'over_amount' => 'Manager approval above an amount', 'approval' => 'Always manager approval']),

@@ -32,6 +32,8 @@ class StoreProductRequest extends PermissionRequest
     public function after(): array
     {
         return [function (Validator $validator) {
+            ProductRules::uniqueName($validator, $this);
+
             $seen = [];
             foreach ((array) $this->input('variants', []) as $i => $variant) {
                 $key = ($variant['volumeMl'] ?? '').'|'.($variant['container'] ?? '');

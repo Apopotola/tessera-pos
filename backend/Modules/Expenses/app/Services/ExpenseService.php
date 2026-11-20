@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Modules\AuditTrail\Services\AuditLogger;
 use Modules\Auth\Models\User;
+use Modules\Authorization\Services\ApprovalPolicy;
 use Modules\Authorization\Support\Permissions;
 use Modules\Expenses\Models\Expense;
 use Modules\Organisation\Models\Branch;
@@ -32,6 +33,7 @@ class ExpenseService
         private readonly BranchAccessService $branches,
         private readonly ShiftService $shifts,
         private readonly TillApprovalService $approvals,
+        private readonly ApprovalPolicy $policy,
     ) {}
 
     /** @param array{branchId: int, categoryId: int, amountCents: int, paidFrom: string, payee?: string|null, description: string, reference?: string|null, spentOn: string} $data */
@@ -166,7 +168,7 @@ class ExpenseService
         if ($expense->status !== Expense::PENDING) {
             throw ValidationException::withMessages(['expense' => 'This expense has already been reviewed.']);
         }
-        if ($expense->requested_by === $approver->id) {
+        if ($expense->requested_by === $approver->id && ! $this->policy->mayApproveOwn($approver)) {
             throw new AuthorizationException('Someone else must approve an expense you recorded.');
         }
 

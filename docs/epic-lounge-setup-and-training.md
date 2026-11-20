@@ -180,7 +180,7 @@ Stock in Tessera is never typed in directly; the opening count goes in as a stoc
 1. Count every shelf and the store room, one area at a time, before opening or after closing.
 2. *Inventory → Breakages & adjustments → New adjustment*. Choose **What happened:** *Opening stock*.
 3. **Location:** *Shop floor* for what is behind the bar, *Back store* for the store room (a separate adjustment for each). Add each item and the quantity counted.
-4. **Send for approval.** A **different person** (Brian or a manager) approves it. Nobody can approve their own.
+4. **Send for approval.** A **different person** (Brian or a manager) approves it. Staff can't approve their own; Brian and Tessera support can, once *Owners and Tessera support may approve their own work* is on (Settings → Staff, switched by Tessera support).
 5. Check *Inventory → Stock levels*: every drink's quantity should match the shelf. The *Stock dashboard* now shows the stock value.
 
 > **Important:** Wrong opening stock makes every report wrong afterwards. Count twice for the expensive bottles.

@@ -47,6 +47,44 @@ class ProductTest extends CatalogueTestCase
         ])->assertUnprocessable()->assertJsonValidationErrors(['variants.1.volumeMl']);
     }
 
+    public function test_bottle_and_can_of_the_same_size_are_sizes_of_one_product(): void
+    {
+        $this->createProductAs($this->owner(), [
+            $this->variantPayload(500, 'TUL-500B'),
+            $this->variantPayload(500, 'TUL-500C', ['container' => 'can']),
+        ], ['name' => 'Tusker Lager'])
+            ->assertCreated()
+            ->assertJsonCount(2, 'data.product.variants');
+    }
+
+    public function test_same_product_name_again_explains_add_size_instead_of_failing(): void
+    {
+        $owner = $this->owner();
+        $productId = $this->createProductAs($owner, [$this->variantPayload(500, 'TUL-500B')], ['name' => 'Tusker Lager'])
+            ->assertCreated()->json('data.product.id');
+
+        $this->createProductAs($owner, [$this->variantPayload(500, 'TUL-500C', ['container' => 'can'])], ['name' => 'tusker lager'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['name'])
+            ->assertJsonPath('errors.name.0', fn (string $m) => str_contains($m, 'Add size'));
+
+        // The can goes on the existing product instead.
+        $this->actingAs($owner)->postJson("/api/v1/catalogue/products/{$productId}/variants", $this->variantPayload(500, 'TUL-500C', ['container' => 'can']))
+            ->assertCreated();
+    }
+
+    public function test_renaming_a_product_to_an_existing_name_is_refused(): void
+    {
+        $owner = $this->owner();
+        $this->createProductAs($owner, [$this->variantPayload(500, 'GS-500B')], ['name' => 'Guinness Smooth'])->assertCreated();
+        $id = $this->createProductAs($owner, [$this->variantPayload(500, 'GF-500B')], ['name' => 'Guinness Foreign Extra Stout'])->json('data.product.id');
+
+        $this->actingAs($owner)->putJson("/api/v1/catalogue/products/{$id}", $this->productPayload([], ['name' => 'Guinness Smooth']))
+            ->assertUnprocessable()->assertJsonValidationErrors(['name']);
+        $this->actingAs($owner)->putJson("/api/v1/catalogue/products/{$id}", $this->productPayload([], ['name' => 'Guinness Foreign Extra Stout']))
+            ->assertOk();
+    }
+
     public function test_cashier_cannot_create_products(): void
     {
         $this->createProductAs($this->userWithRole(Roles::CASHIER), [$this->variantPayload(750, 'C-750')])

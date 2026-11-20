@@ -52,7 +52,7 @@ The account menu **(1)** has:
 
 ## Who can do what
 
-Each person has one **role**. The role decides which menu items they see and what they may do. A few actions always need a second person (for example, approving a purchase order or a price change), so that no one can both make and approve a change.
+Each person has one **role**. The role decides which menu items they see and what they may do. A few actions always need a second person (for example, approving a purchase order or a price change), so that no one can both make and approve a change. In a shop run by its owner, Tessera support can switch on *Owners and Tessera support may approve their own work*; then the owner may approve their own entries, and everyone else still needs a second person.
 
 | Role | Typical person | Main jobs |
 | --- | --- | --- |

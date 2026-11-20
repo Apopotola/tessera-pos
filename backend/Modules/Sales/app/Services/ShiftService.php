@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Modules\AuditTrail\Services\AuditLogger;
 use Modules\Auth\Models\User;
+use Modules\Authorization\Services\ApprovalPolicy;
 use Modules\Authorization\Support\Permissions;
 use Modules\Organisation\Models\Till;
 use Modules\Sales\Events\ShiftClosed;
@@ -26,6 +27,7 @@ class ShiftService
     public function __construct(
         private readonly AuditLogger $audit,
         private readonly TillApprovalService $approvals,
+        private readonly ApprovalPolicy $policy,
     ) {}
 
     /** Cash in the drawer right now: float + cash taken − cash refunded − drops to the safe − expenses paid out. */
@@ -93,7 +95,7 @@ class ShiftService
         if (! $manager->can(Permissions::SHIFTS_CASHUP_APPROVE)) {
             throw new AuthorizationException;
         }
-        if ($shift->user_id === $manager->id) {
+        if ($shift->user_id === $manager->id && ! $this->policy->mayApproveOwn($manager)) {
             throw new AuthorizationException('You cannot sign off your own cash-up.');
         }
         if ($shift->isOpen()) {
