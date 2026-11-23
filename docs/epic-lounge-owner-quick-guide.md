@@ -57,7 +57,7 @@ The full instructions for every screen are in the **Epic Lounge User Guide**.
 | **Add a new drink** | *Catalogue → Products → New product*. Scan the barcode from the bottle; choose the tax class carefully. Add a photo. |
 | **Add a staff member** | *Administration → Users & roles → Add user*: name, role, phone or email. Then **⋯ → Set till PIN**. Cashiers need no password. |
 | **Someone leaves** | *Users & roles* → the person → **Edit** → untick **Account active**. Do it the same day. |
-| **Reset a forgotten password** | *Users & roles* → the person → **Edit** → type a new password. They choose their own when they sign in. |
+| **Reset a forgotten password** | *Users & roles* → the person → **⋯ → Reset password** → type a temporary password and give it to them privately. They choose their own when they sign in. If you forget your own password, Tessera support resets it. |
 | **Reset a forgotten PIN** | *Users & roles* → the person → **⋯ → Change till PIN**. |
 | **Approve a price or promotion** | *Catalogue → Price changes* or *Promotions* → **Approve** or **Reject**. |
 | **Order stock** | *Purchasing → Purchase orders → New*. You can approve it yourself, or approve one a manager raised. |

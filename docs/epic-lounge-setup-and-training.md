@@ -276,7 +276,7 @@ Covers: receive a delivery, record a breakage, move stock from the back store to
 1. **Dashboard:** today's sales and profit, cash shortages, low stock, and shifts waiting for sign-off.
 2. **Approvals waiting:** price changes (*Catalogue → Price changes*), promotions and purchase orders.
 3. **Prices and promotions:** change a price with a start date; create a happy-hour promotion (days, hours, % off) and approve it.
-4. **Staff:** add a user, set a PIN, deactivate a leaver, reset a forgotten password (*Edit* → new password).
+4. **Staff:** add a user, set a PIN, deactivate a leaver, reset a forgotten password (*⋯ → Reset password*).
 5. **Reports** (*Reports*): the ones to know are in the table below.
 6. **Purchasing:** raise a purchase order, approve it (a different person from the one who raised it), receive it, record the supplier invoice.
 7. **Expenses and licences:** record expenses; enter the liquor licence and its expiry date so he is warned before it runs out.
@@ -323,7 +323,7 @@ Covers: receive a delivery, record a breakage, move stock from the back store to
 
 | Problem | Fix |
 | --- | --- |
-| Forgot back-office password | Brian or you: *Users & roles → ⋯ → Edit* → a new password; they change it at sign-in. There is no reset by email. |
+| Forgot back-office password | Brian or you: *Users & roles → ⋯ → Reset password* → a temporary password; they change it at sign-in. Brian's own (Owner) password: only Tessera support. There is no reset by email. |
 | Forgot till PIN | *Users & roles → ⋯ → Change till PIN*. |
 | "You still have an open shift on Till 1" | Go back to that till and end the shift, or ask a manager. |
 | Till refuses a drink: "Outside licensed hours" | The licensed-hours lock. Check *Settings → Sales screen → Licensed hours*. |

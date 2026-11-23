@@ -2,14 +2,16 @@
 
 namespace Modules\Auth\Services;
 
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\ValidationException;
 use Modules\AuditTrail\Services\AuditLogger;
 use Modules\Auth\Models\User;
+use Modules\Authorization\Support\Roles;
 use Modules\Settings\Services\SettingsService;
 
-/** Changing your own password, and when a change is forced (set by an admin, or too old). */
+/** Changing your own password, an admin's reset, and when a change is forced (set by an admin, or too old). */
 class PasswordService
 {
     public function __construct(
@@ -48,6 +50,32 @@ class PasswordService
         DB::transaction(function () use ($user, $new) {
             $user->forceFill(['password' => $new, 'password_changed_at' => now(), 'must_change_password' => false])->save();
             $this->audit->log('auth.password.changed', $user, userId: $user->id);
+        });
+    }
+
+    /**
+     * An administrator sets a temporary password for someone who forgot theirs. The person must
+     * choose their own at next sign-in, and any open back-office session of theirs is ended.
+     */
+    public function reset(User $actor, User $user, string $new): void
+    {
+        if ($actor->is($user)) {
+            throw ValidationException::withMessages(['password' => 'Change your own password from your account menu.']);
+        }
+        if ($user->hasRole(Roles::TESSERA_ADMIN) && ! $actor->hasRole(Roles::TESSERA_ADMIN)) {
+            throw new AuthorizationException('Only Tessera support can reset a Tessera support account.');
+        }
+        if ($user->hasRole(Roles::OWNER) && ! $actor->hasAnyRole([Roles::OWNER, Roles::TESSERA_ADMIN])) {
+            throw new AuthorizationException('Only an Owner or Tessera support can reset an Owner\'s password.');
+        }
+
+        DB::transaction(function () use ($actor, $user, $new) {
+            $user->forceFill(['password' => $new, 'password_changed_at' => now(), 'must_change_password' => true])->save();
+            if (config('session.driver') === 'database') {
+                DB::table(config('session.table', 'sessions'))->where('user_id', $user->id)->delete();
+            }
+            // The password itself never reaches the audit log.
+            $this->audit->log('auth.password.reset', $user, userId: $actor->id);
         });
     }
 }

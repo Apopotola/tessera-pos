@@ -40,4 +40,6 @@ export const usersApi = {
   setPin: (id: number, pin: string, pinConfirmation: string) =>
     api.post<ManagedUser>(AUTH_URLS.userPin(id), { pin, pin_confirmation: pinConfirmation }),
   resetMfa: (id: number) => api.post<ManagedUser>(AUTH_URLS.userMfaReset(id)),
+  resetPassword: (id: number, password: string, passwordConfirmation: string) =>
+    api.post<ManagedUser>(AUTH_URLS.userPasswordReset(id), { password, password_confirmation: passwordConfirmation }),
 };

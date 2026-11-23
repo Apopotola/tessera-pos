@@ -2,7 +2,7 @@
 
 import { ActionIcon, Button, Menu, Table, Text } from "@mantine/core";
 import { modals } from "@mantine/modals";
-import { IconDots, IconEdit, IconKey, IconPlus, IconShieldOff } from "@tabler/icons-react";
+import { IconDots, IconEdit, IconKey, IconLockPassword, IconPlus, IconShieldOff } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import { useCallback, useMemo, useState } from "react";
 import { organisationApi, usersApi } from "@/api";
@@ -13,11 +13,13 @@ import QueryState from "@/components/shared/QueryState";
 import type { WorkspaceViewProps } from "@/components/workspace/types";
 import { useApiMutation } from "@/hooks/useApiMutation";
 import { useApiQuery } from "@/hooks/useApiQuery";
+import PasswordResetModal from "@/modules/users/components/PasswordResetModal";
 import PinModal from "@/modules/users/components/PinModal";
 import UserFormModal from "@/modules/users/components/UserFormModal";
+import { useAppSelector } from "@/store/hooks";
 import type { ManagedUser } from "@/types/users";
 
-type Dialog = { kind: "create" } | { kind: "edit"; user: ManagedUser } | { kind: "pin"; user: ManagedUser };
+type Dialog = { kind: "create" } | { kind: "edit"; user: ManagedUser } | { kind: "pin"; user: ManagedUser } | { kind: "password"; user: ManagedUser };
 
 export default function UsersView({ title, section }: WorkspaceViewProps) {
   const fetchUsers = useCallback(() => usersApi.list(), []);
@@ -25,6 +27,8 @@ export default function UsersView({ title, section }: WorkspaceViewProps) {
   const users = useApiQuery(fetchUsers);
   const branches = useApiQuery(fetchBranches);
   const [dialog, setDialog] = useState<Dialog | null>(null);
+  // Your own password is changed from the account menu, not reset here.
+  const currentUserId = useAppSelector((state) => state.auth.user?.id);
 
   const branchName = useMemo(() => new Map((branches.data ?? []).map((b) => [b.id, b.code])), [branches.data]);
 
@@ -114,6 +118,11 @@ export default function UsersView({ title, section }: WorkspaceViewProps) {
                         <Menu.Item leftSection={<IconKey size={14} />} onClick={() => setDialog({ kind: "pin", user })}>
                           {user.hasPin ? "Change till PIN" : "Set till PIN"}
                         </Menu.Item>
+                        {user.id !== currentUserId && (
+                          <Menu.Item leftSection={<IconLockPassword size={14} />} onClick={() => setDialog({ kind: "password", user })}>
+                            Reset password
+                          </Menu.Item>
+                        )}
                         {user.mfaEnabled && (
                           <Menu.Item leftSection={<IconShieldOff size={14} />} color="red" onClick={() => confirmResetMfa(user)}>
                             Reset two-step login
@@ -136,6 +145,7 @@ export default function UsersView({ title, section }: WorkspaceViewProps) {
         <UserFormModal user={dialog.user} roles={users.data?.roles ?? []} branches={branches.data ?? []} onClose={() => setDialog(null)} onSaved={done} />
       )}
       {dialog?.kind === "pin" && <PinModal user={dialog.user} onClose={() => setDialog(null)} onSaved={done} />}
+      {dialog?.kind === "password" && <PasswordResetModal user={dialog.user} onClose={() => setDialog(null)} onSaved={done} />}
     </WorkspacePage>
   );
 }

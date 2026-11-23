@@ -22,7 +22,7 @@ The examples in this guide use **Spanish Wines & Spirits** at Kobil Imara Daima,
 
 The first time you sign in, or when your password has expired, you are asked to choose a new one. Owners and admins may also be asked for a six-digit code from an authenticator app on their phone (**two-step login**). This protects the accounts that can change prices and see the money.
 
-> **Tip:** Forgot your password? The owner or an administrator sets a new one for you under **Administration → Users & roles**. There is no reset by email.
+> **Tip:** Forgot your password? The owner or an administrator sets a temporary one for you under **Administration → Users & roles → ⋯ → Reset password**; you choose your own when you sign in. There is no reset by email.
 
 > **Important:** The back office signs you out after 30 minutes without use, so an unattended computer is not left open.
 

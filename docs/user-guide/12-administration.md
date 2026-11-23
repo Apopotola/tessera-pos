@@ -40,7 +40,7 @@ The **⋯** button on each person has:
 
 > **Important:** When someone leaves, make the account inactive the same day. Never share an account.
 
-> **Tip:** To reset a forgotten password, click **Edit** and type a new one. The person must change it when they next sign in.
+> **Tip:** To reset a forgotten password, click **⋯ → Reset password** and type a temporary one. The person is signed out and must choose their own when they next sign in. Only an Owner or Tessera support can reset an Owner's password, and only Tessera support a Tessera support account. Change your own password from the account menu.
 
 ## Settings
 

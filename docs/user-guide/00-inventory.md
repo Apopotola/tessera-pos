@@ -199,7 +199,7 @@ The small "N" badge in the bottom-left corner appears only in development mode. 
 | Brief item | Finding |
 | --- | --- |
 | Change language | Not built: the system is English only. |
-| Reset password by yourself | Not built: "Forgot password?" tells you to ask the owner or an administrator, who sets a new password in Users & roles. |
+| Reset password by yourself | Not built: "Forgot password?" tells you to ask the owner or an administrator, who uses **⋯ → Reset password** in Users & roles. |
 | Receipts by SMS or email | Not built. The option has been hidden from Settings until it works (internal notes). |
 | Expiry alerts, batch tracking | Not built. Batch tracking is hidden from Settings; "Expiry alerts" shows as Coming later. |
 | X-report / Z-report | No reports with these names. The shift cash-up (end-of-shift count) and the "Shift cash-up & variance" report do this job. |

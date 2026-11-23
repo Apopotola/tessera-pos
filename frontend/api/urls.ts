@@ -60,6 +60,7 @@ export const AUTH_URLS = {
   user: (id: number) => `/auth/users/${id}`,
   userPin: (id: number) => `/auth/users/${id}/pin`,
   userMfaReset: (id: number) => `/auth/users/${id}/mfa/reset`,
+  userPasswordReset: (id: number) => `/auth/users/${id}/password`,
   mfaVerify: "/auth/mfa/verify",
   mfaSetup: "/auth/mfa/setup",
   mfa: "/auth/mfa",

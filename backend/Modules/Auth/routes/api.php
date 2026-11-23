@@ -31,6 +31,7 @@ Route::prefix('auth')->name('auth.')->group(function () {
         Route::post('mfa/enable', [AccountSecurityController::class, 'enable'])->middleware('throttle:login')->name('mfa.enable');
         Route::post('mfa/disable', [AccountSecurityController::class, 'disable'])->middleware('throttle:login')->name('mfa.disable');
         Route::post('users/{user}/mfa/reset', [AccountSecurityController::class, 'reset'])->name('users.mfa.reset');
+        Route::post('users/{user}/password', [AccountSecurityController::class, 'resetPassword'])->name('users.password.reset');
 
         Route::middleware('till.device')->group(function () {
             Route::post('till/lock', [AccountSecurityController::class, 'lockTill'])->name('till.lock');

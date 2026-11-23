@@ -18,7 +18,7 @@ use Modules\Authorization\Support\Permissions;
 use Modules\Organisation\Models\Till;
 use OpenApi\Attributes as OA;
 
-/** Your own password and two-step login, an admin's two-step reset, and locking the till screen. */
+/** Your own password and two-step login, an admin's password and two-step reset, and locking the till screen. */
 class AccountSecurityController extends Controller
 {
     private const SETUP_SECRET = 'auth.mfa_setup_secret';
@@ -89,6 +89,18 @@ class AccountSecurityController extends Controller
         $this->mfa->reset($request->user(), $user);
 
         return $this->success("Two-step login reset for {$user->name}.", new ManagedUserResource($user->fresh()->load(['roles', 'branches'])));
+    }
+
+    #[OA\Post(path: '/api/v1/auth/users/{user}/password', summary: 'Set a temporary password for someone who forgot theirs (password + password_confirmation); they choose their own at next sign-in', tags: ['Users'], responses: [new OA\Response(response: 200, description: 'ManagedUser'), new OA\Response(response: 403, description: 'Owner or Tessera support account'), new OA\Response(response: 422, description: 'Too short / own account')])]
+    public function resetPassword(Request $request, User $user): JsonResponse
+    {
+        abort_unless($request->user()->can(Permissions::USERS_MANAGE), 403);
+        $data = $request->validate([
+            'password' => ['required', 'string', 'confirmed', Password::min($this->passwords->minLength())],
+        ]);
+        $this->passwords->reset($request->user(), $user, $data['password']);
+
+        return $this->success("Password reset for {$user->name}.", new ManagedUserResource($user->fresh()->load(['roles', 'branches'])));
     }
 
     #[OA\Post(path: '/api/v1/auth/till/lock', summary: 'Lock the till screen (idle or by the cashier); the sale in progress is kept', tags: ['Till'], responses: [new OA\Response(response: 200, description: 'Locked')])]
