@@ -3,6 +3,7 @@
 import dayjs from "dayjs";
 import { QRCodeSVG } from "qrcode.react";
 import { createPortal } from "react-dom";
+import { COPY_LABEL, type ReceiptCopyFor } from "@/modules/sales/printer/documents";
 import { type Sale, TENDER_LABELS } from "@/types/sales";
 import { formatKes } from "@/utils/money";
 import classes from "./Receipt.module.css";
@@ -15,13 +16,23 @@ const PAPER = { "58mm": classes.paper58, "80mm": "", a4: classes.paperA4 } as co
  * Rendered on screen as a preview; `ReceiptPrint` sends it to the printer. As a `bill` it is the
  * customer's bill before paying: no receipt number, payments or eTIMS, and marked as not a tax invoice.
  */
-export default function Receipt({ sale, copy = false, bill = false }: { sale: Sale; copy?: boolean; bill?: boolean }) {
+export default function Receipt({ sale, copy = false, bill = false, copyFor }: { sale: Sale; copy?: boolean; bill?: boolean; copyFor?: ReceiptCopyFor }) {
   const cash = sale.tenders.find((t) => t.method === "cash" && t.amountCents >= 0);
   const { receipt } = sale;
   const show = (what: Sale["receipt"]["show"][number]) => receipt.show.includes(what);
+  const cashierCopy = copyFor === "cashier";
 
   return (
     <div className={`${classes.receipt} ${PAPER[receipt.paperSize]}`}>
+      {/* Watermark: the shop's name repeated faintly behind the receipt, so a photocopy or a fake stands out. */}
+      <div className={classes.watermark} aria-hidden>
+        {Array.from({ length: 40 }, (_, i) => (
+          <span key={i}>{sale.business.name}</span>
+        ))}
+      </div>
+      <div className={classes.flourish} aria-hidden>
+        ✦ ✦ ✦
+      </div>
       <div className={classes.center}>
         {show("logo") && receipt.logo && (
           // eslint-disable-next-line @next/next/no-img-element -- receipt logo served by the API, printed as-is
@@ -36,6 +47,7 @@ export default function Receipt({ sale, copy = false, bill = false }: { sale: Sa
           <div key={line}>{line}</div>
         ))}
         {sale.business.kraPin && <div>PIN: {sale.business.kraPin}</div>}
+        {copyFor && <div className={classes.banner}>{COPY_LABEL[copyFor]}</div>}
         {copy && <div className={classes.copy}>*** COPY ***</div>}
         {bill && <div className={classes.copy}>BILL — NOT PAID</div>}
       </div>
@@ -98,7 +110,7 @@ export default function Receipt({ sale, copy = false, bill = false }: { sale: Sa
         </div>
       ))}
 
-      <div className={classes.rule} />
+      <div className={classes.doubleRule} />
       {sale.discountCents > 0 && (
         <div className={classes.row}>
           <span>You saved</span>
@@ -164,7 +176,7 @@ export default function Receipt({ sale, copy = false, bill = false }: { sale: Sa
             </div>
             <div>Internal data: {sale.etims.internalData}</div>
             <div>Signature: {sale.etims.signature}</div>
-            {sale.etims.qrPayload && (
+            {sale.etims.qrPayload && !cashierCopy && (
               <div className={classes.qr}>
                 <QRCodeSVG value={sale.etims.qrPayload} size={96} marginSize={0} />
               </div>
@@ -174,21 +186,42 @@ export default function Receipt({ sale, copy = false, bill = false }: { sale: Sa
         ) : sale.etimsStatus === "not_required" ? null : (
           <div>eTIMS invoice pending — not yet signed by KRA</div>
         )}
-        {receipt.footerLines.map((line, i) => (
-          <div key={i}>{line}</div>
-        ))}
-        {!bill && show("return_policy") && <div>Sealed bottles can be returned within {receipt.returnWindowDays} days with this receipt.</div>}
+        {cashierCopy ? (
+          <div className={classes.signature}>Cashier sign</div>
+        ) : (
+          <>
+            {receipt.footerLines.map((line, i) => (
+              <div key={i}>{line}</div>
+            ))}
+            {!bill && show("return_policy") && <div>Sealed bottles can be returned within {receipt.returnWindowDays} days with this receipt.</div>}
+            {!bill && <div className={classes.thanks}>Thank you · Cheers!</div>}
+          </>
+        )}
+      </div>
+      <div className={classes.flourish} aria-hidden>
+        ✦ ✦ ✦
       </div>
     </div>
   );
 }
 
-/** Mount while printing: only this receipt shows on paper (see the print rules in globals.css). */
-export function ReceiptPrint({ sale, copy = false, bill = false }: { sale: Sale; copy?: boolean; bill?: boolean }) {
+/**
+ * Mount while printing: only these receipts show on paper (see the print rules in globals.css).
+ * With `copies`, one receipt per copy, each on its own page (the printer cuts between them).
+ */
+export function ReceiptPrint({ sale, copy = false, bill = false, copies }: { sale: Sale; copy?: boolean; bill?: boolean; copies?: ReceiptCopyFor[] }) {
   if (typeof document === "undefined") return null;
   return createPortal(
     <div className="tessera-print">
-      <Receipt sale={sale} copy={copy} bill={bill} />
+      {copies ? (
+        copies.map((copyFor) => (
+          <div key={copyFor} className={classes.page}>
+            <Receipt sale={sale} copyFor={copyFor} />
+          </div>
+        ))
+      ) : (
+        <Receipt sale={sale} copy={copy} bill={bill} />
+      )}
     </div>,
     document.body,
   );

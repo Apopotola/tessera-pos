@@ -111,7 +111,7 @@ class SettingsTest extends InventoryTestCase
             ->flatMap(fn ($s) => $s['fields'])->keyBy('key');
 
         $this->assertArrayNotHasKey('stock.batch_tracking_default', $fields->all());
-        $this->assertSame(['always', 'ask'], array_column($fields['receipts.print_behaviour']['options'], 'value'));
+        $this->assertArrayNotHasKey('receipts.print_behaviour', $fields->all());
         $this->change($this->owner, 'stock.batch_tracking_default', true)->assertUnprocessable();
         $this->change($this->owner, 'receipts.print_behaviour', 'digital')->assertUnprocessable();
         // Presets leave hidden settings alone (the pharmacy preset would switch batch tracking on).

@@ -1,4 +1,4 @@
-import { drawerBytes, paperWidthMm, receiptBytes, tookCash } from "@/modules/sales/printer/documents";
+import { drawerBytes, paperWidthMm, type ReceiptCopyFor, receiptBytes, tookCash } from "@/modules/sales/printer/documents";
 import { logoRaster } from "@/modules/sales/printer/logo";
 import { isDirect, isSupported, sendBytes, type PrinterConnection } from "@/modules/sales/printer/transports";
 import type { Sale } from "@/types/sales";
@@ -58,9 +58,9 @@ export async function openDrawerForSale(printer: TillPrinter, sale: Pick<Sale, "
 }
 
 /** A receipt (or the customer's bill before paying) on this till's printer, logo included when the receipt shows it. */
-export function printReceipt(printer: TillPrinter, sale: Sale, copy: boolean, bill = false): Promise<PrintOutcome> {
+export function printReceipt(printer: TillPrinter, sale: Sale, copy: boolean, bill = false, copyFor?: ReceiptCopyFor): Promise<PrintOutcome> {
   return sendToPrinter(printer, async () => {
     const logo = sale.receipt.show.includes("logo") ? await logoRaster(sale.receipt.logo, paperWidthMm(sale.receipt.paperSize)) : null;
-    return receiptBytes(sale, { copy, bill, logo });
+    return receiptBytes(sale, { copy, bill, logo, copyFor });
   });
 }

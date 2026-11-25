@@ -107,8 +107,9 @@ final class SettingsRegistry
                 options: ['58mm' => '58 mm thermal', '80mm' => '80 mm thermal', 'a4' => 'A4 invoice']),
             'receipts.invoice_prefix' => self::f('receipts', 'Invoice number prefix', 'text', 'INV-', 'O', max: 8, pattern: '/^[A-Z0-9]{0,6}-?$/',
                 help: 'e.g. KWS-. Locked once the first sale is made, so invoice numbers stay in sequence.'),
+            // Retired: the till always prints a customer and a cashier receipt, then signs the cashier out.
             'receipts.print_behaviour' => self::f('receipts', 'Print behaviour', 'select', 'ask', 'B', scopes: ['business', 'branch'],
-                options: ['always' => 'Always print', 'ask' => 'Ask each time']),
+                options: ['always' => 'Always print', 'ask' => 'Ask each time'], hidden: true),
             'receipts.document_template' => self::f('receipts', 'Quotation and delivery note layout', 'select', 'standard', 'O',
                 options: ['standard' => 'Standard', 'compact' => 'Compact', 'detailed' => 'Detailed'], available: false, note: 'Quotations and delivery notes arrive later.'),
 

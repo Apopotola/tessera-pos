@@ -52,7 +52,7 @@ The main steps (purple, and the till in amber) follow a business day from left t
 | POS Till | — | Line edit (quantity, discount, price change) + Manager approval (manager PIN) | Ca (within limit); manager approves beyond | Discounts, price overrides, removing items. |
 | POS Till | — | Age check | Ca | Confirm the customer is 18 or over (setting). |
 | POS Till | — | Take payment: M-PESA (payment request to phone, or pick a payment already made), Cash, Card, On account, Split; customer KRA PIN | Ca | Taking payment. |
-| POS Till | — | Sale complete (change due, receipt preview, Print receipt, Next customer) | Ca | Finish the sale. |
+| POS Till | — | Sale complete (change due, receipt preview; customer and cashier copies print, then the cashier is signed out) | Ca | Finish the sale. |
 | POS Till | — | Customer picker | Ca | Attach a registered customer (wholesale price, on-account, tax invoice). |
 | POS Till | — | Park sale / Recall parked sales | Ca | Hold a sale while serving someone else. |
 | POS Till | — | Sell by tot (open bottles) | Ca | Pour and sell tots from an open bottle (setting). |

@@ -102,6 +102,11 @@ export class EscPos {
     return this.raw(GS, 0x21, on ? 0x11 : 0x00);
   }
 
+  /** White on black, for the copy banner. */
+  invert(on: boolean): this {
+    return this.raw(GS, 0x42, on ? 1 : 0);
+  }
+
   text(value: string): this {
     for (const ch of toAscii(value)) this.bytes.push(ch.charCodeAt(0));
     return this;
