@@ -114,6 +114,12 @@
   gap: 8px;
 }
 
+/* The amount never wraps; a long label (a promotion's name) wraps instead. */
+.row > :last-child {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
 .line {
   margin-bottom: 3px;
 }
