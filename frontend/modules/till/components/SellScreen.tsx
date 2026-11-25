@@ -246,28 +246,30 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     return () => window.clearTimeout(timer);
   }, [printing]);
 
-  /** Settings → Receipt printer: straight to the printer, else the print dialog. "No printer" skips the automatic print only. */
+  /** A reprint, marked as a copy: straight to the printer, else the print dialog. */
   const printSale = useCallback(
-    async (sale: Sale, copy: boolean, asked: boolean, bill = false) => {
-      const outcome = await printReceipt(policy.printer, sale, { copy, bill });
-      if (outcome.via === "browser") {
-        if (outcome.error) notifications.show({ color: "yellow", message: `The printer did not answer (${outcome.error}). Opening the print dialog instead.` });
-        setPrinting({ sale, copy, bill });
-      } else if (outcome.via === "none" && asked) setPrinting({ sale, copy, bill });
+    async (sale: Sale, copy: boolean) => {
+      const outcome = await printReceipt(policy.printer, sale, { copy });
+      if (outcome.via === "browser" && outcome.error) notifications.show({ color: "yellow", message: `The printer did not answer (${outcome.error}). Opening the print dialog instead.` });
+      if (outcome.via !== "printer") setPrinting({ sale, copy });
     },
     [policy.printer],
   );
 
-  /** After every sale: the customer's receipt, then the cashier's. The cashier does not choose how many. */
+  /**
+   * After every sale, and for every bill: the customer's copy, then the cashier's. The cashier does not choose how many.
+   * Settings → Receipt printer: straight to the printer, else the print dialog. "No printer" skips the automatic
+   * receipts only; a bill was asked for, so it opens the print dialog.
+   */
   const printSaleCopies = useCallback(
-    async (sale: Sale, link: string | null) => {
+    async (sale: Sale, link: string | null, bill = false) => {
       const copies: ReceiptCopyFor[] = ["customer", "cashier"];
       for (const [i, copyFor] of copies.entries()) {
-        const outcome = await printReceipt(policy.printer, sale, { copyFor, link });
-        if (outcome.via === "browser") {
-          if (outcome.error) notifications.show({ color: "yellow", message: `The printer did not answer (${outcome.error}). Opening the print dialog instead.` });
+        const outcome = await printReceipt(policy.printer, sale, { copyFor, link, bill });
+        if (outcome.via === "browser" || (outcome.via === "none" && bill)) {
+          if (outcome.via === "browser" && outcome.error) notifications.show({ color: "yellow", message: `The printer did not answer (${outcome.error}). Opening the print dialog instead.` });
           // The print dialog prints the copies not yet printed, one after the other, each as its own job.
-          setPrinting({ sale, copy: false, copies: copies.slice(i), link });
+          setPrinting({ sale, copy: false, bill, copies: copies.slice(i), link });
           return;
         }
         if (outcome.via === "none") return;
@@ -279,7 +281,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   /** The customer's bill before paying (bars and lounges): nothing is recorded; the sale stays open. */
   const printBill = () => {
     if (!user || lines.length === 0) return;
-    void printSale(buildBill({ occurredAt: new Date().toISOString(), context, user, lines: priced, customer, snapshot: offline.snapshot }), false, true, true);
+    void printSaleCopies(buildBill({ occurredAt: new Date().toISOString(), context, user, lines: priced, customer, snapshot: offline.snapshot }), null, true);
   };
 
   const addItem = useCallback((item: TillItem, quantity = 1, unit: SaleUnit = "bottle") => {
@@ -900,7 +902,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
             setReturning(false);
             refocus();
           }}
-          onReprint={(sale) => void printSale(sale, true, true)}
+          onReprint={(sale) => void printSale(sale, true)}
           onReturned={(sale, refund) => {
             setReturning(false);
             // A sale on account is refunded to the account first; only the rest comes from the drawer.

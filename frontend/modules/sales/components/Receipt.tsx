@@ -231,7 +231,7 @@ export function ReceiptPrint({ sale, copy = false, bill = false, copies, link = 
       {copies ? (
         copies.map((copyFor) => (
           <div key={copyFor} className={classes.page}>
-            <Receipt sale={sale} copyFor={copyFor} link={link} />
+            <Receipt sale={sale} copyFor={copyFor} bill={bill} link={link} />
           </div>
         ))
       ) : (

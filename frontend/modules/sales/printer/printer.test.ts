@@ -144,6 +144,14 @@ test("without eTIMS, the customer's copy has a QR to the receipt online; the cas
   expect(has(receiptBytes(plain, { copyFor: "customer" }), [0x1d, 0x28, 0x6b])).toBe(false);
 });
 
+test("a bill prints as a customer's and a cashier's copy, both marked not paid", () => {
+  for (const copyFor of ["customer", "cashier"] as const) {
+    const text = printed(receiptBytes(sale, { bill: true, copyFor })).map((l) => l.trim());
+    expect(text).toContain(copyFor === "customer" ? "CUSTOMER COPY" : "CASHIER COPY");
+    expect(text).toContain("BILL - NOT PAID");
+  }
+});
+
 test("a receipt never opens the cash drawer by itself", () => {
   expect(has(receiptBytes(sale), [0x1b, 0x70])).toBe(false);
   expect(has(new EscPos(48).openDrawer().build(), [0x1b, 0x70, 0x00])).toBe(true);
