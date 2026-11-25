@@ -1,6 +1,6 @@
 // Chapter 2 "How everything connects": one business day, in order. Saves to images/overview.
 // Needs the user-guide shop (guide-db.sh: the demo shop) served on GUIDE_WEB; see guide-capture/README.md.
-import { BACK_OFFICE, SHOP, TILL, WEB, launch, named, newPage, open, settle, shot, signIn, typePin } from "./lib.mjs";
+import { BACK_OFFICE, SHOP, TILL, WEB, launch, named, newPage, open, settle, shot, signBackIn, signIn, typePin } from "./lib.mjs";
 
 const F = "overview";
 const browser = await launch();
@@ -115,10 +115,10 @@ await done.waitFor();
 const saleNumber = ((await done.getByRole("heading").first().textContent()) ?? "").replace(/^Sale | complete$/g, "").trim();
 await shot(till, F, "11-sale-complete-receipt", [
   [done.locator("[class*=receiptPreview]"), 1],
-  [done.getByRole("button", { name: "Print receipt" }), 2],
-  [done.getByRole("button", { name: "Next customer" }), 3],
+  [done.getByText(/receipts sent to the printer|No receipt printer/), 2],
+  [done.getByRole("button", { name: "Done · sign out" }), 3],
 ]);
-await done.getByRole("button", { name: "Next customer" }).click();
+await signBackIn(till, /Amina/, "3691");
 
 // ---------------------------------------------------------------- 5–6: what changed elsewhere (owner)
 await open(office, "/compliance/etims");

@@ -2,7 +2,7 @@
 // Saves to <GUIDE_IMAGES>/questions. Makes two real sales on the guide shop; see guide-capture/README.md.
 import fs from "node:fs";
 import path from "node:path";
-import { IMAGES, SHOP, TILL, WEB, launch, named, newPage, settle, shot, typePin } from "./lib.mjs";
+import { IMAGES, SHOP, TILL, WEB, launch, named, newPage, settle, shot, signBackIn, typePin } from "./lib.mjs";
 
 const F = "questions";
 const browser = await launch();
@@ -115,15 +115,14 @@ await settle(till, 1200);
 
 const tender = await pay();
 await shot(till, F, "05-take-payment", [[tender.getByRole("button", { name: "Complete sale" }), 1]]);
+// The customer and cashier receipts print by themselves when the sale completes.
+await till.evaluate(() => (window.__prints = []));
 await tender.getByRole("button", { name: "Complete sale" }).click();
 const done = dialog(/Sale .* complete/);
 await done.waitFor();
 await settle(till, 800);
-await till.evaluate(() => (window.__prints = []));
-await done.getByRole("button", { name: "Print receipt" }).click();
 await paper("06-the-receipt");
-await done.getByRole("button", { name: "Next customer" }).click();
-await settle(till, 800);
+await signBackIn(till, /Otieno/, "2580");
 
 // ---------------------------------------------------------------- 2. Swapping a drink before paying
 await add("Captain Morgan", "CM-750");

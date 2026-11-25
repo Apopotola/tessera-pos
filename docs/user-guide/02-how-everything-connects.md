@@ -116,7 +116,7 @@ For cash, choose **Cash** and type the amount the customer hands over; the till 
 
 ![Figure 2.13: Sale complete, with the receipt](images/overview/11-sale-complete-receipt.png)
 
-The receipt **(1)** shows the items, the promotion, the M-PESA code and the VAT included. The customer and cashier copies print by themselves, and the cashier is signed out a few seconds later.
+The receipt **(1)** shows the items, the promotion, the M-PESA code and the VAT included. The customer and cashier copies print by themselves **(2)**, and the cashier is signed out a few seconds later, or straight away with **Done · sign out (3)**.
 
 Tessera sends every sale to KRA's eTIMS automatically, straight after the sale. The first receipt may say *eTIMS invoice pending*: KRA's signature arrives a few seconds later, and a reprint shows it.
 

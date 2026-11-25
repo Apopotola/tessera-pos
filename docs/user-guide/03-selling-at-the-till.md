@@ -153,14 +153,14 @@ Type the customer's KRA PIN in **Customer KRA PIN** on the payment screen. The e
 
 ![Figure 3.15: Sale complete](images/till/15-sale-complete.png)
 
-The till shows the change to give in large figures, and the receipt. Two receipts print by themselves, one after the other:
+The till shows the change to give in large figures, and the receipt. Two receipts print by themselves, one after the other **(1)**:
 
 - the **customer copy**, with the eTIMS QR code, for the customer;
 - the **cashier copy**, with a line to sign, which the cashier keeps for the cash-up.
 
 The cashier does not choose how many receipts to print. Both carry the shop's name as a faint watermark, so a photocopy or a fake stands out.
 
-Ten seconds later the cashier is **signed out** and the till goes back to *Who's on the till?*; the shift stays open, and the next sale starts with the cashier's PIN. Tap **Done · sign out** to sign out straight away, or **Share receipt** to send the customer a link (this gives you a minute before the sign-out). If the till is offline it does not sign out, because signing in again needs the server: tap **Next customer** instead.
+Ten seconds later the cashier is **signed out** and the till goes back to *Who's on the till?*; the shift stays open, and the next sale starts with the cashier's PIN. Tap **Done · sign out (3)** to sign out straight away, or **Share receipt (2)** to send the customer a link (this gives you a minute before the sign-out). If the till is offline it does not sign out, because signing in again needs the server: tap **Next customer** instead.
 
 To print a lost receipt again, use **Return / reprint** in the till menu (chapter 4).
 

@@ -1,7 +1,7 @@
 // Chapters 3 and 4: selling at the till, and the till during and after a shift. Saves to images/till.
 // Sets up a till at the main branch (Kobil Imara Daima) and makes one cash sale and one parked sale; ends locked.
 // Needs the user-guide shop (guide-db.sh) served on GUIDE_WEB; see guide-capture/README.md.
-import { SHOP, TILL, WEB, launch, named, newPage, settle, shot, typePin } from "./lib.mjs";
+import { SHOP, TILL, WEB, launch, named, newPage, settle, shot, signBackIn, typePin } from "./lib.mjs";
 
 const F = "till";
 const browser = await launch();
@@ -156,16 +156,15 @@ const done = dialog(/Sale .* complete/);
 await done.waitFor();
 await settle(till, 800);
 await shot(till, F, "15-sale-complete", [
-  [done.getByRole("button", { name: "Print receipt" }), 1],
+  [done.getByText(/receipts sent to the printer|No receipt printer/), 1],
   [done.getByRole("button", { name: "Share receipt" }), 2],
-  [done.getByRole("button", { name: "Next customer" }), 3],
+  [done.getByRole("button", { name: "Done · sign out" }), 3],
 ]);
 await done.getByRole("button", { name: "Share receipt" }).click();
 await settle(till, 1500);
 await shot(till, F, "16-share-receipt", [[till.getByRole("dialog").last(), 1, { box: false }]]);
 await escape();
-if (await done.isVisible().catch(() => false)) await done.getByRole("button", { name: "Next customer" }).click();
-await settle(till, 800);
+await signBackIn(till, /Otieno/, "2580");
 
 // Parking a sale and recalling it.
 await search.fill("Tusker");

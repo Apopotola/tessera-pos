@@ -107,3 +107,15 @@ export async function shot(page, folder, name, marks = []) {
 export async function typePin(page, pin) {
   for (const digit of pin) await page.keyboard.press(digit);
 }
+
+/** After a sale the till signs the cashier out; they sign back in to carry on (the shift stays open). */
+export async function signBackIn(page, cashier, pin) {
+  const done = page.getByRole("dialog", { name: /Sale .* complete/ });
+  if (await done.isVisible().catch(() => false)) await done.getByRole("button", { name: "Done · sign out" }).click();
+  await page.getByRole("heading", { name: "Who's on the till?" }).waitFor();
+  await page.getByRole("button", { name: cashier }).first().click();
+  await typePin(page, pin);
+  await page.keyboard.press("Enter");
+  await page.getByText("Cart is empty").waitFor();
+  await settle(page, 800);
+}
