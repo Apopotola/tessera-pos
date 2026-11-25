@@ -134,6 +134,16 @@ test("the customer's copy has the QR and thanks; the cashier's has a signature l
   for (const line of [...customer, ...cashier]) expect(line.length).toBeLessThanOrEqual(32);
 });
 
+test("without eTIMS, the customer's copy has a QR to the receipt online; the cashier's has none", () => {
+  const plain = { ...sale, etims: null, etimsStatus: "not_required" } as Sale;
+  const link = "https://pos.example.test/r/abc123";
+  const customer = receiptBytes(plain, { copyFor: "customer", link });
+  expect(has(customer, [0x1d, 0x28, 0x6b])).toBe(true);
+  expect(printed(customer)).toContain("Scan for your receipt online");
+  expect(has(receiptBytes(plain, { copyFor: "cashier", link }), [0x1d, 0x28, 0x6b])).toBe(false);
+  expect(has(receiptBytes(plain, { copyFor: "customer" }), [0x1d, 0x28, 0x6b])).toBe(false);
+});
+
 test("a receipt never opens the cash drawer by itself", () => {
   expect(has(receiptBytes(sale), [0x1b, 0x70])).toBe(false);
   expect(has(new EscPos(48).openDrawer().build(), [0x1b, 0x70, 0x00])).toBe(true);

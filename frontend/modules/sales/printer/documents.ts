@@ -42,6 +42,8 @@ export const COPY_LABEL: Record<ReceiptCopyFor, string> = { customer: "CUSTOMER 
 export interface ReceiptPrintOptions {
   copy?: boolean;
   copyFor?: ReceiptCopyFor;
+  /** The receipt's online copy (a share link): a QR on the customer's copy when there is no eTIMS QR. */
+  link?: string | null;
   /** The customer's bill before paying (see Receipt.tsx): no number, payments or eTIMS. */
   bill?: boolean;
   /** Raster commands for the receipt logo (logo.ts). */
@@ -49,7 +51,7 @@ export interface ReceiptPrintOptions {
 }
 
 export function receiptBytes(sale: Sale, options: ReceiptPrintOptions = {}): Uint8Array {
-  const { copy = false, bill = false, logo = null, copyFor } = options;
+  const { copy = false, bill = false, logo = null, copyFor, link = null } = options;
   const { receipt } = sale;
   const show = (what: ReceiptSettings["show"][number]) => receipt.show.includes(what);
   const p = new EscPos(paperColumns(receipt.paperSize));
@@ -107,6 +109,10 @@ export function receiptBytes(sale: Sale, options: ReceiptPrintOptions = {}): Uin
     if (sale.etims.qrPayload?.includes("mock=1")) p.bold(true).line("DEMO eTIMS - NOT A KRA INVOICE").bold(false);
   } else if (sale.etimsStatus !== "not_required") {
     p.paragraph("eTIMS invoice pending - not yet signed by KRA");
+  }
+  if (link && !bill && !cashierCopy && !sale.etims?.qrPayload) {
+    p.qr(link, receipt.paperSize === "58mm" ? 4 : 5);
+    p.line("Scan for your receipt online");
   }
   if (cashierCopy) {
     p.feed(2).align("left").line(`Cashier sign: ${"_".repeat(p.width - 14)}`).align("center");

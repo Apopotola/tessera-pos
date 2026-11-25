@@ -79,7 +79,9 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   const [payPending, setPayPending] = useState(false);
   const [completed, setCompleted] = useState<Sale | null>(null);
   // The print dialog (browser printing, or the fallback when the printer cannot be reached).
-  const [printing, setPrinting] = useState<{ sale: Sale; copy: boolean; bill?: boolean; copies?: ReceiptCopyFor[] } | null>(null);
+  const [printing, setPrinting] = useState<{ sale: Sale; copy: boolean; bill?: boolean; copies?: ReceiptCopyFor[]; link?: string | null } | null>(null);
+  // The completed sale's online copy (/r/{token}), printed as a QR on the customer's receipt.
+  const [receiptLink, setReceiptLink] = useState<string | null>(null);
   // Seconds left before the cashier is signed out after a sale (null: not counting).
   const [signOutIn, setSignOutIn] = useState<number | null>(null);
   const [printerSetup, setPrinterSetup] = useState(false);
@@ -232,12 +234,14 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     return () => window.clearTimeout(timer);
   }, [completedNumber]);
 
-  // Print once the receipt portal is mounted, then unmount it.
+  // Print once the receipt portal is mounted, then unmount it. The customer's and the cashier's copies
+  // are separate print jobs, so the printer cuts after each one (a page break inside one job is not always cut).
   useEffect(() => {
     if (!printing) return;
     const timer = window.setTimeout(() => {
       window.print();
-      setPrinting(null);
+      const rest = printing.copies?.slice(1) ?? [];
+      setPrinting(rest.length > 0 ? { ...printing, copies: rest } : null);
     }, 50);
     return () => window.clearTimeout(timer);
   }, [printing]);
@@ -245,7 +249,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   /** Settings → Receipt printer: straight to the printer, else the print dialog. "No printer" skips the automatic print only. */
   const printSale = useCallback(
     async (sale: Sale, copy: boolean, asked: boolean, bill = false) => {
-      const outcome = await printReceipt(policy.printer, sale, copy, bill);
+      const outcome = await printReceipt(policy.printer, sale, { copy, bill });
       if (outcome.via === "browser") {
         if (outcome.error) notifications.show({ color: "yellow", message: `The printer did not answer (${outcome.error}). Opening the print dialog instead.` });
         setPrinting({ sale, copy, bill });
@@ -256,14 +260,14 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
 
   /** After every sale: the customer's receipt, then the cashier's. The cashier does not choose how many. */
   const printSaleCopies = useCallback(
-    async (sale: Sale) => {
+    async (sale: Sale, link: string | null) => {
       const copies: ReceiptCopyFor[] = ["customer", "cashier"];
-      for (const copyFor of copies) {
-        const outcome = await printReceipt(policy.printer, sale, false, false, copyFor);
+      for (const [i, copyFor] of copies.entries()) {
+        const outcome = await printReceipt(policy.printer, sale, { copyFor, link });
         if (outcome.via === "browser") {
           if (outcome.error) notifications.show({ color: "yellow", message: `The printer did not answer (${outcome.error}). Opening the print dialog instead.` });
-          // The print dialog takes both receipts at once.
-          setPrinting({ sale, copy: false, copies });
+          // The print dialog prints the copies not yet printed, one after the other, each as its own job.
+          setPrinting({ sale, copy: false, copies: copies.slice(i), link });
           return;
         }
         if (outcome.via === "none") return;
@@ -413,11 +417,16 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   const finishSale = (sale: Sale) => {
     setPaying(false);
     setCompleted(sale);
+    setReceiptLink(null);
     // The drawer opens first (the cashier needs change), then the customer's and the cashier's receipts print.
     void (async () => {
       const drawer = await openDrawerForSale(policy.printer, sale);
       if (drawer.via === "browser" && drawer.error) notifications.show({ color: "yellow", message: `The cash drawer did not open (${drawer.error}).` });
-      await printSaleCopies(sale);
+      // A link to the receipt online for the QR; an offline sale has no official number yet, and without the link the receipt prints anyway.
+      const token = sale.pendingSync ? null : await salesApi.shareFromTill(sale.number).catch(() => null);
+      const link = token ? `${window.location.origin}/r/${token}` : null;
+      setReceiptLink(link);
+      await printSaleCopies(sale, link);
     })();
     // Then the cashier is signed out (the shift stays open). Offline, signing in again needs the server, so the till stays on.
     if (isOnline) setSignOutIn(SIGN_OUT_SECONDS);
@@ -863,7 +872,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
           <Stack>
             <ChangeDue sale={completed} />
             <div className={classes.receiptPreview}>
-              <Receipt sale={completed} />
+              <Receipt sale={completed} link={receiptLink} />
             </div>
             <Text size="sm" c="dimmed" ta="center">
               {policy.printer.connection === "none" ? "No receipt printer is set up for this till." : "Customer and cashier receipts sent to the printer."}
@@ -960,7 +969,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
           }}
         />
       )}
-      {printing && <ReceiptPrint sale={printing.sale} copy={printing.copy} bill={printing.bill} copies={printing.copies} />}
+      {printing && <ReceiptPrint sale={printing.sale} copy={printing.copy} bill={printing.bill} copies={printing.copies?.slice(0, 1)} link={printing.link} />}
     </div>
   );
 }

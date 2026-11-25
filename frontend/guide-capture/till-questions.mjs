@@ -121,6 +121,9 @@ await tender.getByRole("button", { name: "Complete sale" }).click();
 const done = dialog(/Sale .* complete/);
 await done.waitFor();
 await settle(till, 800);
+// Two print jobs: the customer's copy, then the cashier's. Show the customer's.
+await till.waitForFunction(() => window.__prints.length >= 2);
+await till.evaluate(() => window.__prints.pop());
 await paper("06-the-receipt");
 await signBackIn(till, /Otieno/, "2580");
 

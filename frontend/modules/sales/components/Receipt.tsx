@@ -16,7 +16,16 @@ const PAPER = { "58mm": classes.paper58, "80mm": "", a4: classes.paperA4 } as co
  * Rendered on screen as a preview; `ReceiptPrint` sends it to the printer. As a `bill` it is the
  * customer's bill before paying: no receipt number, payments or eTIMS, and marked as not a tax invoice.
  */
-export default function Receipt({ sale, copy = false, bill = false, copyFor }: { sale: Sale; copy?: boolean; bill?: boolean; copyFor?: ReceiptCopyFor }) {
+interface ReceiptProps {
+  sale: Sale;
+  copy?: boolean;
+  bill?: boolean;
+  copyFor?: ReceiptCopyFor;
+  /** The receipt's online copy (a share link): a QR on the customer's copy when there is no eTIMS QR. */
+  link?: string | null;
+}
+
+export default function Receipt({ sale, copy = false, bill = false, copyFor, link = null }: ReceiptProps) {
   const cash = sale.tenders.find((t) => t.method === "cash" && t.amountCents >= 0);
   const { receipt } = sale;
   const show = (what: Sale["receipt"]["show"][number]) => receipt.show.includes(what);
@@ -186,6 +195,12 @@ export default function Receipt({ sale, copy = false, bill = false, copyFor }: {
         ) : sale.etimsStatus === "not_required" ? null : (
           <div>eTIMS invoice pending — not yet signed by KRA</div>
         )}
+        {link && !bill && !cashierCopy && !sale.etims?.qrPayload && (
+          <div className={classes.qr}>
+            <QRCodeSVG value={link} size={96} marginSize={0} />
+          </div>
+        )}
+        {link && !bill && !cashierCopy && !sale.etims?.qrPayload && <div>Scan for your receipt online</div>}
         {cashierCopy ? (
           <div className={classes.signature}>Cashier sign</div>
         ) : (
@@ -209,14 +224,14 @@ export default function Receipt({ sale, copy = false, bill = false, copyFor }: {
  * Mount while printing: only these receipts show on paper (see the print rules in globals.css).
  * With `copies`, one receipt per copy, each on its own page (the printer cuts between them).
  */
-export function ReceiptPrint({ sale, copy = false, bill = false, copies }: { sale: Sale; copy?: boolean; bill?: boolean; copies?: ReceiptCopyFor[] }) {
+export function ReceiptPrint({ sale, copy = false, bill = false, copies, link = null }: Omit<ReceiptProps, "copyFor"> & { copies?: ReceiptCopyFor[] }) {
   if (typeof document === "undefined") return null;
   return createPortal(
     <div className="tessera-print">
       {copies ? (
         copies.map((copyFor) => (
           <div key={copyFor} className={classes.page}>
-            <Receipt sale={sale} copyFor={copyFor} />
+            <Receipt sale={sale} copyFor={copyFor} link={link} />
           </div>
         ))
       ) : (
