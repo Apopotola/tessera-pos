@@ -34,7 +34,6 @@ const receipt: ReceiptSettings = {
   footerLines: ["Thank you for shopping with us."],
   show: ["cashier"],
   paperSize: "58mm",
-  printBehaviour: "always",
   returnWindowDays: 7,
   licenceLines: ["Liquor licence No. NCC/123"],
   logo: null,
@@ -119,6 +118,20 @@ test("80 mm paper uses 48 columns; a reprint is marked as a copy", () => {
   expect(lines.some((l) => l.length > 32)).toBe(true);
   for (const line of lines) expect(line.length).toBeLessThanOrEqual(48);
   expect(lines).toContain("*** COPY ***");
+});
+
+test("the customer's copy has the QR and thanks; the cashier's has a signature line instead", () => {
+  const customer = printed(receiptBytes(sale, { copyFor: "customer" }));
+  const cashier = printed(receiptBytes(sale, { copyFor: "cashier" }));
+  expect(customer.map((l) => l.trim())).toContain("CUSTOMER COPY");
+  expect(customer).toContain("Thank you for shopping with us.");
+  expect(cashier.map((l) => l.trim())).toContain("CASHIER COPY");
+  expect(cashier.some((l) => l.startsWith("Cashier sign:"))).toBe(true);
+  expect(cashier).not.toContain("Thank you for shopping with us.");
+  expect(cashier.some((l) => l.includes("INV-000042"))).toBe(true);
+  expect(has(receiptBytes(sale, { copyFor: "customer" }), [0x1d, 0x28, 0x6b])).toBe(true);
+  expect(has(receiptBytes(sale, { copyFor: "cashier" }), [0x1d, 0x28, 0x6b])).toBe(false);
+  for (const line of [...customer, ...cashier]) expect(line.length).toBeLessThanOrEqual(32);
 });
 
 test("a receipt never opens the cash drawer by itself", () => {

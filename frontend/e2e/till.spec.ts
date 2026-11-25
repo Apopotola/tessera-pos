@@ -58,8 +58,13 @@ async function ownerSettings(values: Record<string, unknown>) {
   await api.dispose();
 }
 
+/** After each sale the cashier is signed out; Otieno signs back in, and the shift carries on. */
 async function nextCustomer() {
-  await page.getByRole("button", { name: "Next customer" }).click();
+  await page.getByRole("button", { name: "Done · sign out" }).click();
+  await expect(page.getByRole("heading", { name: "Who's on the till?" })).toBeVisible();
+  await page.getByRole("button", { name: /Otieno/ }).click();
+  await enterPin("2580");
+  await page.keyboard.press("Enter");
   await expect(page.getByText("Cart is empty")).toBeVisible();
 }
 

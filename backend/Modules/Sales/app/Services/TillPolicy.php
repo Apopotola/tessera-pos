@@ -204,7 +204,6 @@ class TillPolicy
             'footerLines' => $this->lines($get('receipts.footer_lines')),
             'show' => array_values((array) $get('receipts.show')),
             'paperSize' => $get('receipts.paper_size'),
-            'printBehaviour' => $get('receipts.print_behaviour'),
             'returnWindowDays' => (int) config('sales.return_window_days', 7),
             // Licence numbers marked "print on receipt"; a renewed licence prints only its newest entry.
             'licenceLines' => Licence::query()->from('licences as l')->where('l.branch_id', $branchId)->where('l.print_on_receipt', true)->whereDate('l.expires_on', '>=', now())

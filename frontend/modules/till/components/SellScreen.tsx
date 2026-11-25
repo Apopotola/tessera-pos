@@ -11,6 +11,7 @@ import { brand } from "@/app/theme";
 import Receipt, { ReceiptPrint } from "@/modules/sales/components/Receipt";
 import ShareReceiptButton from "@/modules/sales/components/ShareReceiptButton";
 import { openDrawerForSale, printReceipt } from "@/modules/sales/printer";
+import type { ReceiptCopyFor } from "@/modules/sales/printer/documents";
 import { type ApprovalRules, type CartLine, cartTotals, cartVat, itemsInCategory, withPromotions, fromParked, lineKey, lineName, lineTotal, looksLikeBarcode, needsApproval, newClientId, newLine, repriceForCustomer, sameLine, toParked, toPayload } from "@/modules/till/cart";
 import CustomerPicker from "@/modules/till/components/CustomerPicker";
 import type { TillCustomer } from "@/types/customers";
@@ -78,7 +79,9 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   const [payPending, setPayPending] = useState(false);
   const [completed, setCompleted] = useState<Sale | null>(null);
   // The print dialog (browser printing, or the fallback when the printer cannot be reached).
-  const [printing, setPrinting] = useState<{ sale: Sale; copy: boolean; bill?: boolean } | null>(null);
+  const [printing, setPrinting] = useState<{ sale: Sale; copy: boolean; bill?: boolean; copies?: ReceiptCopyFor[] } | null>(null);
+  // Seconds left before the cashier is signed out after a sale (null: not counting).
+  const [signOutIn, setSignOutIn] = useState<number | null>(null);
   const [printerSetup, setPrinterSetup] = useState(false);
   const [returning, setReturning] = useState(false);
   const [ending, setEnding] = useState(false);
@@ -251,6 +254,24 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     [policy.printer],
   );
 
+  /** After every sale: the customer's receipt, then the cashier's. The cashier does not choose how many. */
+  const printSaleCopies = useCallback(
+    async (sale: Sale) => {
+      const copies: ReceiptCopyFor[] = ["customer", "cashier"];
+      for (const copyFor of copies) {
+        const outcome = await printReceipt(policy.printer, sale, false, false, copyFor);
+        if (outcome.via === "browser") {
+          if (outcome.error) notifications.show({ color: "yellow", message: `The printer did not answer (${outcome.error}). Opening the print dialog instead.` });
+          // The print dialog takes both receipts at once.
+          setPrinting({ sale, copy: false, copies });
+          return;
+        }
+        if (outcome.via === "none") return;
+      }
+    },
+    [policy.printer],
+  );
+
   /** The customer's bill before paying (bars and lounges): nothing is recorded; the sale stays open. */
   const printBill = () => {
     if (!user || lines.length === 0) return;
@@ -392,13 +413,14 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   const finishSale = (sale: Sale) => {
     setPaying(false);
     setCompleted(sale);
-    // Settings → Receipts → Print behaviour.
-    // The drawer opens first (the cashier needs change), then the receipt prints.
+    // The drawer opens first (the cashier needs change), then the customer's and the cashier's receipts print.
     void (async () => {
       const drawer = await openDrawerForSale(policy.printer, sale);
       if (drawer.via === "browser" && drawer.error) notifications.show({ color: "yellow", message: `The cash drawer did not open (${drawer.error}).` });
-      if (policy.receipt.printBehaviour === "always") await printSale(sale, false, false);
+      await printSaleCopies(sale);
     })();
+    // Then the cashier is signed out (the shift stays open). Offline, signing in again needs the server, so the till stays on.
+    if (isOnline) setSignOutIn(SIGN_OUT_SECONDS);
     loadFavourites();
     setLines([]);
     setCustomer(null);
@@ -547,6 +569,29 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   const lock = async () => {
     await dispatch(logout());
     onEnded();
+  };
+  const lockRef = useRef(lock);
+  useEffect(() => {
+    lockRef.current = lock;
+  });
+
+  // The countdown after a sale; the print dialog pauses it while open.
+  useEffect(() => {
+    if (signOutIn === null) return;
+    const timer = window.setTimeout(() => {
+      if (signOutIn <= 1) void lockRef.current();
+      else setSignOutIn(signOutIn - 1);
+    }, 1000);
+    return () => window.clearTimeout(timer);
+  }, [signOutIn]);
+
+  /** Closing the sale-complete window: sign out after an online sale, else carry on selling. */
+  const closeCompleted = () => {
+    setCompleted(null);
+    if (signOutIn !== null) {
+      setSignOutIn(null);
+      void lock();
+    } else refocus();
   };
 
   return (
@@ -811,10 +856,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
       {completed && (
         <Modal
           opened
-          onClose={() => {
-            setCompleted(null);
-            refocus();
-          }}
+          onClose={closeCompleted}
           title={`Sale ${completed.number} complete`}
           centered
         >
@@ -823,27 +865,18 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
             <div className={classes.receiptPreview}>
               <Receipt sale={completed} />
             </div>
-            {/* Receipt actions side by side, then the next step full width, so no label is cut off. */}
-            <Group grow>
-              <Button variant="default" leftSection={<IconPrinter size={18} />} onClick={() => void printSale(completed, false, true)}>
-                Print receipt
-              </Button>
-              {/* An offline sale has no official number yet, so nothing to link to. */}
-              {!completed.pendingSync && isOnline && (
+            <Text size="sm" c="dimmed" ta="center">
+              {policy.printer.connection === "none" ? "No receipt printer is set up for this till." : "Customer and cashier receipts sent to the printer."}
+              {signOutIn !== null && ` Signing out in ${signOutIn} s.`}
+            </Text>
+            {/* An offline sale has no official number yet, so nothing to link to. Sharing gives the cashier a minute before the sign-out. */}
+            {!completed.pendingSync && isOnline && (
+              <Group grow onClickCapture={() => setSignOutIn((s) => (s === null ? null : SHARE_SECONDS))}>
                 <ShareReceiptButton saleNumber={completed.number} businessName={completed.business.name} createToken={() => salesApi.shareFromTill(completed.number)} />
-              )}
-            </Group>
-            <Button
-              size="lg"
-              fullWidth
-              rightSection={<IconArrowRight size={20} />}
-              data-autofocus
-              onClick={() => {
-                setCompleted(null);
-                refocus();
-              }}
-            >
-              Next customer
+              </Group>
+            )}
+            <Button size="lg" fullWidth rightSection={<IconArrowRight size={20} />} data-autofocus onClick={closeCompleted}>
+              {signOutIn !== null ? "Done · sign out" : "Next customer"}
             </Button>
           </Stack>
         </Modal>
@@ -927,7 +960,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
           }}
         />
       )}
-      {printing && <ReceiptPrint sale={printing.sale} copy={printing.copy} bill={printing.bill} />}
+      {printing && <ReceiptPrint sale={printing.sale} copy={printing.copy} bill={printing.bill} copies={printing.copies} />}
     </div>
   );
 }
@@ -939,6 +972,10 @@ function approvalNeeded(e: unknown, approvals: { stock?: string; credit?: string
   if (e.formErrors.creditApproval && !approvals.credit) return { key: "credit", action: "credit", message: e.formErrors.creditApproval };
   return null;
 }
+
+/** After a sale: time to read the change due, then the cashier is signed out. */
+const SIGN_OUT_SECONDS = 10;
+const SHARE_SECONDS = 60;
 
 function ChangeDue({ sale }: { sale: Sale }) {
   const change = sale.tenders.find((t) => t.method === "cash")?.changeCents ?? 0;

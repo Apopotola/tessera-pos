@@ -34,8 +34,14 @@ function header(p: EscPos, business: string, branch: string, receipt: ReceiptSet
   (receipt.licenceLines ?? []).forEach((line) => p.paragraph(line));
 }
 
+/** After each sale the till prints one receipt for the customer and one the cashier keeps. */
+export type ReceiptCopyFor = "customer" | "cashier";
+
+export const COPY_LABEL: Record<ReceiptCopyFor, string> = { customer: "CUSTOMER COPY", cashier: "CASHIER COPY" };
+
 export interface ReceiptPrintOptions {
   copy?: boolean;
+  copyFor?: ReceiptCopyFor;
   /** The customer's bill before paying (see Receipt.tsx): no number, payments or eTIMS. */
   bill?: boolean;
   /** Raster commands for the receipt logo (logo.ts). */
@@ -43,13 +49,16 @@ export interface ReceiptPrintOptions {
 }
 
 export function receiptBytes(sale: Sale, options: ReceiptPrintOptions = {}): Uint8Array {
-  const { copy = false, bill = false, logo = null } = options;
+  const { copy = false, bill = false, logo = null, copyFor } = options;
   const { receipt } = sale;
   const show = (what: ReceiptSettings["show"][number]) => receipt.show.includes(what);
   const p = new EscPos(paperColumns(receipt.paperSize));
+  const cashierCopy = copyFor === "cashier";
 
+  p.align("center").line("* ~ * ~ * ~ * ~ *");
   header(p, sale.business.name, sale.branch.name, receipt, logo);
   if (sale.business.kraPin) p.line(`PIN: ${sale.business.kraPin}`);
+  if (copyFor) p.feed(1).bold(true).invert(true).line(`  ${COPY_LABEL[copyFor]}  `).invert(false).bold(false);
   if (copy) p.bold(true).line("*** COPY ***").bold(false);
   if (bill) p.bold(true).large(true).paragraph("BILL - NOT PAID", true).large(false).bold(false);
 
@@ -68,9 +77,10 @@ export function receiptBytes(sale: Sale, options: ReceiptPrintOptions = {}): Uin
     if (line.discountCents > 0) p.row("Discount", `-${amount(line.discountCents)}`, 2);
   }
 
-  p.rule();
+  p.rule("=");
   if (sale.discountCents > 0) p.row("You saved", amount(sale.discountCents));
   p.bold(true).row("TOTAL", `KES ${amount(sale.totalCents)}`).bold(false);
+  p.rule("=");
   for (const t of bill ? [] : sale.tenders.filter((t) => t.amountCents > 0)) {
     p.row(`${TENDER_LABELS[t.method]}${t.reference ? ` ${t.reference}` : ""}`, amount(t.method === "cash" ? (t.tenderedCents ?? t.amountCents) : t.amountCents));
   }
@@ -92,13 +102,20 @@ export function receiptBytes(sale: Sale, options: ReceiptPrintOptions = {}): Uin
     p.paragraph(`Internal data: ${sale.etims.internalData ?? ""}`);
     p.paragraph(`Signature: ${sale.etims.signature ?? ""}`);
     p.align("center");
-    if (sale.etims.qrPayload) p.qr(sale.etims.qrPayload, receipt.paperSize === "58mm" ? 4 : 5);
+    // The cashier's copy keeps the invoice number; the QR is for the customer.
+    if (sale.etims.qrPayload && !cashierCopy) p.qr(sale.etims.qrPayload, receipt.paperSize === "58mm" ? 4 : 5);
     if (sale.etims.qrPayload?.includes("mock=1")) p.bold(true).line("DEMO eTIMS - NOT A KRA INVOICE").bold(false);
   } else if (sale.etimsStatus !== "not_required") {
     p.paragraph("eTIMS invoice pending - not yet signed by KRA");
   }
-  receipt.footerLines.forEach((line) => p.paragraph(line));
-  if (!bill && show("return_policy")) p.paragraph(`Sealed bottles can be returned within ${receipt.returnWindowDays} days with this receipt.`);
+  if (cashierCopy) {
+    p.feed(2).align("left").line(`Cashier sign: ${"_".repeat(p.width - 14)}`).align("center");
+  } else {
+    receipt.footerLines.forEach((line) => p.paragraph(line));
+    if (!bill && show("return_policy")) p.paragraph(`Sealed bottles can be returned within ${receipt.returnWindowDays} days with this receipt.`);
+    if (!bill) p.feed(1).bold(true).line("THANK YOU - CHEERS!").bold(false);
+  }
+  p.line("* ~ * ~ * ~ * ~ *");
 
   return p.feed(4).cut().build();
 }
