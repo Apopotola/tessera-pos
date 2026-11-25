@@ -55,12 +55,18 @@ body {
     width: 100%;
   }
 
+  /*
+   * A receipt prints on its own: the rest of the app is taken out of the layout, and the receipts flow
+   * normally, so the customer's and the cashier's copies each get their own page (the printer cuts between).
+   * Chrome does not break an absolutely positioned block across pages, which dropped the second copy.
+   */
+  body:has(> .tessera-print) > :not(.tessera-print) {
+    display: none;
+  }
+
   .tessera-print {
     page: receipt;
     display: block;
-    position: absolute;
-    top: 0;
-    left: 0;
     width: 80mm;
   }
 }
