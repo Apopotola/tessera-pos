@@ -118,6 +118,24 @@ class TillShiftTest extends TestCase
         $this->fromTill()->getJson('/api/v1/sales/till/parked')->assertOk();
     }
 
+    public function test_a_password_sign_in_still_works_in_a_browser_left_on_the_till_lock_screen(): void
+    {
+        $cashier = $this->cashier();
+        $manager = User::factory()->create(['name' => 'Wanjiru Mwangi', 'email' => 'wanjiru@example.test', 'password' => Hash::make('Correct-horse-9')]);
+        $manager->assignRole(Roles::BRANCH_MANAGER);
+        $manager->branches()->attach($this->branch);
+
+        $this->fromTill()->postJson('/api/v1/auth/pin-login', ['userId' => $cashier->id, 'pin' => '2580'])->assertOk();
+        $this->fromTill()->postJson('/api/v1/auth/till/lock')->assertOk();
+
+        // Only a fresh password sign-in gets through; it replaces the cashier's session.
+        $this->fromTill()->postJson('/api/v1/auth/login', ['login' => 'wanjiru@example.test', 'password' => 'Correct-horse-9'])
+            ->assertOk()->assertJsonPath('data.id', $manager->id);
+        $this->app['auth']->forgetGuards(); // the next request reads the new session, as a browser would
+        $this->fromTill()->getJson('/api/v1/auth/me')->assertOk()->assertJsonPath('data.id', $manager->id);
+        $this->fromTill()->getJson('/api/v1/sales/till/parked')->assertOk();
+    }
+
     public function test_cashier_signs_in_with_pin_and_starts_then_resumes_a_shift(): void
     {
         $cashier = $this->cashier();

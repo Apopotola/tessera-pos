@@ -205,6 +205,7 @@ class AuthController extends Controller
     {
         Auth::guard('web')->login($user, $remember);
         $request->session()->regenerate();
+        $request->session()->forget(EnforceSessionSecurity::TILL_LOCKED);
         $request->session()->put([
             EnforceSessionSecurity::VIA => $via,
             EnforceSessionSecurity::REMEMBER => $remember,

@@ -29,7 +29,12 @@ class EnforceSessionSecurity
 
     private const ALWAYS_ALLOWED = ['api.v1.auth.logout', 'api.v1.auth.me', 'api.v1.ping', 'api.v1.settings.public', 'api.v1.settings.files'];
 
-    private const WHILE_LOCKED = ['api.v1.auth.till.unlock', 'api.v1.organisation.till-context'];
+    /**
+     * A locked till still lets someone sign in afresh with a password (and its two-step code):
+     * that replaces the session, so the locked cashier's session is not reused. Without this,
+     * a browser left on the lock screen refused every back-office sign-in with 423.
+     */
+    private const WHILE_LOCKED = ['api.v1.auth.till.unlock', 'api.v1.organisation.till-context', 'api.v1.auth.login', 'api.v1.auth.mfa.verify'];
 
     /** Background polling (the notification bell) is not activity: it must not keep an idle session alive. */
     private const PASSIVE = ['api.v1.notifications.index'];
