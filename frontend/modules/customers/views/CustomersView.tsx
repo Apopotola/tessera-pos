@@ -86,7 +86,7 @@ export default function CustomersView({ title, section, tabId }: WorkspaceViewPr
                       </Text>
                     )}
                   </Table.Td>
-                  <Table.Td ff="monospace">{c.kraPin ?? "—"}</Table.Td>
+                  <Table.Td ff="monospace">{c.kraPin ?? "Not given"}</Table.Td>
                   <Table.Td>
                     <Badge variant="light" color={c.isWholesale ? "tessera" : "gray"}>
                       {c.isWholesale ? "Wholesale" : "Retail"}
@@ -98,7 +98,7 @@ export default function CustomersView({ title, section, tabId }: WorkspaceViewPr
                       {c.salesCount ?? 0} {c.salesCount === 1 ? "sale" : "sales"}
                     </Text>
                   </Table.Td>
-                  <Table.Td>{c.lastPurchaseAt ? dayjs(c.lastPurchaseAt).format("DD MMM YYYY") : "—"}</Table.Td>
+                  <Table.Td>{c.lastPurchaseAt ? dayjs(c.lastPurchaseAt).format("DD MMM YYYY") : "No purchases yet"}</Table.Td>
                   <Table.Td>{c.anonymisedAt ? <Badge color="gray">Anonymised</Badge> : <StatusBadge active={c.isActive} />}</Table.Td>
                 </Table.Tr>
               ))}

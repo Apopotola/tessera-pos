@@ -96,13 +96,13 @@ export default function MpesaReconciliationView({ title, section }: WorkspaceVie
                 <Table.Tr key={t.id}>
                   <Table.Td>
                     <Text size="sm" ff="monospace" fw={600}>
-                      {t.sale?.number ?? "—"}
+                      {t.sale?.number ?? "Not matched"}
                     </Text>
                     <Text size="xs" c="dimmed">
                       {t.createdAt ? dayjs(t.createdAt).format("DD MMM, h:mm a") : ""}
                     </Text>
                   </Table.Td>
-                  <Table.Td ff="monospace">{t.reference ?? "—"}</Table.Td>
+                  <Table.Td ff="monospace">{t.reference ?? "No code"}</Table.Td>
                   <Table.Td>{t.cashier}</Table.Td>
                   <Table.Td ta="right">{formatKes(t.amountCents)}</Table.Td>
                   <Table.Td ta="right">
@@ -164,7 +164,7 @@ export default function MpesaReconciliationView({ title, section }: WorkspaceVie
                     </Text>
                   </Table.Td>
                   <Table.Td>
-                    <Text size="sm">{c.payerName ?? "—"}</Text>
+                    <Text size="sm">{c.payerName ?? "Name not sent"}</Text>
                     <Text size="xs" c="dimmed">
                       {c.phoneMasked}
                     </Text>

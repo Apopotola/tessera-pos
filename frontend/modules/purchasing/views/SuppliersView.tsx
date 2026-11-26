@@ -52,11 +52,11 @@ export default function SuppliersView({ title, section }: WorkspaceViewProps) {
                   <Table.Td fw={600}>{s.name}</Table.Td>
                   <Table.Td>
                     <Text size="sm" ff="monospace">
-                      {s.kraPin ?? "—"}
+                      {s.kraPin ?? "Not given"}
                     </Text>
                   </Table.Td>
                   <Table.Td>
-                    <Text size="sm">{s.contactPerson ?? "—"}</Text>
+                    <Text size="sm">{s.contactPerson ?? "Not given"}</Text>
                     <Text size="xs" c="dimmed">
                       {[s.phone, s.email].filter(Boolean).join(" · ")}
                     </Text>

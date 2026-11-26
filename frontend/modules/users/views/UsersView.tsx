@@ -88,9 +88,9 @@ export default function UsersView({ title, section }: WorkspaceViewProps) {
                       {[user.email, user.phone].filter(Boolean).join(" · ")}
                     </Text>
                   </Table.Td>
-                  <Table.Td>{user.role ?? "—"}</Table.Td>
+                  <Table.Td>{user.role ?? "No role"}</Table.Td>
                   <Table.Td>
-                    <Text size="sm">{user.branchIds.map((id) => branchName.get(id) ?? `#${id}`).join(", ") || "—"}</Text>
+                    <Text size="sm">{user.branchIds.map((id) => branchName.get(id) ?? `#${id}`).join(", ") || "All branches"}</Text>
                   </Table.Td>
                   <Table.Td>
                     <StatusBadge active={user.hasPin} activeLabel="Set" inactiveLabel="Not set" />

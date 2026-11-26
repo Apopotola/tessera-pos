@@ -1,4 +1,4 @@
-import { Paper, Text } from "@mantine/core";
+import { Group, Paper, Text, ThemeIcon } from "@mantine/core";
 import type { ReactNode } from "react";
 import { brand } from "@/app/theme";
 
@@ -6,6 +6,8 @@ interface StatTileProps {
   label: string;
   value: ReactNode;
   hint?: ReactNode;
+  /** A small icon beside the label (Tabler icon, size 18). */
+  icon?: ReactNode;
   /** "dark" inside navy panels, "light" on cream pages. */
   tone?: "dark" | "light";
   /** Amber tile for the figure that needs attention (e.g. a stock gap). */
@@ -14,7 +16,7 @@ interface StatTileProps {
 }
 
 /** KPI tile in the brand style: small label, large display-font figure. */
-export default function StatTile({ label, value, hint, tone = "light", highlight = false, onClick }: StatTileProps) {
+export default function StatTile({ label, value, hint, icon, tone = "light", highlight = false, onClick }: StatTileProps) {
   const background = highlight ? brand.amber : tone === "dark" ? brand.navy : "white";
   const color = highlight ? brand.navy : tone === "dark" ? "white" : brand.navy;
   // Long figures shrink to the tile width; short ones ("4", "1 / 3") stay large.
@@ -32,9 +34,16 @@ export default function StatTile({ label, value, hint, tone = "light", highlight
       style={{ background, cursor: onClick ? "pointer" : undefined, containerType: "inline-size" }}
       role={onClick ? "button" : undefined}
     >
-      <Text size="xs" c={muted} fw={500}>
-        {label}
-      </Text>
+      <Group justify="space-between" align="flex-start" wrap="nowrap" gap="xs">
+        <Text size="xs" c={muted} fw={500}>
+          {label}
+        </Text>
+        {icon && (
+          <ThemeIcon size={30} radius="md" variant={highlight || tone === "dark" ? "white" : "light"} color={highlight ? "dark" : "tessera"} aria-hidden>
+            {icon}
+          </ThemeIcon>
+        )}
+      </Group>
       <Text className="tessera-display" fz={fontSize} c={color} mt={4} style={{ whiteSpace: "nowrap" }}>
         {value}
       </Text>

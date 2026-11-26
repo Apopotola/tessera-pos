@@ -175,7 +175,7 @@ export default function ProductDetailView({ tabId, title, section, props }: Work
                         </Stack>
                       </Table.Td>
                       <Table.Td>
-                        <Text size="sm">{variant.packs?.map((p) => `${p.name} ×${p.units}`).join(", ") || "—"}</Text>
+                        <Text size="sm">{variant.packs?.map((p) => `${p.name} ×${p.units}`).join(", ") || "Single units only"}</Text>
                       </Table.Td>
                       <Table.Td ta="right">{formatKes(variant.currentPrices?.retail?.priceCents)}</Table.Td>
                       <Table.Td ta="right">{formatKes(variant.currentPrices?.wholesale?.priceCents)}</Table.Td>
@@ -188,11 +188,11 @@ export default function ProductDetailView({ tabId, title, section, props }: Work
                             </Text>
                           </>
                         ) : (
-                          "—"
+                          "Not sold by tot"
                         )}
                       </Table.Td>
                       <Table.Td>
-                        <Text size="sm">{variant.taxRate?.code ?? "—"}</Text>
+                        <Text size="sm">{variant.taxRate?.code ?? "Not set"}</Text>
                       </Table.Td>
                       <Table.Td>
                         <Menu position="bottom-end" withinPortal>

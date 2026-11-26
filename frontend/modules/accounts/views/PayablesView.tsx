@@ -46,7 +46,7 @@ export default function PayablesView({ title, section, tabId }: WorkspaceViewPro
               totals={data.totals}
               pastDue={(row) => row.dueCents}
               pastDueLabel="Past due"
-              extra={{ label: "On query", render: (row) => (row.onQueryCents ? formatKes(row.onQueryCents) : "—") }}
+              extra={{ label: "On query", render: (row) => (row.onQueryCents ? formatKes(row.onQueryCents) : "None") }}
               onOpen={(row) => setOpen({ id: row.id, name: row.name })}
             />
           )}

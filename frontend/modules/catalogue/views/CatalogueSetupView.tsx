@@ -48,7 +48,7 @@ export default function CatalogueSetupView({ title, section }: WorkspaceViewProp
                     {brands.data?.map((brand) => (
                       <Table.Tr key={brand.id}>
                         <Table.Td fw={600}>{brand.name}</Table.Td>
-                        <Table.Td>{brand.country ?? "—"}</Table.Td>
+                        <Table.Td>{brand.country ?? "Not set"}</Table.Td>
                         <Table.Td>
                           <StatusBadge active={brand.isActive} />
                         </Table.Td>

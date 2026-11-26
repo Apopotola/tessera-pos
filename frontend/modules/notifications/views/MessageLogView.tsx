@@ -43,7 +43,7 @@ export default function MessageLogView({ title, section }: WorkspaceViewProps) {
             <Table.Tbody>
               {data?.items.map((m) => (
                 <Table.Tr key={m.id}>
-                  <Table.Td style={{ whiteSpace: "nowrap" }}>{m.createdAt ? dayjs(m.createdAt).format("DD MMM, HH:mm") : "—"}</Table.Td>
+                  <Table.Td style={{ whiteSpace: "nowrap" }}>{m.createdAt ? dayjs(m.createdAt).format("DD MMM, HH:mm") : "Not sent yet"}</Table.Td>
                   <Table.Td>{CHANNEL[m.channel]}</Table.Td>
                   <Table.Td ff="monospace">{m.recipient}</Table.Td>
                   <Table.Td maw={460}>

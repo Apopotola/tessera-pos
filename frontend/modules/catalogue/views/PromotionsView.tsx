@@ -113,7 +113,7 @@ export default function PromotionsView({ title, section }: WorkspaceViewProps) {
                         {label}
                       </Badge>
                       <Text size="xs" c="dimmed" mt={2}>
-                        By {p.requestedBy ?? "—"}
+                        By {p.requestedBy ?? "unknown"}
                         {p.reviewedBy && p.reviewedBy !== p.requestedBy ? ` · approved by ${p.reviewedBy}` : ""}
                       </Text>
                       {p.reviewNote && p.status === "rejected" && (

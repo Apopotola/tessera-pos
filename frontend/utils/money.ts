@@ -2,7 +2,7 @@
 const KES = new Intl.NumberFormat("en-KE", { style: "currency", currency: "KES", minimumFractionDigits: 2 });
 
 export function formatKes(cents: number | null | undefined): string {
-  return cents == null ? "—" : KES.format(cents / 100);
+  return cents == null ? "Not available" : KES.format(cents / 100);
 }
 
 export function kesToCents(kes: number): number {

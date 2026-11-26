@@ -54,7 +54,7 @@ function TillStatus() {
             </Badge>
           </Group>
           <Text size="sm" c="dimmed">
-            {till.description ?? "—"} · float {formatKes(till.defaultFloatCents)}
+            {till.description ?? "No location set"} · float {formatKes(till.defaultFloatCents)}
           </Text>
           {till.lastSeenAt && (
             <Text size="xs" c="dimmed" mt={4}>

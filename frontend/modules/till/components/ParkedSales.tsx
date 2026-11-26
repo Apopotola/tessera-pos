@@ -100,7 +100,7 @@ export function RecallModal({
               <div>
                 <Text fw={600}>{sale.label}</Text>
                 <Text size="xs" c="dimmed">
-                  {sale.lines.reduce((n, l) => n + l.quantity, 0)} items · {sale.parkedBy ?? "—"} · {sale.createdAt ? dayjs(sale.createdAt).format("h:mm a") : ""}
+                  {sale.lines.reduce((n, l) => n + l.quantity, 0)} items · {sale.parkedBy ?? "unknown"} · {sale.createdAt ? dayjs(sale.createdAt).format("h:mm a") : ""}
                 </Text>
               </div>
               <Text fw={700}>{pendingId === sale.id ? "Recalling…" : formatKes(sale.totalCents)}</Text>

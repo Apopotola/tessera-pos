@@ -60,7 +60,7 @@ export default function BranchesView({ title, section }: WorkspaceViewProps) {
                   <Table.Td fw={600}>{branch.code}</Table.Td>
                   <Table.Td>{branch.name}</Table.Td>
                   <Table.Td>{branch.isWarehouse ? "Warehouse" : "Outlet"}</Table.Td>
-                  <Table.Td>{branch.phone ?? "—"}</Table.Td>
+                  <Table.Td>{branch.phone ?? "Not set"}</Table.Td>
                   <Table.Td>
                     <StatusBadge active={branch.isActive} />
                   </Table.Td>

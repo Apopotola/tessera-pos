@@ -1,6 +1,6 @@
 "use client";
 
-import { AppShell } from "@mantine/core";
+import { AppShell, Overlay } from "@mantine/core";
 import { useDisclosure } from "@mantine/hooks";
 import { brand } from "@/app/theme";
 import Sidebar from "@/components/layout/Sidebar";
@@ -18,6 +18,9 @@ export default function ContentLayout() {
       <AppShell.Navbar className={sidebarClasses.navbar}>
         <Sidebar onNavigate={close} />
       </AppShell.Navbar>
+
+      {/* On a phone the menu slides over the page; tapping the dimmed page closes it. */}
+      {navOpened && <Overlay hiddenFrom="sm" fixed zIndex={99} color={brand.navy} backgroundOpacity={0.5} blur={2} onClick={close} />}
 
       <AppShell.Main>
         <WorkspaceUrlSync />

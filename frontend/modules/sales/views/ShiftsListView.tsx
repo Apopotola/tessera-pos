@@ -88,13 +88,13 @@ export default function ShiftsListView({ title, section }: WorkspaceViewProps) {
                   <Table.Td ta="right">{formatKes(shift.takings.cashCents)}</Table.Td>
                   <Table.Td ta="right">{formatKes(shift.takings.mpesaCents)}</Table.Td>
                   <Table.Td ta="right">{formatKes(shift.takings.cardCents)}</Table.Td>
-                  <Table.Td ta="right">{shift.dropsCents > 0 ? formatKes(shift.dropsCents) : "—"}</Table.Td>
-                  <Table.Td ta="right">{shift.isOpen ? "—" : formatKes(shift.expectedCashCents)}</Table.Td>
-                  <Table.Td ta="right">{shift.isOpen ? "—" : formatKes(shift.countedCashCents)}</Table.Td>
-                  <Table.Td ta="right">{shift.isOpen ? "—" : <Variance cents={shift.varianceCents ?? 0} />}</Table.Td>
+                  <Table.Td ta="right">{shift.dropsCents > 0 ? formatKes(shift.dropsCents) : "None"}</Table.Td>
+                  <Table.Td ta="right">{shift.isOpen ? "Shift open" : formatKes(shift.expectedCashCents)}</Table.Td>
+                  <Table.Td ta="right">{shift.isOpen ? "Not counted yet" : formatKes(shift.countedCashCents)}</Table.Td>
+                  <Table.Td ta="right">{shift.isOpen ? "Not counted yet" : <Variance cents={shift.varianceCents ?? 0} />}</Table.Td>
                   <Table.Td>
                     {shift.isOpen ? (
-                      "—"
+                      "Still open"
                     ) : shift.reviewedAt ? (
                       <Text size="xs">Signed off · {shift.reviewedBy?.name}</Text>
                     ) : (

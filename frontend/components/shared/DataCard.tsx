@@ -8,13 +8,15 @@ interface DataCardProps {
   actions?: ReactNode;
   /** Inner padding; tables sit flush (the default), forms and text use "lg". */
   padding?: "lg" | 0;
+  /** A coloured left edge for a card that needs to stand out (e.g. brand.amber for "needs attention"). */
+  accent?: string;
   children: ReactNode;
 }
 
 /** The one card style for tables, lists and panels on cream workspace pages. */
-export default function DataCard({ title, description, actions, padding = 0, children }: DataCardProps) {
+export default function DataCard({ title, description, actions, padding = 0, accent, children }: DataCardProps) {
   return (
-    <Paper withBorder radius="lg" bg="white" style={{ overflow: "hidden" }}>
+    <Paper withBorder radius="lg" bg="white" style={{ overflow: "hidden", ...(accent ? { borderLeft: `4px solid ${accent}` } : {}) }}>
       {(title || actions) && (
         <Group justify="space-between" align="center" px="lg" py="md" wrap="wrap" style={{ borderBottom: "1px solid var(--mantine-color-gray-2)" }}>
           <div>

@@ -48,7 +48,7 @@ export default function ReceivablesView({ title, section, tabId }: WorkspaceView
               totals={data.totals}
               pastDue={(row) => row.overdueCents}
               pastDueLabel="Past due"
-              extra={{ label: "Limit", render: (row) => (row.creditLimitCents === null ? "—" : formatKes(row.creditLimitCents)) }}
+              extra={{ label: "Limit", render: (row) => (row.creditLimitCents === null ? "No limit" : formatKes(row.creditLimitCents)) }}
               onOpen={(row) => dispatch(openTab(customerTab({ id: row.id, name: row.name }, tabId)))}
             />
           )}

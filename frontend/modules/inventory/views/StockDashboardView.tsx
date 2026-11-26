@@ -98,7 +98,7 @@ export default function StockDashboardView({ title, section }: WorkspaceViewProp
                     <Table.Td fw={600}>{m.displayName}</Table.Td>
                     <Table.Td ta="right">{quantity(m.bottles, m.tots)}</Table.Td>
                     <Table.Td ta="right">{formatKes(m.netCents)}</Table.Td>
-                    <Table.Td ta="right">{topTotal ? `${((m.netCents * 100) / topTotal).toFixed(1)}%` : "—"}</Table.Td>
+                    <Table.Td ta="right">{topTotal ? `${((m.netCents * 100) / topTotal).toFixed(1)}%` : "No sales yet"}</Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>

@@ -151,7 +151,7 @@ function Submissions() {
                   </Table.Td>
                   <Table.Td>
                     <Text size="sm" ff="monospace">
-                      {row.kraInvoiceNumber ?? "—"}
+                      {row.kraInvoiceNumber ?? "Not signed yet"}
                     </Text>
                     {row.signedAt && (
                       <Text size="xs" c="dimmed">

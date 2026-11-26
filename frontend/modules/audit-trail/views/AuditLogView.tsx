@@ -61,14 +61,14 @@ export default function AuditLogView({ title, section }: WorkspaceViewProps) {
                   <Table.Td>
                     <Code>{entry.action}</Code>
                   </Table.Td>
-                  <Table.Td>{entry.user?.name ?? "—"}</Table.Td>
+                  <Table.Td>{entry.user?.name ?? "System"}</Table.Td>
                   <Table.Td>
                     <Text size="sm" c="dimmed">
-                      {entry.entityType ? `${entry.entityType.split("\\").pop()} #${entry.entityId}` : "—"}
+                      {entry.entityType ? `${entry.entityType.split("\\").pop()} #${entry.entityId}` : "General"}
                     </Text>
                   </Table.Td>
-                  <Table.Td>{entry.reason ?? "—"}</Table.Td>
-                  <Table.Td>{entry.ipAddress ?? "—"}</Table.Td>
+                  <Table.Td>{entry.reason ?? "No reason given"}</Table.Td>
+                  <Table.Td>{entry.ipAddress ?? "Not recorded"}</Table.Td>
                 </Table.Tr>
               ))}
             </Table.Tbody>

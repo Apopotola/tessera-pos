@@ -161,10 +161,10 @@ export default function StockOnHandView({ title, section }: WorkspaceViewProps) 
                       {whereabouts(row)}
                     </Text>
                   </Table.Td>
-                  <Table.Td ta="right">{row.reorderLevel ?? "—"}</Table.Td>
+                  <Table.Td ta="right">{row.reorderLevel ?? "Not set"}</Table.Td>
                   {showValue && <Table.Td ta="right">{formatKes(row.avgCostCents)}</Table.Td>}
                   <Table.Td ta="right">{formatKes(row.sellingPriceCents)}</Table.Td>
-                  {showValue && <Table.Td ta="right">{row.marginPercent !== null ? `${row.marginPercent}%` : "—"}</Table.Td>}
+                  {showValue && <Table.Td ta="right">{row.marginPercent !== null ? `${row.marginPercent}%` : "No cost yet"}</Table.Td>}
                   {showValue && <Table.Td ta="right">{formatKes(row.valueCents)}</Table.Td>}
                   <Table.Td>
                     <StockStatusBadge status={row.status} />
