@@ -28,7 +28,7 @@
 .card {
   padding: 18px 20px;
   border-radius: 14px;
-  background: #175440;
+  background: #1b4374;
   border: 2px solid transparent;
   transition: background 120ms ease, border-color 120ms ease;
 }
@@ -46,7 +46,7 @@
   margin-top: auto;
   padding: 16px 20px;
   border-radius: 14px;
-  background: #175440;
+  background: #1b4374;
 }
 
 .dot {
@@ -75,7 +75,7 @@
 }
 
 .key {
-  background: #0f3d2e;
+  background: #13355f;
 }
 
 .key:active {
@@ -88,7 +88,7 @@
 }
 
 .start:disabled {
-  background: #3d5a4e;
+  background: #3d5272;
   color: #9fb0c9;
 }
 
@@ -112,8 +112,8 @@
   display: grid;
   grid-template-columns: 1fr;
   min-height: 100vh;
-  background: #f3f6f4;
-  color: #0f3d2e;
+  background: #f4f6f9;
+  color: #13355f;
 }
 
 .sellMain {
@@ -216,7 +216,7 @@
   aspect-ratio: 4 / 3;
   overflow: hidden;
   border-radius: 10px;
-  background: #f3f6f4;
+  background: #f4f6f9;
   color: var(--mantine-color-tessera-4);
 }
 
@@ -260,7 +260,7 @@
   gap: 8px;
   padding: 8px 10px;
   border-radius: 10px;
-  background: #f3f6f4;
+  background: #f4f6f9;
 }
 
 .cartTotals {

@@ -1,7 +1,7 @@
 "use client";
 
 import { Badge, Button, Group, SimpleGrid, Stack, Text, ThemeIcon } from "@mantine/core";
-import { IconAlertTriangle, IconBottle, IconBuildingStore, IconCalculator, IconCash, IconCircleCheck, IconClock, IconCreditCard, IconDeviceDesktop, IconPackage, IconPackages, IconReceiptTax, IconTag, IconTrendingUp, IconTruckDelivery, IconUserDollar, IconAlertOctagon } from "@tabler/icons-react";
+import { IconAlertTriangle, IconCalculator, IconCircleCheck, IconClock } from "@tabler/icons-react";
 import dayjs from "dayjs";
 import Link from "next/link";
 import { useCallback } from "react";
@@ -95,17 +95,15 @@ export default function DashboardView({ section }: WorkspaceViewProps) {
                   {tile("sales_today") && (
                     <StatTile
                       label="Sales today"
-                      icon={<IconTrendingUp size={18} />}
                       value={formatKes(data.salesToday.netCents)}
                       hint={`${data.salesToday.transactions} ${data.salesToday.transactions === 1 ? "sale" : "sales"} · ${versusLastWeek(data.salesToday.netCents, data.salesToday.lastWeekNetCents)}`}
                       onClick={() => dispatch(openTab(SALES_TAB))}
                     />
                   )}
-                  {tile("takings") && <StatTile label="Cash" icon={<IconCash size={18} />} value={formatKes(data.salesToday.cashCents)} />}
+                  {tile("takings") && <StatTile label="Cash" value={formatKes(data.salesToday.cashCents)} />}
                   {tile("takings") && (
                     <StatTile
                       label="M-PESA · card"
-                      icon={<IconCreditCard size={18} />}
                       value={formatKes(data.salesToday.mpesaCents + data.salesToday.cardCents)}
                       hint={`Card ${formatKes(data.salesToday.cardCents)}${data.salesToday.creditCents ? ` · on account ${formatKes(data.salesToday.creditCents)}` : ""}`}
                     />
@@ -113,35 +111,30 @@ export default function DashboardView({ section }: WorkspaceViewProps) {
                   {tile("gross_profit") && data.salesToday.grossProfitCents !== null && (
                     <StatTile
                       label="Gross profit today"
-                      icon={<IconBuildingStore size={18} />}
                       value={formatKes(data.salesToday.grossProfitCents)}
                       hint={data.salesToday.marginPercent !== null ? `${data.salesToday.marginPercent}% margin, after VAT and cost of goods` : "After VAT and cost of goods"}
                     />
                   )}
                 </SimpleGrid>
               )}
-              {/* What is waiting on the owner comes straight after today's money, so it is never missed. */}
-              <AttentionCard data={data} onOpen={(tab) => dispatch(openTab(tab))} />
               <SimpleGrid cols={{ base: 1, xs: 2, lg: 4 }}>
-                {tile("shifts") && data.openShifts && <StatTile label="Shifts open now" icon={<IconClock size={18} />} value={data.openShifts.length} />}
-                {tile("tills") && data.tills && <StatTile label="Tills connected" icon={<IconDeviceDesktop size={18} />} value={`${data.tills.connected} / ${data.tills.total}`} />}
+                {tile("shifts") && data.openShifts && <StatTile label="Shifts open now" value={data.openShifts.length} />}
+                {tile("tills") && data.tills && <StatTile label="Tills connected" value={`${data.tills.connected} / ${data.tills.total}`} />}
                 {tile("catalogue") && data.catalogue && (
-                  <StatTile label="Items on sale" icon={<IconBottle size={18} />} value={data.catalogue.activeVariants} hint={`${data.catalogue.activeProducts} products`} />
+                  <StatTile label="Items on sale" value={data.catalogue.activeVariants} hint={`${data.catalogue.activeProducts} products`} />
                 )}
                 {tile("low_stock") && data.inventory && (
                   <StatTile
                     highlight={data.inventory.lowStock > 0}
                     label="Items low on stock"
-                    icon={<IconPackage size={18} />}
                     value={data.inventory.lowStock}
                     onClick={() => dispatch(openTab(STOCK_TAB))}
                   />
                 )}
-                {tile("stock_value") && data.inventory?.stockValueCents != null && <StatTile label="Stock value (at cost)" icon={<IconPackages size={18} />} value={formatKes(data.inventory.stockValueCents)} />}
+                {tile("stock_value") && data.inventory?.stockValueCents != null && <StatTile label="Stock value (at cost)" value={formatKes(data.inventory.stockValueCents)} />}
                 {tile("losses") && data.inventory?.lossesThisMonthCents != null && (
                   <StatTile
                     label="Shrinkage this month"
-                    icon={<IconAlertOctagon size={18} />}
                     value={formatKes(data.inventory.lossesThisMonthCents)}
                     hint={data.shrinkage?.percentOfCogs != null ? `${data.shrinkage.percentOfCogs}% of cost of goods sold · breakage and missing` : "Breakage and missing stock at cost"}
                     onClick={() => dispatch(openTab(reportTab({ key: "losses-by-reason", title: "Losses by reason" })))}
@@ -151,7 +144,6 @@ export default function DashboardView({ section }: WorkspaceViewProps) {
                   <StatTile
                     highlight={data.receivables.over90Cents > 0}
                     label="Owed by customers"
-                    icon={<IconUserDollar size={18} />}
                     value={formatKes(data.receivables.balanceCents)}
                     hint={`${data.receivables.customers} account${data.receivables.customers === 1 ? "" : "s"} · ${formatKes(data.receivables.overdueCents)} past due${data.receivables.over90Cents ? ` · ${formatKes(data.receivables.over90Cents)} over 90 days` : ""}`}
                     onClick={() => dispatch(openTab(RECEIVABLES_TAB))}
@@ -160,7 +152,6 @@ export default function DashboardView({ section }: WorkspaceViewProps) {
                 {tile("payables") && data.payables && data.payables.suppliers > 0 && (
                   <StatTile
                     label="Owed to suppliers"
-                    icon={<IconTruckDelivery size={18} />}
                     value={formatKes(data.payables.balanceCents)}
                     hint={`${formatKes(data.payables.dueCents)} past due${data.payables.onQueryCents ? ` · ${formatKes(data.payables.onQueryCents)} on query` : ""}`}
                     onClick={() => dispatch(openTab(PAYABLES_TAB))}
@@ -170,7 +161,6 @@ export default function DashboardView({ section }: WorkspaceViewProps) {
                   <StatTile
                     highlight={data.compliance.waitingOverThreshold > 0 || data.compliance.rejected > 0}
                     label="eTIMS invoices not yet signed"
-                    icon={<IconReceiptTax size={18} />}
                     value={data.compliance.pending + data.compliance.failed + data.compliance.rejected}
                     hint={
                       data.compliance.rejected > 0
@@ -186,7 +176,6 @@ export default function DashboardView({ section }: WorkspaceViewProps) {
                   <StatTile
                     highlight={data.pendingPriceChanges > 0}
                     label="Price changes waiting"
-                    icon={<IconTag size={18} />}
                     value={data.pendingPriceChanges}
                     onClick={() => dispatch(openTab(PRICE_CHANGES_TAB))}
                   />
@@ -194,7 +183,10 @@ export default function DashboardView({ section }: WorkspaceViewProps) {
               </SimpleGrid>
             </Stack>
 
-            {data.openShifts && <OpenShiftsCard shifts={data.openShifts} />}
+            <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
+              {data.openShifts && <OpenShiftsCard shifts={data.openShifts} />}
+              <AttentionCard data={data} onOpen={(tab) => dispatch(openTab(tab))} />
+            </SimpleGrid>
 
             {/* The owner's KPIs (requirements → Dashboard); each card opens the report that acts on it. */}
             <SimpleGrid cols={{ base: 1, lg: 2 }} spacing="lg">
@@ -247,81 +239,73 @@ function OpenShiftsCard({ shifts }: { shifts: NonNullable<DashboardSummary["open
 }
 
 function AttentionCard({ data, onOpen }: { data: DashboardSummary; onOpen: (tab: OpenTabConfig) => void }) {
-  const items: { count: number; text: string; tab: OpenTabConfig; urgent?: boolean }[] = [];
-  const add = (count: number | null | undefined, text: string, tab: OpenTabConfig, urgent = false) => {
-    if (count) items.push({ count, text, tab, urgent });
-  };
+  const items: { text: string; tab: OpenTabConfig }[] = [];
 
-  add(data.pendingPriceChanges, "price changes waiting for approval", PRICE_CHANGES_TAB);
-  add(data.inventory?.pendingApprovals, "stock documents waiting for approval", ADJUSTMENTS_TAB);
-  add(data.purchasing?.ordersAwaitingApproval, "purchase orders waiting for approval", ORDERS_TAB);
-  add(data.expenses?.pendingCount, `expenses waiting for approval (${formatKes(data.expenses?.pendingCents ?? 0)})`, EXPENSES_TAB);
-  add(
-    data.cashUps?.toReview,
-    `cash-ups waiting for your sign-off${data.cashUps?.withDifference ? `, ${data.cashUps.withDifference} with a difference` : ""}`,
-    SHIFTS_TAB,
-    Boolean(data.cashUps?.withDifference),
-  );
-  add(data.inventory?.lowStock, "items at or below their reorder level", STOCK_TAB);
-  add(data.purchasing?.invoicesWithVariance, "supplier invoices don't match the goods received", INVOICES_TAB, true);
-  add(data.compliance?.rejected, "eTIMS invoices refused by KRA: fix the item data and retry", ETIMS_TAB, true);
-  add(data.compliance?.waitingOverThreshold, "eTIMS invoices waiting over an hour to be signed", ETIMS_TAB, true);
-  add(data.compliance?.licencesExpiring, "licences or permits expired or expiring within 60 days", LICENCES_TAB, true);
-  add(data.staff?.cashiersWithoutPin, "staff who can sell have no till PIN", USERS_TAB);
+  if (data.pendingPriceChanges) {
+    items.push({ text: `${data.pendingPriceChanges} price change${data.pendingPriceChanges === 1 ? "" : "s"} waiting for approval`, tab: PRICE_CHANGES_TAB });
+  }
+  if (data.inventory?.pendingApprovals) {
+    items.push({ text: `${data.inventory.pendingApprovals} stock document(s) waiting for approval`, tab: ADJUSTMENTS_TAB });
+  }
+  if (data.inventory?.lowStock) {
+    items.push({ text: `${data.inventory.lowStock} item(s) at or below their reorder level`, tab: STOCK_TAB });
+  }
+  if (data.purchasing?.ordersAwaitingApproval) {
+    items.push({ text: `${data.purchasing.ordersAwaitingApproval} purchase order(s) waiting for approval`, tab: ORDERS_TAB });
+  }
+  if (data.purchasing?.invoicesWithVariance) {
+    items.push({ text: `${data.purchasing.invoicesWithVariance} supplier invoice(s) don't match the goods received`, tab: INVOICES_TAB });
+  }
+  if (data.cashUps?.toReview) {
+    const diff = data.cashUps.withDifference ? `, ${data.cashUps.withDifference} with a difference` : "";
+    items.push({ text: `${data.cashUps.toReview} cash-up(s) waiting for your sign-off${diff}`, tab: SHIFTS_TAB });
+  }
+  if (data.compliance?.rejected) {
+    items.push({ text: `${data.compliance.rejected} eTIMS invoice(s) refused by KRA — fix the item data and retry`, tab: ETIMS_TAB });
+  }
+  if (data.compliance?.waitingOverThreshold) {
+    items.push({ text: `${data.compliance.waitingOverThreshold} eTIMS invoice(s) waiting over an hour to be signed`, tab: ETIMS_TAB });
+  }
+  if (data.expenses?.pendingCount) {
+    items.push({ text: `${data.expenses.pendingCount} expense(s) waiting for approval (${formatKes(data.expenses.pendingCents)})`, tab: EXPENSES_TAB });
+  }
+  if (data.compliance?.licencesExpiring) {
+    items.push({ text: `${data.compliance.licencesExpiring} licence(s) or permit(s) expired or expiring within 60 days`, tab: LICENCES_TAB });
+  }
+  if (data.staff?.cashiersWithoutPin) {
+    items.push({ text: `${data.staff.cashiersWithoutPin} staff who can sell have no till PIN`, tab: USERS_TAB });
+  }
   if (data.tills && data.tills.total === 0) {
-    items.push({ count: 0, text: "No till is set up yet: open /till on the till device", tab: BRANCHES_TAB });
+    items.push({ text: "No till is set up yet — open /till on the till device", tab: BRANCHES_TAB });
   } else if (data.tills && data.tills.connected < data.tills.total) {
-    add(data.tills.total - data.tills.connected, "tills not connected", BRANCHES_TAB);
+    items.push({ text: `${data.tills.total - data.tills.connected} till(s) not connected`, tab: BRANCHES_TAB });
   }
 
-  const total = items.reduce((sum, item) => sum + item.count, 0);
-
   return (
-    <DataCard
-      padding="lg"
-      title="Needs attention"
-      description={items.length === 0 ? undefined : "Requests and alerts waiting on you. Click one to deal with it."}
-      accent={items.length > 0 ? brand.amber : undefined}
-      actions={
-        items.length > 0 && (
-          <Badge size="lg" color="amber" variant="filled" leftSection={<IconAlertTriangle size={14} />}>
-            {total > 0 ? `${total} waiting` : "Action needed"}
-          </Badge>
-        )
-      }
-    >
+    <DataCard padding="lg" title="Needs attention">
       {items.length === 0 ? (
         <Group gap="xs">
           <IconCircleCheck size={18} color="var(--mantine-color-green-6)" />
           <Text size="sm" c="dimmed">
-            Nothing waiting on you. Approvals, alerts and stock warnings show here.
+            Nothing waiting on you.
           </Text>
         </Group>
       ) : (
-        <SimpleGrid cols={{ base: 1, md: 2 }} spacing="xs">
+        <Stack gap="xs">
           {items.map((item) => (
             <Button
               key={item.text}
-              variant="light"
-              color={item.urgent ? "red" : "amber"}
+              variant="subtle"
+              color="dark"
               justify="flex-start"
-              size="md"
-              leftSection={
-                item.count > 0 ? (
-                  <Badge circle={item.count < 10} size="lg" color={item.urgent ? "red" : "amber"} variant="filled">
-                    {item.count}
-                  </Badge>
-                ) : (
-                  <IconAlertTriangle size={18} />
-                )
-              }
+              leftSection={<IconAlertTriangle size={16} color={brand.amber} />}
               onClick={() => onOpen(item.tab)}
-              styles={{ root: { height: "auto", minHeight: 44, paddingBlock: 8 }, label: { whiteSpace: "normal", textAlign: "left", color: "var(--mantine-color-dark-7)" } }}
+              styles={{ label: { whiteSpace: "normal", textAlign: "left" } }}
             >
               {item.text}
             </Button>
           ))}
-        </SimpleGrid>
+        </Stack>
       )}
     </DataCard>
   );

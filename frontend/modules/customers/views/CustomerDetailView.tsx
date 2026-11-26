@@ -80,7 +80,7 @@ export default function CustomerDetailView({ title, section, props }: WorkspaceV
             )}
             <SimpleGrid cols={{ base: 2, md: 4 }}>
               <StatTile label="Purchases" value={formatKes(c.salesTotalCents ?? 0)} hint={`${c.salesCount ?? 0} ${c.salesCount === 1 ? "sale" : "sales"}`} />
-              <StatTile label="Last purchase" value={c.lastPurchaseAt ? dayjs(c.lastPurchaseAt).format("D MMM YYYY") : "No purchases yet"} />
+              <StatTile label="Last purchase" value={c.lastPurchaseAt ? dayjs(c.lastPurchaseAt).format("D MMM YYYY") : "—"} />
               <StatTile label="Price" value={c.isWholesale ? "Wholesale" : "Retail"} />
               <StatTile label="Status" value={c.anonymisedAt ? "Anonymised" : c.isActive ? "Active" : "Inactive"} />
             </SimpleGrid>
@@ -200,7 +200,7 @@ function Detail({ label, value }: { label: string; value: string | null | undefi
       <Text size="xs" c="dimmed">
         {label}
       </Text>
-      <Text size="sm">{value || "Not given"}</Text>
+      <Text size="sm">{value || "—"}</Text>
     </div>
   );
 }

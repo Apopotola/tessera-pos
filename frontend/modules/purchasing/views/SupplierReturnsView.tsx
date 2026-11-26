@@ -125,7 +125,7 @@ export default function SupplierReturnsView({ title, section }: WorkspaceViewPro
                           Record
                         </Button>
                       ) : (
-                        "Nothing to do"
+                        "—"
                       )}
                     </Table.Td>
                     <Table.Td>

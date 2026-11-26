@@ -115,7 +115,7 @@ export default function PriceChangesView({ title, section }: WorkspaceViewProps)
                     </Table.Td>
                     <Table.Td maw={220}>
                       <Text size="sm" lineClamp={2}>
-                        {price.reason ?? "No reason given"}
+                        {price.reason ?? "—"}
                       </Text>
                     </Table.Td>
                     <Table.Td>

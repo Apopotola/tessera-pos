@@ -68,14 +68,14 @@ export function AgingTable<T extends { id: number; name: string; balanceCents: n
             {extra && <Table.Td ta="right">{extra.render(row)}</Table.Td>}
             {BUCKETS.map((b) => (
               <Table.Td key={b} ta="right" c={row.aging[b] === 0 ? "dimmed" : b === "over_90" ? "red.7" : undefined}>
-                {row.aging[b] === 0 ? "Nil" : formatKes(row.aging[b])}
+                {row.aging[b] === 0 ? "—" : formatKes(row.aging[b])}
               </Table.Td>
             ))}
             <Table.Td ta="right" fw={700}>
               {formatKes(row.balanceCents)}
             </Table.Td>
             <Table.Td ta="right" c={pastDue(row) > 0 ? "red.7" : "dimmed"}>
-              {pastDue(row) > 0 ? formatKes(pastDue(row)) : "Nothing due"}
+              {pastDue(row) > 0 ? formatKes(pastDue(row)) : "—"}
             </Table.Td>
           </Table.Tr>
         ))}
@@ -248,7 +248,7 @@ export function PaymentsCard({
                   )}
                 </Table.Td>
                 <Table.Td ta="right">{formatKes(p.amountCents)}</Table.Td>
-                <Table.Td>{p.recordedBy ?? "System"}</Table.Td>
+                <Table.Td>{p.recordedBy ?? "—"}</Table.Td>
                 <Table.Td ta="right">
                   {p.reversed ? (
                     <Badge color="gray" variant="light">

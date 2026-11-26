@@ -92,7 +92,7 @@ export default function OpenBottlesView({ title, section }: WorkspaceViewProps) 
                         {bottle.remainingMl}ml of {bottle.volumeMl}ml left
                       </Text>
                     </Table.Td>
-                    <Table.Td ta="right">{tot ? Math.round(bottle.soldMl / tot) : "Not poured by tot"}</Table.Td>
+                    <Table.Td ta="right">{tot ? Math.round(bottle.soldMl / tot) : "—"}</Table.Td>
                     <Table.Td ta="right">
                       <Text size="sm" c={bottle.writtenOffMl > 0 ? "red.7" : undefined}>
                         {bottle.writtenOffMl}ml

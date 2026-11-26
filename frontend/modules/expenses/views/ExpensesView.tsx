@@ -123,7 +123,7 @@ export default function ExpensesView({ title, section }: WorkspaceViewProps) {
                         {e.reversed ? "Reversed" : e.isReversal ? "Reversal" : label}
                       </Badge>
                       <Text size="xs" c="dimmed" mt={2}>
-                        By {e.requestedBy ?? "unknown"}
+                        By {e.requestedBy ?? "—"}
                         {e.reviewedBy && e.reviewedBy !== e.requestedBy ? ` · ${e.status === "rejected" ? "rejected" : "approved"} by ${e.reviewedBy}` : ""}
                       </Text>
                       {e.status === "rejected" && e.reviewNote && (

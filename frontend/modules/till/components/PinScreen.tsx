@@ -14,7 +14,7 @@ import type { Shift, TillCashier, TillContext } from "@/types/till";
 import { formatKes } from "@/utils/money";
 import classes from "../Till.module.css";
 
-export const AVATAR_COLORS = [brand.mint, brand.amber, "#a2d4bd", "#3dbb7f", "#e8664a", "#c9c6d6"];
+export const AVATAR_COLORS = [brand.sky, brand.amber, "#9ec0ea", "#3dbb7f", "#e8664a", "#c9c6d6"];
 
 interface PinScreenProps {
   context: TillContext;

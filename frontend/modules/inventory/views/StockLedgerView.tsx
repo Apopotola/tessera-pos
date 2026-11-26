@@ -127,7 +127,7 @@ export default function StockLedgerView({ title, section }: WorkspaceViewProps) 
                   </Table.Td>
                   {showCost && <Table.Td ta="right">{formatKes(m.unitCostCents)}</Table.Td>}
                   <Table.Td>
-                    <Text size="sm">{m.user?.name ?? "System"}</Text>
+                    <Text size="sm">{m.user?.name ?? "—"}</Text>
                     {m.approvedBy && (
                       <Text size="xs" c="dimmed">
                         ✓ {m.approvedBy.name}

@@ -27,7 +27,7 @@ function Empty({ children }: { children: string }) {
   );
 }
 
-const tally = (t: Tally) => (t.count === 0 ? "None" : `${t.count} · ${formatKes(t.cents)}`);
+const tally = (t: Tally) => (t.count === 0 ? "—" : `${t.count} · ${formatKes(t.cents)}`);
 const KINDS: { key: ExceptionKind; label: string }[] = [
   { key: "discounts", label: "Discounts" },
   { key: "voids", label: "Removed items" },
@@ -110,7 +110,7 @@ export function CashVarianceCard({ data, onOpen }: { data: NonNullable<Dashboard
                       {row.overAllowed}
                     </Badge>
                   ) : (
-                    "None"
+                    "—"
                   )}
                 </Table.Td>
               </Table.Tr>
@@ -240,7 +240,7 @@ export function BranchesCard({ rows, onOpen }: { rows: NonNullable<DashboardSumm
               <Table.Td fw={600}>{row.name}</Table.Td>
               <Table.Td ta="right">{row.transactions}</Table.Td>
               <Table.Td ta="right">{formatKes(row.netCents)}</Table.Td>
-              {showCost && <Table.Td ta="right">{row.marginPercent === null ? "No cost yet" : `${row.marginPercent}%`}</Table.Td>}
+              {showCost && <Table.Td ta="right">{row.marginPercent === null ? "—" : `${row.marginPercent}%`}</Table.Td>}
               {showCost && <Table.Td ta="right">{formatKes(row.lossesCents)}</Table.Td>}
             </Table.Tr>
           ))}

@@ -66,7 +66,7 @@ export default function CreditAccountSection({ customer }: { customer: Customer 
               <SimpleGrid cols={{ base: 2, md: 4 }}>
                 <StatTile label="Credit limit" value={a.creditLimitCents === null ? "None" : formatKes(a.creditLimitCents)} hint={a.creditLimitCents === 0 ? "On hold: every sale needs a manager" : undefined} />
                 <StatTile label="Owes" value={formatKes(a.balanceCents)} hint={a.balanceCents < 0 ? "Paid ahead" : undefined} />
-                <StatTile label="Available" value={a.availableCents === null ? "No limit" : formatKes(a.availableCents)} />
+                <StatTile label="Available" value={a.availableCents === null ? "—" : formatKes(a.availableCents)} />
                 <StatTile label="Past due" value={formatKes(a.overdueCents)} highlight={a.overdueCents > 0} hint={a.oldestDays !== null ? `Oldest unpaid ${a.oldestDays} days` : undefined} />
               </SimpleGrid>
               {a.balanceCents > 0 && <AgingTiles aging={a.aging} />}

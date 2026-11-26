@@ -142,7 +142,7 @@ export default function ReceiveStockView({ title, section, props }: WorkspaceVie
               <TextInput label="Supplier delivery note no." placeholder="e.g. DN-55821" value={deliveryNoteRef} onChange={(e) => setDeliveryNoteRef(e.currentTarget.value)} disabled={!po || pending} />
               <TextInput label="Receive into" value={po?.location.name ?? ""} readOnly placeholder="From the order" />
               <TextInput label="Date received" value={dayjs().format("DD MMM YYYY")} readOnly description="Recorded when you post" />
-              <TextInput label="Expected" value={po?.expectedDate ? dayjs(po.expectedDate).format("DD MMM YYYY") : "Not set"} readOnly />
+              <TextInput label="Expected" value={po?.expectedDate ? dayjs(po.expectedDate).format("DD MMM YYYY") : "—"} readOnly />
             </SimpleGrid>
           </DataCard>
 
@@ -202,8 +202,8 @@ export default function ReceiveStockView({ title, section, props }: WorkspaceVie
             <Summary label="Products" value={open.filter((l) => num(rows[l.id]?.received) > 0).length} />
             <Summary label="Good units" value={totalUnits} />
             {totalDamaged > 0 && <Summary label="Damaged (not stocked)" value={totalDamaged} />}
-            <Summary label="Payment terms" value={supplier ? (supplier.paymentTermsDays ? `Credit · ${supplier.paymentTermsDays} days` : "Cash on delivery") : "Choose a purchase order"} />
-            <Summary label="Due date" value={supplier?.paymentTermsDays ? dayjs().add(supplier.paymentTermsDays, "day").format("DD MMM YYYY") : "On delivery"} />
+            <Summary label="Payment terms" value={supplier ? (supplier.paymentTermsDays ? `Credit · ${supplier.paymentTermsDays} days` : "Cash on delivery") : "—"} />
+            <Summary label="Due date" value={supplier?.paymentTermsDays ? dayjs().add(supplier.paymentTermsDays, "day").format("DD MMM YYYY") : "—"} />
             <Divider />
             <Text size="xs" c="dimmed">
               Total cost

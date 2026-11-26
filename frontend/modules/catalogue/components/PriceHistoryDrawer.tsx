@@ -32,7 +32,7 @@ export default function PriceHistoryDrawer({ variant, onClose }: { variant: Vari
               </Text>
               {price.minPriceCents != null && <Text size="xs">Minimum {formatKes(price.minPriceCents)}</Text>}
               <Text size="xs" mt={4}>
-                {price.reason ?? "No reason given"} — requested by {price.requestedBy?.name ?? "unknown"}
+                {price.reason ?? "—"} — requested by {price.requestedBy?.name ?? "unknown"}
               </Text>
               {price.reviewedBy && (
                 <Text size="xs" c="dimmed">

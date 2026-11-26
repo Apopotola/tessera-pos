@@ -205,7 +205,7 @@ function isNegative(value: ReportCell, column: ReportColumn): boolean {
 }
 
 function formatCell(value: ReportCell, column: ReportColumn): string {
-  if (value === null || value === undefined || value === "") return "Not available";
+  if (value === null || value === undefined || value === "") return "—";
   switch (column.type) {
     case "money":
       return formatKes(Number(value));

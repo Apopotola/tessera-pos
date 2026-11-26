@@ -31,7 +31,7 @@ function draftOf(field: SettingField): SettingValue {
 
 /** Plain-language rendering of a value for history and preset previews. */
 export function describeValue(field: Pick<SettingField, "type" | "options">, value: SettingValue): string {
-  if (value === null || value === "") return "Not set";
+  if (value === null || value === "") return "—";
   const option = (v: unknown) => field.options.find((o) => o.value === String(v))?.label ?? String(v);
   switch (field.type) {
     case "boolean":
