@@ -143,6 +143,12 @@ class TillPolicy
         return $this->value('features.licensed_hours_lock', $till) && is_array($schedule) ? $schedule : null;
     }
 
+    /** One open till session that every waiter sells on (Settings → Sales → All waiters share one till). */
+    public function sharedTill(Till $till): bool
+    {
+        return (bool) $this->value('sales.shared_till', $till);
+    }
+
     public function blindCashUp(Till $till): bool
     {
         return (bool) $this->value('shifts.blind_cashup', $till);
@@ -174,6 +180,7 @@ class TillPolicy
             'ageCheck' => (bool) $this->value('sales.age_check_prompt', $till),
             'licensedHours' => $this->licensedSchedule($till),
             'blindCashUp' => $this->blindCashUp($till),
+            'sharedTill' => $this->sharedTill($till),
             'autoLockMinutes' => (int) $this->value('staff.till_auto_lock_minutes', $till),
             'layout' => $this->value('sales.layout', $till),
             'touchMode' => $this->value('sales.touch_mode', $till),

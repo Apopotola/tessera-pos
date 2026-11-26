@@ -66,6 +66,8 @@ export interface TillContext {
     /** Licensed-hours lock: alcohol only in these hours (null = any time). */
     licensedHours: WeeklyHours | null;
     blindCashUp: boolean;
+    /** Settings → Sales → All waiters share one till: one open session, open bills kept by table. */
+    sharedTill: boolean;
     /** Lock the screen after this many idle minutes (0 = never); the sale in progress is kept. */
     autoLockMinutes: number;
     layout: "tiles" | "list" | "barcode";

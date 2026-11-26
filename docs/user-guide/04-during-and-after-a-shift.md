@@ -72,6 +72,15 @@ Till menu → **Switch cashier** goes back to *Who's on the till?* without endin
 
 > **Common mistake:** Selling on someone else's shift. Each sale and every shilling in the drawer belongs to the cashier who is signed in. Always switch cashier, never "just use" the open screen.
 
+## Bars and clubs: all waiters share one till
+
+When waiters sell at the same time and all money goes to one counter, turn on **Settings → Sales → All waiters share one till** (for the whole business, a branch or one till).
+
+- **One open till for the day.** The first person to sign in opens it with the float. Every other waiter taps their card, enters their PIN and presses **Sign in**: they join the open till instead of starting a shift of their own.
+- **Every sale shows who made it.** The receipt, Sales and the reports name the waiter who signed in for that sale.
+- **Open bills by table.** Take the order, then press **Save to table** and type the table (e.g. *Table 4*). The bill stays open and the waiter is signed out for the next one. To add more, open the till menu → **Open table bills**, pick the table, add the items and **Save to table** again (the table name is kept). When the table is done, open the bill and take payment as usual.
+- **Only a manager closes the till.** Waiters see **Sign out** instead of *End shift*. At closing, a manager signs in and chooses Till menu → **Close the till and count**. All table bills must be paid (or cleared) first.
+
 ## Ending the shift: counting the cash
 
 At the end of the shift, the cashier counts the drawer. The sale must be empty, and any offline sales must have been sent.

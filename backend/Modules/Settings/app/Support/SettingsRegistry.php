@@ -125,6 +125,8 @@ final class SettingsRegistry
                 help: 'Open drawer needs a connected cash drawer.'),
             'sales.payment_methods_order' => self::f('sales', 'Payment buttons and order', 'order', ['mpesa', 'cash', 'card'], 'O',
                 options: ['mpesa' => 'M-PESA', 'cash' => 'Cash', 'card' => 'Card']),
+            'sales.shared_till' => self::f('sales', 'All waiters share one till', 'boolean', false, 'O', scopes: ['business', 'branch', 'till'],
+                help: 'For a bar or club where waiters sell at the same time and all money goes to one counter. The till stays open all day: each waiter signs in with their PIN, sells (every sale shows who made it) and is signed out again. Open bills are kept by table name. Only a manager closes and counts the till.'),
             'sales.touch_mode' => self::f('sales', 'Touch mode', 'select', 'large', 'B', scopes: ['business', 'branch', 'till'],
                 options: ['standard' => 'Standard buttons', 'large' => 'Large buttons']),
             'features.sell_by_tot' => self::f('sales', 'Sell by tot', 'boolean', true, 'O', group: 'Industry features'),

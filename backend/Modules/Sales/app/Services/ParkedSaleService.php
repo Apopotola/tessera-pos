@@ -16,7 +16,7 @@ use Modules\Sales\Models\ParkedSale;
  */
 class ParkedSaleService
 {
-    public const MAX_PER_TILL = 20;
+    public const MAX_PER_TILL = 40; // a club keeps a bill open per table
 
     public function __construct(private readonly AuditLogger $audit) {}
 

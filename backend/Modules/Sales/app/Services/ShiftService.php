@@ -20,7 +20,9 @@ use Modules\Sales\Support\Denominations;
 /**
  * Cashier shifts on a till. One open shift per till and per cashier (also enforced by
  * partial unique indexes). Close is a blind count: the cashier enters counted cash
- * before seeing what was expected.
+ * before seeing what was expected. On a shared till (Settings → Sales) the one open
+ * shift is the till's session for the day: every waiter sells on it and only a
+ * manager ends and counts it.
  */
 class ShiftService
 {
@@ -28,7 +30,18 @@ class ShiftService
         private readonly AuditLogger $audit,
         private readonly TillApprovalService $approvals,
         private readonly ApprovalPolicy $policy,
+        private readonly TillPolicy $till,
     ) {}
+
+    /**
+     * May this person sell, drop cash or pay out on this open shift? Its own cashier always;
+     * on a shared till (Settings → Sales) every waiter works on the one open shift.
+     */
+    public function worksOn(Shift $shift, Till $till, User $user): bool
+    {
+        return $shift->till_id === $till->id && $shift->isOpen()
+            && ($shift->user_id === $user->id || $this->till->sharedTill($till));
+    }
 
     /** Cash in the drawer right now: float + cash taken − cash refunded − drops to the safe − expenses paid out. */
     public function cashInDrawer(Shift $shift): int
@@ -41,7 +54,7 @@ class ShiftService
     /** Move excess cash to the safe, witnessed by a manager's PIN. */
     public function cashDrop(Shift $shift, Till $till, User $cashier, int $amountCents, ?string $note, ?string $approvalToken): CashDrop
     {
-        if ($shift->till_id !== $till->id || $shift->user_id !== $cashier->id || ! $shift->isOpen()) {
+        if (! $this->worksOn($shift, $till, $cashier)) {
             throw ValidationException::withMessages(['shift' => 'Only the cashier on this open shift can record a cash drop.']);
         }
         $witness = $this->approvals->consume($approvalToken, 'cash_drop', $till, $cashier);
@@ -136,7 +149,8 @@ class ShiftService
             Till::query()->whereKey($till->id)->lockForUpdate()->first();
 
             $current = $this->openShiftOn($till);
-            if ($current && $current->user_id === $user->id) {
+            // A shared till has one session for everyone: a waiter joins the open one.
+            if ($current && ($current->user_id === $user->id || $this->till->sharedTill($till))) {
                 return ['shift' => $current, 'resumed' => true];
             }
 
@@ -177,6 +191,9 @@ class ShiftService
     {
         if ($shift->user_id !== $user->id && ! $user->can(Permissions::SHIFTS_CASHUP_APPROVE)) {
             throw new AuthorizationException('Only the cashier or a manager can end this shift.');
+        }
+        if ($this->till->sharedTill($shift->loadMissing('till')->till) && ! $user->can(Permissions::SHIFTS_CASHUP_APPROVE)) {
+            throw new AuthorizationException('Everyone sells on this till: only a manager can close and count it.');
         }
 
         if (! $shift->isOpen()) {

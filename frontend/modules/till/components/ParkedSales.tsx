@@ -7,14 +7,21 @@ import { ApiError } from "@/api";
 import type { ParkedSale } from "@/types/sales";
 import { formatKes } from "@/utils/money";
 
-/** Name the cart so it is easy to find again ("Man in blue shirt", "Table 4"). */
-export function ParkModal({ totalCents, onClose, onPark }: { totalCents: number; onClose: () => void; onPark: (label: string) => Promise<void> }) {
-  const [label, setLabel] = useState("");
+/**
+ * Name the cart so it is easy to find again ("Man in blue shirt", "Table 4").
+ * On a shared till the open bill belongs to a table: the name is required, and a recalled bill keeps its table.
+ */
+export function ParkModal({ totalCents, tables = false, initialLabel = "", onClose, onPark }: { totalCents: number; tables?: boolean; initialLabel?: string; onClose: () => void; onPark: (label: string) => Promise<void> }) {
+  const [label, setLabel] = useState(initialLabel);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const submit = async () => {
     if (pending) return;
+    if (tables && !label.trim()) {
+      setError("Enter the table, e.g. Table 4.");
+      return;
+    }
     setPending(true);
     setError(null);
     try {
@@ -26,14 +33,17 @@ export function ParkModal({ totalCents, onClose, onPark }: { totalCents: number;
   };
 
   return (
-    <Modal opened onClose={onClose} title={`Park sale · ${formatKes(totalCents)}`} centered>
+    <Modal opened onClose={onClose} title={`${tables ? "Keep the bill open" : "Park sale"} · ${formatKes(totalCents)}`} centered>
       <Stack>
         <Text size="sm" c="dimmed">
-          Nothing is charged or taken from stock until the sale is recalled and paid.
+          {tables
+            ? "The bill stays open: add more to it later, and take payment when the table is done."
+            : "Nothing is charged or taken from stock until the sale is recalled and paid."}
         </Text>
         <TextInput
-          label="Who is it for? (optional)"
-          placeholder="e.g. Man in blue shirt"
+          label={tables ? "Table" : "Who is it for? (optional)"}
+          placeholder={tables ? "e.g. Table 4" : "e.g. Man in blue shirt"}
+          required={tables}
           maxLength={60}
           value={label}
           onChange={(e) => setLabel(e.currentTarget.value)}
@@ -46,7 +56,7 @@ export function ParkModal({ totalCents, onClose, onPark }: { totalCents: number;
             Cancel
           </Button>
           <Button onClick={() => void submit()} loading={pending}>
-            Park sale
+            {tables ? "Save to table" : "Park sale"}
           </Button>
         </Group>
       </Stack>
@@ -57,11 +67,13 @@ export function ParkModal({ totalCents, onClose, onPark }: { totalCents: number;
 export function RecallModal({
   parked,
   cartHasItems,
+  tables = false,
   onClose,
   onRecall,
 }: {
   parked: ParkedSale[];
   cartHasItems: boolean;
+  tables?: boolean;
   onClose: () => void;
   onRecall: (sale: ParkedSale) => Promise<void>;
 }) {
@@ -81,12 +93,12 @@ export function RecallModal({
   };
 
   return (
-    <Modal opened onClose={onClose} title="Parked sales" centered>
+    <Modal opened onClose={onClose} title={tables ? "Open table bills" : "Parked sales"} centered>
       <Stack gap="sm">
-        {cartHasItems && <Alert color="yellow">Finish or park the current sale before recalling another.</Alert>}
+        {cartHasItems && <Alert color="yellow">{tables ? "Finish or save the current bill before opening another table." : "Finish or park the current sale before recalling another."}</Alert>}
         {parked.length === 0 && (
           <Text c="dimmed" size="sm">
-            No parked sales on this till.
+            {tables ? "No open table bills." : "No parked sales on this till."}
           </Text>
         )}
         {parked.map((sale) => (

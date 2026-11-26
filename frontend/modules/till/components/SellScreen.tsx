@@ -32,6 +32,7 @@ import OfflineBanner from "@/modules/till/offline/OfflineBanner";
 import { buildBill, buildOfflineReceipt } from "@/modules/till/offline/offlineReceipt";
 import { useOfflineTill } from "@/modules/till/offline/useOfflineTill";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { PERMISSIONS } from "@/types/permissions";
 import { logout } from "@/store/slices/authSlice";
 import { type ParkedSale, type PromotionRule, type Sale, type SaleUnit, type ScanResult, TENDER_LABELS, type TenderMethod, type TenderPayload, type TillItem } from "@/types/sales";
 import type { Shift, TillContext } from "@/types/till";
@@ -91,6 +92,11 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   const [dropping, setDropping] = useState(false);
   const [parked, setParked] = useState<ParkedSale[]>([]);
   const [parking, setParking] = useState(false);
+  // The table of the bill brought back, so saving it again keeps the same table.
+  const [recalledLabel, setRecalledLabel] = useState("");
+  const tables = policy.sharedTill;
+  // On a shared till only a manager closes and counts the till.
+  const mayEndShift = !tables || Boolean(user?.permissions.includes(PERMISSIONS.SHIFTS_CASHUP_APPROVE));
   const [recalling, setRecalling] = useState(false);
   const [checkingPrice, setCheckingPrice] = useState(false);
   const [payingOut, setPayingOut] = useState(false);
@@ -502,9 +508,12 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     setLines([]);
     setCustomer(null);
     setClientId(newClientId());
-    notifications.show({ color: "tessera", message: `Parked as "${saved.label}".` });
+    setRecalledLabel("");
+    notifications.show({ color: "tessera", message: tables ? `Bill kept open for ${saved.label}.` : `Parked as "${saved.label}".` });
     loadParked();
-    refocus();
+    // On a shared till the waiter is done for now: sign out for the next one.
+    if (tables) void lockRef.current();
+    else refocus();
   };
 
   const recall = async (sale: ParkedSale) => {
@@ -512,6 +521,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
     const restored = recalled.lines.map((l) => fromParked(l, rules));
     setLines(restored.map((r) => r.line));
     setClientId(newClientId());
+    setRecalledLabel(recalled.label);
     setRecalling(false);
     if (restored.some((r) => r.reset)) {
       notifications.show({ color: "yellow", message: "Price changes and big discounts on this sale need a manager again." });
@@ -667,7 +677,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
               Current sale
             </Text>
             <Text c="dimmed" size="xs">
-              {user?.name} · shift since {new Date(shift.openedAt).toLocaleTimeString("en-KE", { hour: "numeric", minute: "2-digit" })}
+              {user?.name} · {tables ? "till open" : "shift"} since {new Date(shift.openedAt).toLocaleTimeString("en-KE", { hour: "numeric", minute: "2-digit" })}
             </Text>
           </div>
           <Menu position="bottom-end">
@@ -681,10 +691,10 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
                 Return / reprint{!isOnline && " (needs connection)"}
               </Menu.Item>
               <Menu.Item leftSection={<IconPlayerPause size={16} />} disabled={lines.length === 0 || !isOnline} onClick={() => setParking(true)}>
-                Park sale
+                {tables ? "Keep bill open (table)" : "Park sale"}
               </Menu.Item>
               <Menu.Item leftSection={<IconPlayerPause size={16} />} disabled={parked.length === 0 || !isOnline} onClick={() => setRecalling(true)}>
-                Recall parked ({parked.length})
+                {tables ? "Open table bills" : "Recall parked"} ({parked.length})
               </Menu.Item>
               <Menu.Item leftSection={<IconTrash size={16} />} disabled={lines.length === 0} onClick={() => void clearCart()}>
                 Clear sale
@@ -703,11 +713,14 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
                 Lock screen (keeps the sale)
               </Menu.Item>
               <Menu.Item leftSection={<IconUsers size={16} />} disabled={lines.length > 0 || !isOnline} onClick={() => void lock()}>
-                Switch cashier
+                {tables ? "Sign out" : "Switch cashier"}
               </Menu.Item>
-              <Menu.Item leftSection={<IconLogout size={16} />} disabled={lines.length > 0 || !isOnline || offline.unsynced > 0} onClick={() => setEnding(true)}>
-                End shift{offline.unsynced > 0 ? " (offline sales still sending)" : !isOnline ? " (needs connection)" : ""}
-              </Menu.Item>
+              {mayEndShift && (
+                <Menu.Item leftSection={<IconLogout size={16} />} disabled={lines.length > 0 || !isOnline || offline.unsynced > 0} onClick={() => setEnding(true)}>
+                  {tables ? "Close the till and count" : "End shift"}
+                  {offline.unsynced > 0 ? " (offline sales still sending)" : !isOnline ? " (needs connection)" : ""}
+                </Menu.Item>
+              )}
             </Menu.Dropdown>
           </Menu>
         </Group>
@@ -811,7 +824,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
 
         {parked.length > 0 && lines.length === 0 && (
           <Button variant="light" color="tessera" leftSection={<IconPlayerPause size={16} />} onClick={() => setRecalling(true)}>
-            {parked.length} parked {parked.length === 1 ? "sale" : "sales"} — recall
+            {tables ? `${parked.length} open table ${parked.length === 1 ? "bill" : "bills"} — open` : `${parked.length} parked ${parked.length === 1 ? "sale" : "sales"} — recall`}
           </Button>
         )}
         <Button size="xl" fullWidth color="tessera" disabled={lines.length === 0} rightSection={<IconArrowRight size={22} />} onClick={startPayment}>
@@ -822,7 +835,7 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
             Print bill
           </Button>
           <Button variant="outline" color="tessera" px={8} className={classes.methodButton} leftSection={<IconPlayerPause size={16} />} disabled={lines.length === 0 || !isOnline} onClick={() => setParking(true)}>
-            Hold sale
+            {tables ? "Save to table" : "Hold sale"}
           </Button>
           <Button variant="filled" color="red" px={8} className={classes.methodButton} leftSection={<IconTrash size={16} />} disabled={lines.length === 0} onClick={() => void clearCart()}>
             Void
@@ -915,8 +928,8 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
         />
       )}
 
-      {parking && <ParkModal totalCents={totals.total} onClose={() => setParking(false)} onPark={park} />}
-      {recalling && <RecallModal parked={parked} cartHasItems={lines.length > 0} onClose={() => setRecalling(false)} onRecall={recall} />}
+      {parking && <ParkModal totalCents={totals.total} tables={tables} initialLabel={recalledLabel} onClose={() => setParking(false)} onPark={park} />}
+      {recalling && <RecallModal parked={parked} cartHasItems={lines.length > 0} tables={tables} onClose={() => setRecalling(false)} onRecall={recall} />}
       {dropping && (
         <CashDropModal
           shift={shift}

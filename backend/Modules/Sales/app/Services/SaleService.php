@@ -389,7 +389,8 @@ class SaleService
     {
         $shift = Shift::query()->where('till_id', $till->id)->whereNull('closed_at')->first();
 
-        if (! $shift || $shift->user_id !== $cashier->id) {
+        // A shared till (Settings → Sales) has one open shift that every waiter sells on.
+        if (! $shift || ($shift->user_id !== $cashier->id && ! $this->policy->sharedTill($till))) {
             throw ValidationException::withMessages(['shift' => 'Start your shift on this till before selling.']);
         }
 

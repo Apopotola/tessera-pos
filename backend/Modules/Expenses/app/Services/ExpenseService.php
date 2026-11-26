@@ -124,7 +124,7 @@ class ExpenseService
     public function tillPayout(Till $till, User $cashier, array $data): Expense
     {
         $shift = $this->shifts->openShiftOn($till);
-        if (! $shift || $shift->user_id !== $cashier->id) {
+        if (! $shift || ! $this->shifts->worksOn($shift, $till, $cashier)) {
             throw ValidationException::withMessages(['shift' => 'Only the cashier on this open shift can pay out cash.']);
         }
         $witness = $this->approvals->consume($data['approvalToken'] ?? null, 'payout', $till, $cashier);

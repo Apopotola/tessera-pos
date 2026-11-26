@@ -86,7 +86,7 @@ export default function TillApp() {
     if (unpaired) clearTillToken();
   }, [unpaired]);
 
-  // A signed-in cashier returning to the till resumes their open shift.
+  // A signed-in cashier returning to the till resumes their open shift (on a shared till, the till's one open shift).
   const userId = auth.user?.id;
   useEffect(() => {
     if (!context.data || auth.status !== "authenticated" || !userId) return;
@@ -94,7 +94,7 @@ export default function TillApp() {
     salesApi
       .currentShift()
       .then((current) => {
-        if (active && current?.user?.id === userId) setShift(current);
+        if (active && current && (current.user?.id === userId || context.data?.policy.sharedTill)) setShift(current);
       })
       .catch(() => undefined);
     return () => {

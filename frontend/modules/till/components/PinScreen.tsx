@@ -130,7 +130,7 @@ export default function PinScreen({ context, onShiftStarted }: PinScreenProps) {
               Enter your {PIN_LENGTH}-digit PIN
             </Text>
 
-            <PinPad pin={pin} press={press} onSubmit={() => void submit()} busy={busy} error={error} submitLabel="Start shift" />
+            <PinPad pin={pin} press={press} onSubmit={() => void submit()} busy={busy} error={error} submitLabel={context.policy.sharedTill ? "Sign in" : "Start shift"} />
           </Stack>
         ) : (
           <Text c="gray.5">Select your name to sign in.</Text>
