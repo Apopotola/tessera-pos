@@ -1,7 +1,7 @@
 import { api } from "@/api/client";
 import { PING_URL, SALES_URLS as U } from "@/api/urls";
 import type { Paginated } from "@/types/api";
-import type { Approval, ApprovalAction, OpenBottle, ParkedLine, ParkedSale, PromotionRule, PublicReceipt, ReturnPayload, Sale, SalePayload, ScanResult, ShiftDetail, ShiftRow, TillItem } from "@/types/sales";
+import type { Approval, ApprovalAction, CashCheck, OpenBottle, ParkedLine, ParkedSale, PromotionRule, PublicReceipt, ReturnPayload, Sale, SalePayload, ScanResult, ShiftDetail, ShiftRow, TillItem, TillSummary } from "@/types/sales";
 import type { Shift, TillSnapshot } from "@/types/till";
 
 export const salesApi = {
@@ -14,6 +14,10 @@ export const salesApi = {
   cashDrop: (shiftId: number, amountCents: number, note: string | null, approvalToken: string) =>
     api.post<{ id: number; amountCents: number; dropsCents: number }>(U.cashDrops(shiftId), { amountCents, note, approvalToken }),
   varianceReason: (shiftId: number, reason: string) => api.post<Shift>(U.varianceReason(shiftId), { reason }),
+  // Shared till that stays open (manager): the summary since the last count, and a cash check.
+  tillSummary: (shiftId: number) => api.get<TillSummary>(U.tillSummary(shiftId)),
+  cashCheck: (shiftId: number, countedCashCents: number, note: string | null, denominations?: Record<string, number>) =>
+    api.post<CashCheck>(U.shiftCashChecks(shiftId), { countedCashCents, note, denominations }),
 
   // Selling
   searchItems: (search: string) => api.get<TillItem[]>(U.tillItems, { search }),
@@ -46,6 +50,8 @@ export const salesApi = {
   shifts: (page = 1, status?: "to_review") => api.get<Paginated<ShiftRow>>(U.shiftHistory, { page, status }),
   shiftDetail: (id: number) => api.get<ShiftDetail>(U.shiftDetail(id)),
   reviewShift: (id: number, note: string | null) => api.post<Shift>(U.reviewShift(id), { note }),
+  cashChecks: (page = 1, status?: "to_review") => api.get<Paginated<CashCheck>>(U.cashChecks, { page, status }),
+  reviewCashCheck: (id: number, note: string | null) => api.post<CashCheck>(U.reviewCashCheck(id), { note }),
   openBottles: (status: "open" | "closed", page = 1) => api.get<Paginated<OpenBottle>>(U.openBottles, { status, page }),
   writeOffBottle: (id: number, reason: string) => api.post<{ id: number; status: string }>(U.writeOffBottle(id), { reason }),
 };

@@ -51,6 +51,12 @@ class Shift extends Model
         return $this->hasMany(CashDrop::class);
     }
 
+    /** @return HasMany<CashCheck, $this> */
+    public function cashChecks(): HasMany
+    {
+        return $this->hasMany(CashCheck::class);
+    }
+
     /** @return BelongsTo<User, $this> */
     public function reviewer(): BelongsTo
     {

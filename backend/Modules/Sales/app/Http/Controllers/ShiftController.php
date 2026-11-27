@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Organisation\Models\Till;
+use Modules\Sales\Http\Requests\CashCheckRequest;
+use Modules\Sales\Http\Resources\CashCheckResource;
 use Modules\Sales\Http\Resources\ShiftResource;
 use Modules\Sales\Models\Shift;
 use Modules\Sales\Services\ShiftService;
@@ -82,6 +84,40 @@ class ShiftController extends Controller
         $drop = $this->shifts->cashDrop($shift, $this->till($request), $request->user(), $data['amountCents'], $data['note'] ?? null, $data['approvalToken']);
 
         return $this->success('Cash drop recorded.', ['id' => $drop->id, 'amountCents' => $drop->amount_cents, 'dropsCents' => $shift->fresh()->drops_cents], 201);
+    }
+
+    #[OA\Get(
+        path: '/api/v1/sales/shifts/{shift}/summary',
+        summary: 'Till summary since the last cash check, without closing (manager): by waiter, by payment method, drops, pay-outs, expected cash unless blind',
+        tags: ['Sales'],
+        responses: [new OA\Response(response: 200, description: 'Summary'), new OA\Response(response: 403, description: 'Not a manager')],
+    )]
+    public function summary(Request $request, Shift $shift): JsonResponse
+    {
+        abort_unless($shift->till_id === $this->till($request)->id, 404);
+
+        return $this->success('Till summary.', $this->shifts->summary($shift, $this->till($request), $request->user()));
+    }
+
+    #[OA\Post(
+        path: '/api/v1/sales/shifts/{shift}/cash-checks',
+        summary: 'Cash check on a shared till (manager): count the drawer without closing; the next count starts from the cash found',
+        tags: ['Sales'],
+        requestBody: new OA\RequestBody(content: new OA\JsonContent(properties: [
+            new OA\Property(property: 'countedCashCents', type: 'integer'),
+            new OA\Property(property: 'denominations', type: 'object', description: 'cents => pieces'),
+            new OA\Property(property: 'note', type: 'string', nullable: true),
+        ])),
+        responses: [new OA\Response(response: 201, description: 'Recorded; expected and variance revealed'), new OA\Response(response: 403, description: 'Not a manager'), new OA\Response(response: 422, description: 'Not a shared till')],
+    )]
+    public function cashCheck(CashCheckRequest $request, Shift $shift): JsonResponse
+    {
+        abort_unless($shift->till_id === $this->till($request)->id, 404);
+        $data = $request->validated();
+
+        $check = $this->shifts->cashCheck($shift, $this->till($request), $request->user(), (int) ($data['countedCashCents'] ?? 0), $data['note'] ?? null, $data['denominations'] ?? null);
+
+        return $this->success('Cash check recorded.', new CashCheckResource($check->load(['user', 'till'])), 201);
     }
 
     #[OA\Post(path: '/api/v1/sales/shifts/{shift}/variance-reason', summary: 'Cashier explains a cash-up difference after closing', tags: ['Sales'], responses: [new OA\Response(response: 200, description: 'Saved')])]

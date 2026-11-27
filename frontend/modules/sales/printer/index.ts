@@ -1,4 +1,4 @@
-import { drawerBytes, paperWidthMm, type ReceiptPrintOptions, receiptBytes, tookCash } from "@/modules/sales/printer/documents";
+import { drawerBytes, paperWidthMm, type ReceiptPrintOptions, receiptBytes, tillSummaryBytes, tookCash } from "@/modules/sales/printer/documents";
 import { logoRaster } from "@/modules/sales/printer/logo";
 import { isDirect, isSupported, sendBytes, type PrinterConnection } from "@/modules/sales/printer/transports";
 import type { Sale } from "@/types/sales";
@@ -63,4 +63,9 @@ export function printReceipt(printer: TillPrinter, sale: Sale, options: Omit<Rec
     const logo = sale.receipt.show.includes("logo") ? await logoRaster(sale.receipt.logo, paperWidthMm(sale.receipt.paperSize)) : null;
     return receiptBytes(sale, { ...options, logo });
   });
+}
+
+/** The manager's till summary on this till's printer; the caller falls back to the print dialog on "browser". */
+export function printTillSummary(printer: TillPrinter, ...args: Parameters<typeof tillSummaryBytes>): Promise<PrintOutcome> {
+  return sendToPrinter(printer, () => tillSummaryBytes(...args));
 }

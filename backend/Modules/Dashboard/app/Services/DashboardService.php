@@ -16,6 +16,7 @@ use Modules\Organisation\Services\BranchAccessService;
 use Modules\Purchasing\Enums\PurchaseOrderStatus;
 use Modules\Purchasing\Models\PurchaseOrder;
 use Modules\Purchasing\Models\SupplierInvoice;
+use Modules\Sales\Models\CashCheck;
 use Modules\Sales\Models\Sale;
 use Modules\Sales\Models\SaleReturn;
 use Modules\Sales\Models\SaleReturnLine;
@@ -84,6 +85,12 @@ class DashboardService
                 'toReview' => Shift::query()->whereIn('branch_id', $branchIds)->whereNotNull('closed_at')->whereNull('reviewed_at')->count(),
                 'withDifference' => Shift::query()->whereIn('branch_id', $branchIds)->whereNotNull('closed_at')->whereNull('reviewed_at')
                     ->whereRaw('ABS(variance_cents) > ?', [(int) $this->settings->get('shifts.allowed_variance')])->count(),
+                // Cash checks on tills that stay open, not signed off yet.
+                'checksToReview' => CashCheck::query()->whereIn('branch_id', $branchIds)->whereNull('reviewed_at')->count(),
+                // Open tills whose cash has not been counted (cash check, or the opening) in 24 hours.
+                'tillsNotCounted' => Shift::query()->with('till:id,name')->whereIn('branch_id', $branchIds)->whereNull('closed_at')
+                    ->whereRaw('COALESCE((SELECT MAX(created_at) FROM cash_checks WHERE cash_checks.shift_id = shifts.id), opened_at) < ?', [now()->subDay()])
+                    ->get()->map(fn (Shift $s) => $s->till->name)->values(),
             ] : null,
 
             'salesToday' => $user->can(Permissions::SALES_VIEW) ? $this->salesToday($user, $branchIds) : null,

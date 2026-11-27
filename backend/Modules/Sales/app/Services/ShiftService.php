@@ -11,8 +11,10 @@ use Modules\Authorization\Services\ApprovalPolicy;
 use Modules\Authorization\Support\Permissions;
 use Modules\Organisation\Models\Till;
 use Modules\Sales\Events\ShiftClosed;
+use Modules\Sales\Models\CashCheck;
 use Modules\Sales\Models\CashDrop;
 use Modules\Sales\Models\ParkedSale;
+use Modules\Sales\Models\Sale;
 use Modules\Sales\Models\SaleTender;
 use Modules\Sales\Models\Shift;
 use Modules\Sales\Support\Denominations;
@@ -43,12 +45,155 @@ class ShiftService
             && ($shift->user_id === $user->id || $this->till->sharedTill($till));
     }
 
-    /** Cash in the drawer right now: float + cash taken − cash refunded − drops to the safe − expenses paid out. */
+    /**
+     * Cash in the drawer right now: float + cash taken − cash refunded − drops to the safe − expenses
+     * paid out, corrected by the differences found at cash checks (each check counts from what it found).
+     */
     public function cashInDrawer(Shift $shift): int
     {
         $cash = (int) SaleTender::query()->where('shift_id', $shift->id)->where('method', SaleTender::CASH)->sum('amount_cents');
+        $found = (int) CashCheck::query()->where('shift_id', $shift->id)->sum('variance_cents');
 
-        return $shift->opening_float_cents + $cash - (int) CashDrop::query()->where('shift_id', $shift->id)->sum('amount_cents') - (int) $shift->payouts_cents;
+        return $shift->opening_float_cents + $cash - (int) CashDrop::query()->where('shift_id', $shift->id)->sum('amount_cents') - (int) $shift->payouts_cents + $found;
+    }
+
+    public function lastCashCheck(Shift $shift): ?CashCheck
+    {
+        return CashCheck::query()->where('shift_id', $shift->id)->latest('created_at')->latest('id')->first();
+    }
+
+    /**
+     * Till summary for a manager, without closing: since the last cash check (or the opening), sales by
+     * waiter and takings by payment method, drops, pay-outs, and the cash the drawer should hold.
+     * With blind cash-up on, expected cash stays hidden until it is counted.
+     *
+     * @return array<string, mixed>
+     */
+    public function summary(Shift $shift, Till $till, User $manager): array
+    {
+        if (! $manager->can(Permissions::SHIFTS_CASHUP_APPROVE)) {
+            throw new AuthorizationException('Only a manager can see the till summary.');
+        }
+        if ($shift->till_id !== $till->id || ! $shift->isOpen()) {
+            throw ValidationException::withMessages(['shift' => 'This till is not open.']);
+        }
+
+        $last = $this->lastCashCheck($shift);
+        $since = $last->created_at ?? $shift->opened_at;
+
+        // The period starts after the last sale and payment the previous check counted (timestamps are only to the second).
+        $byWaiter = Sale::query()->where('shift_id', $shift->id)->where('id', '>', $last->last_sale_id ?? 0)
+            ->selectRaw('user_id, count(*) as sales_count, sum(total_cents) as total_cents')
+            ->groupBy('user_id')->get();
+        $names = User::query()->whereIn('id', $byWaiter->pluck('user_id'))->pluck('name', 'id');
+        $byMethod = SaleTender::query()->where('shift_id', $shift->id)->where('id', '>', $last->last_tender_id ?? 0)
+            ->selectRaw('method, sum(amount_cents) as amount_cents')->groupBy('method')->pluck('amount_cents', 'method');
+        $blind = $this->till->blindCashUp($till);
+
+        return [
+            'shiftId' => $shift->id,
+            'openedAt' => $shift->opened_at->toIso8601String(),
+            'since' => $since->toIso8601String(),
+            'lastCheck' => $last ? ['id' => $last->id, 'at' => $last->created_at->toIso8601String(), 'countedCashCents' => $last->counted_cash_cents] : null,
+            // The cash the period started with: the opening float, or what the last check counted.
+            'startingCashCents' => $last ? $last->counted_cash_cents : $shift->opening_float_cents,
+            'waiters' => $byWaiter->map(fn ($row) => [
+                'userId' => (int) $row->user_id,
+                'name' => $names[$row->user_id] ?? '—',
+                'salesCount' => (int) $row->sales_count,
+                'totalCents' => (int) $row->total_cents,
+            ])->sortByDesc('totalCents')->values()->all(),
+            'methods' => collect([SaleTender::MPESA, SaleTender::CASH, SaleTender::CARD, SaleTender::CREDIT])
+                ->map(fn (string $m) => ['method' => $m, 'amountCents' => (int) ($byMethod[$m] ?? 0)])->all(),
+            'salesCount' => (int) $byWaiter->sum('sales_count'),
+            'salesTotalCents' => (int) $byWaiter->sum('total_cents'),
+            'dropsCents' => (int) $shift->drops_cents - ($last->drops_total_cents ?? 0),
+            'payoutsCents' => (int) $shift->payouts_cents - ($last->payouts_total_cents ?? 0),
+            'blind' => $blind,
+            'expectedCashCents' => $blind ? null : $this->cashInDrawer($shift),
+        ];
+    }
+
+    /**
+     * Cash check on a shared till: a manager counts the drawer while the till stays open and waiters
+     * keep selling. Expected, counted and the difference are recorded, and the next count starts
+     * from the cash found.
+     *
+     * @param  array<int|string, int>|null  $pieces  denomination (cents) => pieces; when given, it is the count
+     */
+    public function cashCheck(Shift $shift, Till $till, User $manager, int $countedCashCents, ?string $note, ?array $pieces = null): CashCheck
+    {
+        if (! $manager->can(Permissions::SHIFTS_CASHUP_APPROVE)) {
+            throw new AuthorizationException('Only a manager can count the till.');
+        }
+        if (! $this->till->sharedTill($till)) {
+            throw ValidationException::withMessages(['shift' => 'Cash checks are for a shared till that stays open. End the shift to count this till.']);
+        }
+        if ($shift->till_id !== $till->id || ! $shift->isOpen()) {
+            throw ValidationException::withMessages(['shift' => 'This till is not open.']);
+        }
+
+        $breakdown = null;
+        if ($pieces !== null) {
+            ['total' => $countedCashCents, 'breakdown' => $breakdown] = Denominations::total($pieces);
+        }
+
+        return DB::transaction(function () use ($shift, $manager, $countedCashCents, $note, $breakdown) {
+            // Drops and pay-outs lock the shift too, so the running totals below are exact.
+            $shift = Shift::query()->lockForUpdate()->findOrFail($shift->id);
+            $last = $this->lastCashCheck($shift);
+            $expected = $this->cashInDrawer($shift);
+
+            $check = CashCheck::query()->create([
+                'shift_id' => $shift->id,
+                'branch_id' => $shift->branch_id,
+                'till_id' => $shift->till_id,
+                'user_id' => $manager->id,
+                'period_started_at' => $last->created_at ?? $shift->opened_at,
+                'expected_cash_cents' => $expected,
+                'counted_cash_cents' => $countedCashCents,
+                'variance_cents' => $countedCashCents - $expected,
+                'count_breakdown' => $breakdown,
+                'drops_total_cents' => (int) $shift->drops_cents,
+                'payouts_total_cents' => (int) $shift->payouts_cents,
+                'last_sale_id' => Sale::query()->where('shift_id', $shift->id)->max('id'),
+                'last_tender_id' => SaleTender::query()->where('shift_id', $shift->id)->max('id'),
+                'note' => $note ? trim($note) : null,
+            ]);
+
+            $this->audit->log('sales.shift.cash_check', $check, after: [
+                'expected_cash_cents' => $expected,
+                'counted_cash_cents' => $countedCashCents,
+                'variance_cents' => $check->variance_cents,
+            ], reason: $note, userId: $manager->id, branchId: $shift->branch_id, reference: "till:{$shift->till_id}");
+
+            return $check;
+        });
+    }
+
+    /** Manager sign-off of a cash check. Never by the manager who counted it, unless own approvals are allowed. */
+    public function reviewCashCheck(CashCheck $check, User $manager, ?string $note): CashCheck
+    {
+        if (! $manager->can(Permissions::SHIFTS_CASHUP_APPROVE)) {
+            throw new AuthorizationException;
+        }
+        if ($check->user_id === $manager->id && ! $this->policy->mayApproveOwn($manager)) {
+            throw new AuthorizationException('You cannot sign off your own cash check.');
+        }
+        if ($check->reviewed_at !== null) {
+            throw ValidationException::withMessages(['check' => 'This cash check is already signed off.']);
+        }
+        if ($check->variance_cents !== 0 && blank($note)) {
+            throw ValidationException::withMessages(['note' => 'Say what was done about the difference.']);
+        }
+
+        return DB::transaction(function () use ($check, $manager, $note) {
+            $check->forceFill(['reviewed_by' => $manager->id, 'reviewed_at' => now(), 'review_note' => $note ? trim($note) : null])->save();
+            $this->audit->log('sales.shift.cash_check_signed_off', $check, after: ['variance_cents' => $check->variance_cents], reason: $note,
+                userId: $manager->id, branchId: $check->branch_id);
+
+            return $check;
+        });
     }
 
     /** Move excess cash to the safe, witnessed by a manager's PIN. */

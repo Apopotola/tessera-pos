@@ -222,6 +222,46 @@ export interface ShiftRow {
 }
 
 /** GET /sales/shifts/{id}/detail */
+/** A manager's count of the drawer on a shared till that stays open (CashCheckResource). */
+export interface CashCheck {
+  id: number;
+  shiftId: number;
+  tillId: number;
+  branchId: number;
+  tillName?: string;
+  countedBy?: { id: number; name: string };
+  /** The last count (or the till opening) this check counts from. */
+  periodStartedAt: string;
+  countedAt: string;
+  expectedCashCents: number;
+  countedCashCents: number;
+  varianceCents: number;
+  countBreakdown: { denominationCents: number; count: number }[] | null;
+  note: string | null;
+  reviewedBy?: { id: number; name: string } | null;
+  reviewedAt: string | null;
+  reviewNote: string | null;
+}
+
+/** GET /sales/shifts/{id}/summary — the till since the last cash check, without closing (manager). */
+export interface TillSummary {
+  shiftId: number;
+  openedAt: string;
+  since: string;
+  lastCheck: { id: number; at: string; countedCashCents: number } | null;
+  /** The opening float, or what the last cash check counted. */
+  startingCashCents: number;
+  waiters: { userId: number; name: string; salesCount: number; totalCents: number }[];
+  methods: { method: TenderMethod; amountCents: number }[];
+  salesCount: number;
+  salesTotalCents: number;
+  dropsCents: number;
+  payoutsCents: number;
+  /** Blind cash-up on (Settings → Staff): expected cash stays hidden until counted. */
+  blind: boolean;
+  expectedCashCents: number | null;
+}
+
 export interface ShiftDetail extends ShiftRow {
   drops: { id: number; amountCents: number; note: string | null; witness: string; at: string }[];
 }

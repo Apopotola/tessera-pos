@@ -260,6 +260,12 @@ function AttentionCard({ data, onOpen }: { data: DashboardSummary; onOpen: (tab:
     const diff = data.cashUps.withDifference ? `, ${data.cashUps.withDifference} with a difference` : "";
     items.push({ text: `${data.cashUps.toReview} cash-up(s) waiting for your sign-off${diff}`, tab: SHIFTS_TAB });
   }
+  if (data.cashUps?.tillsNotCounted.length) {
+    items.push({ text: `${data.cashUps.tillsNotCounted.join(", ")}: open over 24 hours without a cash count (cash check or close)`, tab: SHIFTS_TAB });
+  }
+  if (data.cashUps?.checksToReview) {
+    items.push({ text: `${data.cashUps.checksToReview} cash check(s) waiting for your sign-off`, tab: SHIFTS_TAB });
+  }
   if (data.compliance?.rejected) {
     items.push({ text: `${data.compliance.rejected} eTIMS invoice(s) refused by KRA — fix the item data and retry`, tab: ETIMS_TAB });
   }

@@ -14,7 +14,14 @@ export interface DashboardSummary {
         openingFloatCents: number;
       }[]
     | null;
-  cashUps: { toReview: number; withDifference: number } | null;
+  cashUps: {
+    toReview: number;
+    withDifference: number;
+    /** Cash checks on tills kept open, not signed off yet. */
+    checksToReview: number;
+    /** Open tills whose cash has not been counted in 24 hours (no cash check since, or since opening). */
+    tillsNotCounted: string[];
+  } | null;
   salesToday: {
     /** Same weekday last week, up to the same time of day. */
     lastWeekNetCents: number;

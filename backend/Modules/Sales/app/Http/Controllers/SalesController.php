@@ -7,8 +7,11 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Modules\Authorization\Support\Permissions;
 use Modules\Inventory\Services\StockQueryService;
+use Modules\Sales\Http\Requests\ReviewCashCheckRequest;
+use Modules\Sales\Http\Resources\CashCheckResource;
 use Modules\Sales\Http\Resources\SaleResource;
 use Modules\Sales\Http\Resources\ShiftResource;
+use Modules\Sales\Models\CashCheck;
 use Modules\Sales\Models\CashDrop;
 use Modules\Sales\Models\Sale;
 use Modules\Sales\Models\SaleTender;
@@ -74,6 +77,30 @@ class SalesController extends Controller
         $note = $request->validate(['note' => ['nullable', 'string', 'max:500']])['note'] ?? null;
 
         return $this->success('Cash-up signed off.', new ShiftResource($shifts->review($shift, $request->user(), $note)->load(['user', 'reviewer'])));
+    }
+
+    #[OA\Get(path: '/api/v1/sales/cash-checks', summary: 'Cash checks on tills that stay open (status=to_review: not signed off yet)', tags: ['Sales'], responses: [new OA\Response(response: 200, description: 'Paginated')])]
+    public function cashChecks(Request $request): JsonResponse
+    {
+        abort_unless($request->user()->canAny([Permissions::SHIFTS_CASHUP_APPROVE, Permissions::SALES_VIEW]), 403);
+
+        $page = CashCheck::query()
+            ->with(['user', 'till', 'reviewer'])
+            ->whereIn('branch_id', $this->stock->branchIds($request->user(), null))
+            ->when($request->query('status') === 'to_review', fn ($q) => $q->whereNull('reviewed_at'))
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->paginate(25);
+
+        return $this->success('Cash checks.', $this->paginated($page, CashCheckResource::class));
+    }
+
+    #[OA\Post(path: '/api/v1/sales/cash-checks/{cashCheck}/review', summary: 'Manager signs off a cash check (not the one who counted)', tags: ['Sales'], responses: [new OA\Response(response: 200, description: 'Signed off')])]
+    public function reviewCashCheck(ReviewCashCheckRequest $request, CashCheck $cashCheck, ShiftService $shifts): JsonResponse
+    {
+        abort_unless(in_array($cashCheck->branch_id, $this->stock->branchIds($request->user(), null), true), 403);
+
+        return $this->success('Cash check signed off.', new CashCheckResource($shifts->reviewCashCheck($cashCheck, $request->user(), $request->validated('note'))->load(['user', 'till', 'reviewer'])));
     }
 
     #[OA\Get(path: '/api/v1/sales/shifts', summary: 'Shifts with cash-up results (variance only after close)', tags: ['Sales'], responses: [new OA\Response(response: 200, description: 'Paginated')])]

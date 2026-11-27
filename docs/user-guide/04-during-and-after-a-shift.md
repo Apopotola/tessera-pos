@@ -81,6 +81,15 @@ When waiters sell at the same time and all money goes to one counter, turn on **
 - **Open bills by table.** Take the order, then press **Save to table** and type the table (e.g. *Table 4*). The bill stays open and the waiter is signed out for the next one. To add more, open the till menu → **Open table bills**, pick the table, add the items and **Save to table** again (the table name is kept). When the table is done, open the bill and take payment as usual.
 - **Only a manager closes the till.** Waiters see **Sign out** instead of *End shift*. At closing, a manager signs in and chooses Till menu → **Close the till and count**. All table bills must be paid (or cleared) first.
 
+### Keeping the till open: till summary and cash checks
+
+A club can leave the shared till open for days and still count the cash every day. Both tools are for managers and **never close the till**: waiters keep their table bills and carry on selling.
+
+- **Till summary.** Till menu → **Till summary (stays open)**. It shows everything since the last cash check (or since the till opened): sales by waiter, takings by payment method (M-PESA, cash, card, on account), drops to the safe, pay-outs, and the cash the drawer should hold. Tap **Print** for a copy on the receipt printer. With **Blind cash-up** on (Settings → Staff), the expected cash reads *After counting* until a cash check is done.
+- **Cash check.** Till menu → **Cash check (stays open)** (or **Cash check…** on the summary). Count the drawer note by note, as at closing, add a note if needed and tap **Record cash check**. The till shows expected, counted and the difference. The next summary, cash check and the final close all count **from the cash you found**, so a shortage is never counted twice.
+- **Sign-off.** Each cash check waits under **Sales & Shifts → Shifts & cash-ups** (in *Waiting for sign-off*, and all of them under *Cash checks*). A different manager signs it off; when the cash is short or over, they say what was done about it.
+- **Reminder.** If an open till has had no cash check (or opening) for 24 hours, the dashboard's *Needs attention* card says so.
+
 ## Ending the shift: counting the cash
 
 At the end of the shift, the cashier counts the drawer. The sale must be empty, and any offline sales must have been sent.
@@ -99,7 +108,7 @@ The till then shows:
 
 | Line | Meaning |
 | --- | --- |
-| **Expected (1)** | Opening float + cash sales − cash refunds − cash drops − payouts |
+| **Expected (1)** | Opening float (or the last cash check's count) + cash sales − cash refunds − cash drops − payouts |
 | **Counted (2)** | What you counted |
 | **Variance / Short / Over (3)** | The difference. Zero means the drawer balances. |
 
@@ -119,3 +128,5 @@ If the drawer is short or over, the cashier must type **why** before finishing (
 | Step away | Till menu → Lock screen | Only if you cannot unlock it yourself |
 | Hand over | Till menu → Switch cashier | No |
 | End of shift | Till menu → End shift | Signs off the cash-up afterwards |
+| See the till without closing (shared till) | Till menu → Till summary | Yes (manager only) |
+| Count the cash without closing (shared till) | Till menu → Cash check | Yes (manager counts, another signs off) |

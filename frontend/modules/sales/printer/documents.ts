@@ -1,6 +1,6 @@
 import dayjs from "dayjs";
 import { EscPos, type PaperColumns } from "@/modules/sales/printer/escpos";
-import { type ReceiptSettings, type Sale, TENDER_LABELS } from "@/types/sales";
+import { type ReceiptSettings, type Sale, TENDER_LABELS, type TillSummary } from "@/types/sales";
 
 /**
  * The till receipt and the printer test page as ESC/POS bytes. Same content and order as the on-screen
@@ -134,6 +134,32 @@ export function tookCash(sale: Pick<Sale, "tenders">): boolean {
 /** Only the drawer pulse (pin 2), sent on its own so the drawer opens before the receipt prints. */
 export function drawerBytes(): Uint8Array {
   return new EscPos(48).openDrawer().build();
+}
+
+/** The manager's till summary (shared till that stays open): since the last count, by waiter and payment method. */
+export function tillSummaryBytes(summary: TillSummary, till: { business: string; branch: string; till: string; printedBy: string }, paperSize: ReceiptSettings["paperSize"]): Uint8Array {
+  const p = new EscPos(paperColumns(paperSize));
+  p.align("center").bold(true).large(true).paragraph(till.business, true).large(false).bold(false);
+  p.paragraph(`${till.branch} - ${till.till}`);
+  p.bold(true).line("TILL SUMMARY").bold(false);
+  p.line(`${dayjs(summary.since).format("DD/MM HH:mm")} - ${dayjs().format("DD/MM HH:mm")}`);
+  p.line(summary.lastCheck ? "Since the last cash check" : "Since the till opened");
+  p.align("left").rule();
+  p.bold(true).line("BY WAITER").bold(false);
+  if (summary.waiters.length === 0) p.line("No sales yet");
+  summary.waiters.forEach((w) => p.row(`${w.name} (${w.salesCount})`, amount(w.totalCents)));
+  p.row(`TOTAL (${summary.salesCount} sales)`, amount(summary.salesTotalCents));
+  p.rule();
+  p.bold(true).line("BY PAYMENT").bold(false);
+  summary.methods.forEach((m) => p.row(TENDER_LABELS[m.method], amount(m.amountCents)));
+  p.rule();
+  p.row(summary.lastCheck ? "Cash at last count" : "Opening float", amount(summary.startingCashCents));
+  p.row("Drops to the safe", amount(-summary.dropsCents));
+  p.row("Paid out (expenses)", amount(-summary.payoutsCents));
+  p.bold(true).row("EXPECTED IN DRAWER", summary.expectedCashCents === null ? "(count first)" : amount(summary.expectedCashCents)).bold(false);
+  p.rule("=");
+  p.align("center").line(`Printed by ${till.printedBy}`).line(dayjs().format("DD/MM/YYYY HH:mm"));
+  return p.feed(4).cut().build();
 }
 
 /** Proves the connection, the paper width, the logo and the cutter. */

@@ -4,7 +4,7 @@ import { ActionIcon, Alert, Button, Group, Loader, Menu, Modal, ScrollArea, Simp
 import { useIdle } from "@mantine/hooks";
 import { modals } from "@mantine/modals";
 import { notifications } from "@mantine/notifications";
-import { IconArrowRight, IconBarcode, IconBuildingBank, IconCash, IconClockOff, IconCreditCard, IconDeviceMobile, IconDiscount, IconDots, IconUser, IconLock, IconLogout, IconMinus, IconPlayerPause, IconPlus, IconPrinter, IconReceipt2, IconReceiptRefund, IconSearch, IconTag, IconTrash, IconUsers } from "@tabler/icons-react";
+import { IconArrowRight, IconBarcode, IconBuildingBank, IconCash, IconClockOff, IconCoins, IconCreditCard, IconDeviceMobile, IconDiscount, IconDots, IconUser, IconLock, IconLogout, IconMinus, IconPlayerPause, IconPlus, IconPrinter, IconReceipt2, IconReceiptRefund, IconReportMoney, IconSearch, IconTag, IconTrash, IconUsers } from "@tabler/icons-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ApiError, authApi, salesApi } from "@/api";
 import { brand } from "@/app/theme";
@@ -16,7 +16,7 @@ import { type ApprovalRules, type CartLine, cartTotals, cartVat, itemsInCategory
 import CustomerPicker from "@/modules/till/components/CustomerPicker";
 import type { TillCustomer } from "@/types/customers";
 import { useApprovalPrompt } from "@/modules/till/components/ApprovalModal";
-import { CashDropModal, EndShiftModal, ShiftSummaryModal } from "@/modules/till/components/EndShift";
+import { CashCheckModal, CashCheckResultModal, CashDropModal, EndShiftModal, ShiftSummaryModal, TillSummaryModal } from "@/modules/till/components/EndShift";
 import LineEditModal from "@/modules/till/components/LineEditModal";
 import LockScreen from "@/modules/till/components/LockScreen";
 import { ParkModal, RecallModal } from "@/modules/till/components/ParkedSales";
@@ -34,7 +34,7 @@ import { useOfflineTill } from "@/modules/till/offline/useOfflineTill";
 import { useAppDispatch, useAppSelector } from "@/store/hooks";
 import { PERMISSIONS } from "@/types/permissions";
 import { logout } from "@/store/slices/authSlice";
-import { type ParkedSale, type PromotionRule, type Sale, type SaleUnit, type ScanResult, TENDER_LABELS, type TenderMethod, type TenderPayload, type TillItem } from "@/types/sales";
+import { type CashCheck, type ParkedSale, type PromotionRule, type Sale, type SaleUnit, type ScanResult, TENDER_LABELS, type TenderMethod, type TenderPayload, type TillItem } from "@/types/sales";
 import type { Shift, TillContext } from "@/types/till";
 import { formatKes } from "@/utils/money";
 import { onTillLocked } from "@/utils/sessionEvents";
@@ -96,7 +96,12 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
   const [recalledLabel, setRecalledLabel] = useState("");
   const tables = policy.sharedTill;
   // On a shared till only a manager closes and counts the till.
-  const mayEndShift = !tables || Boolean(user?.permissions.includes(PERMISSIONS.SHIFTS_CASHUP_APPROVE));
+  const isManager = Boolean(user?.permissions.includes(PERMISSIONS.SHIFTS_CASHUP_APPROVE));
+  const mayEndShift = !tables || isManager;
+  // Manager tools that never close the till: the summary since the last count, and a cash check (shared till).
+  const [summarising, setSummarising] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [checked, setChecked] = useState<CashCheck | null>(null);
   const [recalling, setRecalling] = useState(false);
   const [checkingPrice, setCheckingPrice] = useState(false);
   const [payingOut, setPayingOut] = useState(false);
@@ -715,6 +720,16 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
               <Menu.Item leftSection={<IconUsers size={16} />} disabled={lines.length > 0 || !isOnline} onClick={() => void lock()}>
                 {tables ? "Sign out" : "Switch cashier"}
               </Menu.Item>
+              {isManager && (
+                <Menu.Item leftSection={<IconReportMoney size={16} />} disabled={!isOnline} onClick={() => setSummarising(true)}>
+                  Till summary (stays open){!isOnline && " (needs connection)"}
+                </Menu.Item>
+              )}
+              {isManager && tables && (
+                <Menu.Item leftSection={<IconCoins size={16} />} disabled={!isOnline} onClick={() => setChecking(true)}>
+                  Cash check (stays open){!isOnline && " (needs connection)"}
+                </Menu.Item>
+              )}
               {mayEndShift && (
                 <Menu.Item leftSection={<IconLogout size={16} />} disabled={lines.length > 0 || !isOnline || offline.unsynced > 0} onClick={() => setEnding(true)}>
                   {tables ? "Close the till and count" : "End shift"}
@@ -953,6 +968,29 @@ export default function SellScreen({ context, shift, onEnded }: SellScreenProps)
       )}
       {ending && !closed && <EndShiftModal shift={shift} blind={policy.blindCashUp} onClose={() => setEnding(false)} onClosed={setClosed} />}
       {closed && <ShiftSummaryModal shift={closed} onDone={() => void lock()} />}
+      {summarising && (
+        <TillSummaryModal
+          shift={shift}
+          context={context}
+          printedBy={user?.name ?? ""}
+          onClose={() => {
+            setSummarising(false);
+            refocus();
+          }}
+          onCashCheck={tables ? () => (setSummarising(false), setChecking(true)) : undefined}
+        />
+      )}
+      {checking && !checked && <CashCheckModal shift={shift} blind={policy.blindCashUp} onClose={() => setChecking(false)} onChecked={setChecked} />}
+      {checked && (
+        <CashCheckResultModal
+          check={checked}
+          onDone={() => {
+            setChecked(null);
+            setChecking(false);
+            refocus();
+          }}
+        />
+      )}
       {pickingCustomer && (
         <CustomerPicker current={customer} localCustomers={isOnline ? null : (offline.snapshot?.customers ?? [])} onClose={() => setPickingCustomer(false)} onPick={chooseCustomer} />
       )}
